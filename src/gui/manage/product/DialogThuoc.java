@@ -1,0 +1,246 @@
+package gui.manage.product;
+
+import com.formdev.flatlaf.FlatClientProperties;
+import dao.ThuocDAO;
+import dto.ThuocFullInfo;
+import java.awt.Component;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import javax.swing.*;
+import net.miginfocom.swing.MigLayout;
+import raven.toast.Notifications;
+
+public class DialogThuoc extends JDialog {
+
+    private final Component parent;
+    private final boolean isEdit;
+    private boolean isSave = false;
+
+    private JTextField txtMaThuoc;
+    private JTextField txtTenThuoc;
+    private JComboBox<String> cbNhomThuoc;
+    private JTextField txtHoatChat;
+    private JComboBox<String> cbDVT;
+    private JSpinner spinGiaBan;
+
+    private Object[] currentData;
+    private ThuocDAO thuocDAO = new ThuocDAO();
+
+    public DialogThuoc(Component parent, Object[] data) {
+        super(SwingUtilities.windowForComponent(parent), "Thuốc", ModalityType.APPLICATION_MODAL);
+        this.parent = parent;
+        this.currentData = data;
+        this.isEdit = (data != null);
+
+        initComponents();
+        if (isEdit) {
+            fillData();
+        } else {
+            generateNewMaThuoc();
+        }
+    }
+
+    private void initComponents() {
+
+        setTitle(isEdit ? "Cập Nhật Thông Tin Thuốc" : "Thêm Thuốc Mới");
+
+        setLayout(new MigLayout("wrap,fillx,insets 20, width 550", "[label, 100]10[grow,fill]", "[]15[]"));
+
+        JLabel lbTitle = new JLabel(isEdit ? "SỬA THÔNG TIN" : "THÊM THUỐC MỚI");
+        lbTitle.putClientProperty(FlatClientProperties.STYLE, "font:bold +4; foreground:$Accent.color");
+        add(lbTitle, "span 2, center, wrap 20");
+
+        add(new JLabel("Mã thuốc:"));
+        txtMaThuoc = new JTextField();
+        txtMaThuoc.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Tự động tạo nếu để trống");
+        if (isEdit) {
+            txtMaThuoc.setEditable(false);
+        }
+        add(txtMaThuoc);
+
+        add(new JLabel("Tên thuốc:"));
+        txtTenThuoc = new JTextField();
+        txtTenThuoc.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Ví dụ: Panadol Extra");
+        add(txtTenThuoc);
+
+        add(new JLabel("Nhóm thuốc:"));
+        cbNhomThuoc = new JComboBox<>();
+        loadNhomThuoc();
+
+        JButton btnAddNhom = new JButton("+");
+        btnAddNhom.setToolTipText("Thêm nhóm thuốc mới");
+        btnAddNhom.addActionListener(e -> actionThemNhomNhanh());
+
+        add(cbNhomThuoc, "split 2, growx");
+        add(btnAddNhom, "w 30!, h 30!");
+
+        add(new JLabel("Hoạt chất:"));
+        txtHoatChat = new JTextField();
+        txtHoatChat.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Ví dụ: Paracetamol");
+        add(txtHoatChat);
+
+        add(new JLabel("Đơn vị tính:"));
+        cbDVT = new JComboBox<>();
+        loadDVT();
+
+        JButton btnAddDVT = new JButton("+");
+        btnAddDVT.setToolTipText("Thêm đơn vị tính mới");
+        btnAddDVT.addActionListener(e -> actionThemDVTNhanh());
+
+        add(cbDVT, "split 2, width 50%");
+        add(btnAddDVT, "w 30!, h 30!, wrap");
+
+        add(new JLabel("Giá bán:"));
+        spinGiaBan = new JSpinner(new SpinnerNumberModel(0.0, 0.0, 1000000000.0, 1000.0));
+        spinGiaBan.setEditor(new JSpinner.NumberEditor(spinGiaBan, "#,##0 ₫"));
+        add(spinGiaBan);
+
+        JPanel panelActions = new JPanel(new MigLayout("insets 20 0 0 0", "push[][]"));
+        panelActions.setOpaque(false);
+
+        JButton btnHuy = new JButton("Hủy bỏ");
+        btnHuy.addActionListener(e -> closeDialog());
+
+        JButton btnLuu = new JButton("Lưu thông tin");
+        btnLuu.putClientProperty(FlatClientProperties.STYLE, ""
+                + "background:#4CAF50;"
+                + "foreground:#ffffff;"
+                + "font:bold");
+        btnLuu.addActionListener(e -> actionSave());
+
+        panelActions.add(btnHuy);
+        panelActions.add(btnLuu);
+        add(panelActions, "span 2, growx");
+
+        pack();
+        setLocationRelativeTo(parent);
+    }
+
+    private void actionThemNhomNhanh() {
+        String tenNhomMoi = JOptionPane.showInputDialog(this, "Nhập tên nhóm thuốc mới:", "Thêm Nhóm", JOptionPane.PLAIN_MESSAGE);
+
+        if (tenNhomMoi != null && !tenNhomMoi.trim().isEmpty()) {
+            tenNhomMoi = tenNhomMoi.trim();
+
+            for (int i = 0; i < cbNhomThuoc.getItemCount(); i++) {
+                if (cbNhomThuoc.getItemAt(i).equalsIgnoreCase(tenNhomMoi)) {
+                    Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Nhóm thuốc này đã tồn tại!");
+                    return;
+                }
+            }
+
+            if (thuocDAO.themNhomThuocNhanh(tenNhomMoi)) {
+                cbNhomThuoc.addItem(tenNhomMoi);
+                cbNhomThuoc.setSelectedItem(tenNhomMoi);
+                Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Đã thêm nhóm mới!");
+            } else {
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi khi lưu nhóm thuốc!");
+            }
+        }
+    }
+
+    private void actionThemDVTNhanh() {
+        String dvtMoi = JOptionPane.showInputDialog(this, "Nhập tên đơn vị tính mới:", "Thêm ĐVT", JOptionPane.PLAIN_MESSAGE);
+
+        if (dvtMoi != null && !dvtMoi.trim().isEmpty()) {
+            dvtMoi = dvtMoi.trim();
+
+            for (int i = 0; i < cbDVT.getItemCount(); i++) {
+                if (cbDVT.getItemAt(i).equalsIgnoreCase(dvtMoi)) {
+                    cbDVT.setSelectedIndex(i);
+                    return;
+                }
+            }
+
+            cbDVT.addItem(dvtMoi);
+            cbDVT.setSelectedItem(dvtMoi);
+        }
+    }
+
+    private void loadNhomThuoc() {
+        cbNhomThuoc.removeAllItems();
+        ArrayList<String> dsNhom = thuocDAO.getAllNhomThuocName();
+        for (String tenNhom : dsNhom) {
+            cbNhomThuoc.addItem(tenNhom);
+        }
+    }
+
+    private void loadDVT() {
+        cbDVT.removeAllItems();
+        ArrayList<String> listDVT = thuocDAO.getAllDonViTinh();
+        for (String dvt : listDVT) {
+            cbDVT.addItem(dvt);
+        }
+    }
+
+    private void fillData() {
+        txtMaThuoc.setText(currentData[0].toString());
+        txtTenThuoc.setText(currentData[1].toString());
+        cbNhomThuoc.setSelectedItem(currentData[2].toString());
+        txtHoatChat.setText(currentData[3].toString());
+        cbDVT.setSelectedItem(currentData[4].toString());
+
+        if (currentData[5] instanceof Number) {
+            spinGiaBan.setValue(((Number) currentData[5]).doubleValue());
+        } else {
+            try {
+                spinGiaBan.setValue(parseCurrency(currentData[5].toString()));
+            } catch (Exception e) {
+                spinGiaBan.setValue(0.0);
+            }
+        }
+    }
+
+    private double parseCurrency(String text) {
+        return Double.parseDouble(text.replace(".", "").replace(",", "").trim());
+    }
+
+    private void actionSave() {
+        if (txtTenThuoc.getText().trim().isEmpty()) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Tên thuốc không được để trống!");
+            txtTenThuoc.requestFocus();
+            return;
+        }
+        isSave = true;
+        closeDialog();
+    }
+
+    private void closeDialog() {
+        dispose();
+    }
+
+    public boolean isSave() {
+        return isSave;
+    }
+
+    public Object[] getData() {
+        DecimalFormat df = new DecimalFormat("#,##0");
+        return new Object[]{
+            txtMaThuoc.getText().isEmpty() ? "AUTO" : txtMaThuoc.getText(),
+            txtTenThuoc.getText(),
+            cbNhomThuoc.getSelectedItem(),
+            txtHoatChat.getText(),
+            cbDVT.getSelectedItem(),
+            0,
+            df.format(spinGiaBan.getValue()),
+            0
+        };
+    }
+
+    private void generateNewMaThuoc() {
+        ArrayList<ThuocFullInfo> list = thuocDAO.getAllThuocFullInfo();
+        if (list.isEmpty()) {
+            txtMaThuoc.setText("T001");
+        } else {
+
+            String lastID = list.get(list.size() - 1).getMaThuoc();
+            try {
+                int number = Integer.parseInt(lastID.substring(1));
+                number++;
+                txtMaThuoc.setText(String.format("T%03d", number));
+            } catch (Exception e) {
+                txtMaThuoc.setText("T" + (list.size() + 1));
+            }
+        }
+    }
+}
