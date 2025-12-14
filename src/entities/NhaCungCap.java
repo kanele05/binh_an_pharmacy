@@ -14,6 +14,7 @@ public class NhaCungCap {
     private String sdt;
     private String email;
     private String diaChi;
+    private String nguoiLienHe;
 
     public NhaCungCap(String maNCC, String tenNCC, String sdt, String email, String diaChi) {
         this.maNCC = maNCC;
@@ -21,6 +22,15 @@ public class NhaCungCap {
         this.sdt = sdt;
         this.email = email;
         this.diaChi = diaChi;
+    }
+
+    public NhaCungCap(String maNCC, String tenNCC, String sdt, String email, String diaChi, String nguoiLienHe) {
+        this.maNCC = maNCC;
+        this.tenNCC = tenNCC;
+        this.sdt = sdt;
+        this.email = email;
+        this.diaChi = diaChi;
+        this.nguoiLienHe = nguoiLienHe;
     }
 
     public String getMaNCC() {
@@ -61,6 +71,14 @@ public class NhaCungCap {
 
     public void setDiaChi(String diaChi) {
         this.diaChi = diaChi;
+    }
+
+    public String getNguoiLienHe() {
+        return nguoiLienHe;
+    }
+
+    public void setNguoiLienHe(String nguoiLienHe) {
+        this.nguoiLienHe = nguoiLienHe;
     }
 
     @Override

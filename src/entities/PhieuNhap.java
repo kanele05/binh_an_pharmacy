@@ -17,6 +17,7 @@ public class PhieuNhap {
     private String trangThai;
     private NhanVien nhanVien;
     private NhaCungCap ncc;
+    private String ghiChu;
 
     public PhieuNhap(String maPN, LocalDate ngayTao, double tongTien, String trangThai, NhanVien nhanVien, NhaCungCap ncc) {
         this.maPN = maPN;
@@ -25,6 +26,16 @@ public class PhieuNhap {
         this.trangThai = trangThai;
         this.nhanVien = nhanVien;
         this.ncc = ncc;
+    }
+
+    public PhieuNhap(String maPN, LocalDate ngayTao, double tongTien, String trangThai, NhanVien nhanVien, NhaCungCap ncc, String ghiChu) {
+        this.maPN = maPN;
+        this.ngayTao = ngayTao;
+        this.tongTien = tongTien;
+        this.trangThai = trangThai;
+        this.nhanVien = nhanVien;
+        this.ncc = ncc;
+        this.ghiChu = ghiChu;
     }
 
     public String getMaPN() {
@@ -73,6 +84,14 @@ public class PhieuNhap {
 
     public void setNcc(NhaCungCap ncc) {
         this.ncc = ncc;
+    }
+
+    public String getGhiChu() {
+        return ghiChu;
+    }
+
+    public void setGhiChu(String ghiChu) {
+        this.ghiChu = ghiChu;
     }
 
     @Override

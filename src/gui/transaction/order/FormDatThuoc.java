@@ -610,7 +610,11 @@ public class FormDatThuoc extends javax.swing.JPanel {
             tableGioHang.getColumnModel().getColumn(3).setCellEditor(unitEditor);
 
             modelGioHang.addTableModelListener(e -> {
-                if (e.getColumn() == 2) {
+                if (e.getColumn() == 2 && e.getType() == javax.swing.event.TableModelEvent.UPDATE) {
+                    int row = e.getFirstRow();
+                    if (row >= 0 && !isUpdating) {
+                        validateSoLuongTonKho(row);
+                    }
                     tinhTongTien();
                 }
             });
@@ -825,6 +829,44 @@ public class FormDatThuoc extends javax.swing.JPanel {
             }
         }
 
+        private void validateSoLuongTonKho(int row) {
+            isUpdating = true;
+            try {
+                String maThuoc = modelGioHang.getValueAt(row, 0).toString();
+                int soLuongDat = Integer.parseInt(modelGioHang.getValueAt(row, 2).toString());
+                String donViTinh = modelGioHang.getValueAt(row, 3).toString();
+                
+                // Lấy giá trị quy đổi của đơn vị hiện tại
+                List<DonViQuyDoi> listDVT = (List<DonViQuyDoi>) modelGioHang.getValueAt(row, 6);
+                int giaTriQuyDoi = 1;
+                for (DonViQuyDoi dv : listDVT) {
+                    if (dv.getTenDonVi().equals(donViTinh)) {
+                        giaTriQuyDoi = dv.getGiaTriQuyDoi();
+                        break;
+                    }
+                }
+                
+                // Tính số lượng thực tế và so sánh với tồn kho
+                int soLuongThucTe = soLuongDat * giaTriQuyDoi;
+                int tonKho = loThuocDAO.getTongTonByMaThuoc(maThuoc);
+                
+                if (soLuongThucTe > tonKho) {
+                    Notifications.getInstance().show(
+                        Notifications.Type.WARNING,
+                        Notifications.Location.TOP_CENTER,
+                        "Số lượng (" + soLuongThucTe + ") vượt quá tồn kho (" + tonKho + ")!"
+                    );
+                    // Tự động điều chỉnh về số lượng tối đa
+                    int soLuongToiDa = tonKho / giaTriQuyDoi;
+                    modelGioHang.setValueAt(Math.max(1, soLuongToiDa), row, 2);
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            } finally {
+                isUpdating = false;
+            }
+        }
+
         private String formatCurrency(double amount) {
             return NumberFormat.getInstance(new Locale("vi", "VN")).format(amount) + " ₫";
         }
@@ -871,6 +913,36 @@ public class FormDatThuoc extends javax.swing.JPanel {
             }
         }
 
+        private boolean validateTatCaSoLuong() {
+            for (int i = 0; i < modelGioHang.getRowCount(); i++) {
+                String maThuoc = modelGioHang.getValueAt(i, 0).toString();
+                int soLuongDat = Integer.parseInt(modelGioHang.getValueAt(i, 2).toString());
+                String donViTinh = modelGioHang.getValueAt(i, 3).toString();
+                
+                List<DonViQuyDoi> listDVT = (List<DonViQuyDoi>) modelGioHang.getValueAt(i, 6);
+                int giaTriQuyDoi = 1;
+                for (DonViQuyDoi dv : listDVT) {
+                    if (dv.getTenDonVi().equals(donViTinh)) {
+                        giaTriQuyDoi = dv.getGiaTriQuyDoi();
+                        break;
+                    }
+                }
+                
+                int soLuongThucTe = soLuongDat * giaTriQuyDoi;
+                int tonKho = loThuocDAO.getTongTonByMaThuoc(maThuoc);
+                
+                if (soLuongThucTe > tonKho) {
+                    Notifications.getInstance().show(
+                        Notifications.Type.ERROR,
+                        Notifications.Location.TOP_CENTER,
+                        "Thuốc '" + modelGioHang.getValueAt(i, 1) + "' vượt quá tồn kho!"
+                    );
+                    return false;
+                }
+            }
+            return true;
+        }
+
         private void actionSave() {
             if (txtTenKH.getText().trim().isEmpty()) {
                 Notifications.getInstance().show(Notifications.Type.WARNING, "Vui lòng nhập tên khách hàng!");
@@ -878,6 +950,11 @@ public class FormDatThuoc extends javax.swing.JPanel {
             }
             if (modelGioHang.getRowCount() == 0) {
                 Notifications.getInstance().show(Notifications.Type.WARNING, "Chưa chọn thuốc nào!");
+                return;
+            }
+            
+            // Validate all quantities before saving
+            if (!validateTatCaSoLuong()) {
                 return;
             }
 

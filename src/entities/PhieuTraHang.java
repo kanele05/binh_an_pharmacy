@@ -18,6 +18,8 @@ public class PhieuTraHang {
     private HoaDon hoaDon;
     private NhanVien nhanVien;
     private KhachHang khachHang;
+    private String trangThai;
+    private String ghiChu;
 
     public PhieuTraHang(String maPT, LocalDate ngayTra, double tongTienHoanTra, String lyDo, HoaDon hoaDon, NhanVien nhanVien, KhachHang khachHang) {
         this.maPT = maPT;
@@ -27,6 +29,18 @@ public class PhieuTraHang {
         this.hoaDon = hoaDon;
         this.nhanVien = nhanVien;
         this.khachHang = khachHang;
+    }
+
+    public PhieuTraHang(String maPT, LocalDate ngayTra, double tongTienHoanTra, String lyDo, HoaDon hoaDon, NhanVien nhanVien, KhachHang khachHang, String trangThai, String ghiChu) {
+        this.maPT = maPT;
+        this.ngayTra = ngayTra;
+        this.tongTienHoanTra = tongTienHoanTra;
+        this.lyDo = lyDo;
+        this.hoaDon = hoaDon;
+        this.nhanVien = nhanVien;
+        this.khachHang = khachHang;
+        this.trangThai = trangThai;
+        this.ghiChu = ghiChu;
     }
 
     public String getMaPT() {
@@ -83,6 +97,22 @@ public class PhieuTraHang {
 
     public void setKhachHang(KhachHang khachHang) {
         this.khachHang = khachHang;
+    }
+
+    public String getTrangThai() {
+        return trangThai;
+    }
+
+    public void setTrangThai(String trangThai) {
+        this.trangThai = trangThai;
+    }
+
+    public String getGhiChu() {
+        return ghiChu;
+    }
+
+    public void setGhiChu(String ghiChu) {
+        this.ghiChu = ghiChu;
     }
 
     @Override

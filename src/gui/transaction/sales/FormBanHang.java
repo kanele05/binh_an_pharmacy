@@ -524,7 +524,11 @@ public class FormBanHang extends JPanel {
             tableGioHang.getColumnModel().getColumn(2).setCellEditor(unitEditor);
 
             modelGioHang.addTableModelListener(e -> {
-                if (e.getColumn() == 3) {
+                if (e.getColumn() == 3 && e.getType() == javax.swing.event.TableModelEvent.UPDATE) {
+                    int row = e.getFirstRow();
+                    if (row >= 0 && !isUpdating) {
+                        validateSoLuongTonKho(row);
+                    }
                     tinhTongTien();
                 }
             });
@@ -692,6 +696,44 @@ public class FormBanHang extends JPanel {
             }
         }
 
+        private void validateSoLuongTonKho(int row) {
+            isUpdating = true;
+            try {
+                String maLo = modelGioHang.getValueAt(row, 0).toString();
+                int soLuongBan = Integer.parseInt(modelGioHang.getValueAt(row, 3).toString());
+                String donViTinh = modelGioHang.getValueAt(row, 2).toString();
+                
+                // Lấy giá trị quy đổi của đơn vị hiện tại
+                List<DonViQuyDoi> listDVT = (List<DonViQuyDoi>) modelGioHang.getValueAt(row, 6);
+                int giaTriQuyDoi = 1;
+                for (DonViQuyDoi dv : listDVT) {
+                    if (dv.getTenDonVi().equals(donViTinh)) {
+                        giaTriQuyDoi = dv.getGiaTriQuyDoi();
+                        break;
+                    }
+                }
+                
+                // Tính số lượng thực tế và so sánh với tồn kho
+                int soLuongThucTe = soLuongBan * giaTriQuyDoi;
+                int tonKho = loThuocDAO.getTonKhoByMaLo(maLo);
+                
+                if (soLuongThucTe > tonKho) {
+                    Notifications.getInstance().show(
+                        Notifications.Type.WARNING,
+                        Notifications.Location.TOP_CENTER,
+                        "Số lượng (" + soLuongThucTe + ") vượt quá tồn lô (" + tonKho + ")!"
+                    );
+                    // Tự động điều chỉnh về số lượng tối đa
+                    int soLuongToiDa = tonKho / giaTriQuyDoi;
+                    modelGioHang.setValueAt(Math.max(1, soLuongToiDa), row, 3);
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            } finally {
+                isUpdating = false;
+            }
+        }
+
         private void themVaoGioHang() {
             int row = tableThuoc.getSelectedRow();
             if (row == -1) {
@@ -813,6 +855,36 @@ public class FormBanHang extends JPanel {
             }
         }
 
+        private boolean validateTatCaSoLuong() {
+            for (int i = 0; i < modelGioHang.getRowCount(); i++) {
+                String maLo = modelGioHang.getValueAt(i, 0).toString();
+                int soLuongBan = Integer.parseInt(modelGioHang.getValueAt(i, 3).toString());
+                String donViTinh = modelGioHang.getValueAt(i, 2).toString();
+                
+                List<DonViQuyDoi> listDVT = (List<DonViQuyDoi>) modelGioHang.getValueAt(i, 6);
+                int giaTriQuyDoi = 1;
+                for (DonViQuyDoi dv : listDVT) {
+                    if (dv.getTenDonVi().equals(donViTinh)) {
+                        giaTriQuyDoi = dv.getGiaTriQuyDoi();
+                        break;
+                    }
+                }
+                
+                int soLuongThucTe = soLuongBan * giaTriQuyDoi;
+                int tonKho = loThuocDAO.getTonKhoByMaLo(maLo);
+                
+                if (soLuongThucTe > tonKho) {
+                    Notifications.getInstance().show(
+                        Notifications.Type.ERROR,
+                        Notifications.Location.TOP_CENTER,
+                        "Thuốc '" + modelGioHang.getValueAt(i, 1) + "' vượt quá tồn lô!"
+                    );
+                    return false;
+                }
+            }
+            return true;
+        }
+
         private void thanhToan() {
             if (modelGioHang.getRowCount() == 0) {
                 Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Giỏ hàng đang trống!");
@@ -821,6 +893,11 @@ public class FormBanHang extends JPanel {
 
             if (tableGioHang.isEditing()) {
                 tableGioHang.getCellEditor().stopCellEditing();
+            }
+            
+            // Validate all quantities before payment
+            if (!validateTatCaSoLuong()) {
+                return;
             }
 
             int confirm = JOptionPane.showConfirmDialog(this, "Thanh toán đơn hàng " + lbMaHD.getText() + "?", "Xác nhận", JOptionPane.YES_NO_OPTION);
