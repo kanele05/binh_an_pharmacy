@@ -745,6 +745,7 @@ public class FormDoiHang extends JPanel {
                     temp.tenThuoc = selected.getTenThuoc();
                     temp.maLo = selected.getMaLo();
                     temp.soLuong = sl;
+                    temp.soLuongTon = selected.getSoLuongTon(); // Lưu tồn kho để validate
                     temp.donGia = selected.getGiaBan();
                     temp.thanhTien = sl * selected.getGiaBan();
                     temp.donViTinh = selected.getDonViTinh();
@@ -851,6 +852,22 @@ public class FormDoiHang extends JPanel {
                 for (int i = 0; i < modelMua.getRowCount(); i++) {
                     int sl = Integer.parseInt(modelMua.getValueAt(i, 3).toString());
                     double gia = parseMoney(modelMua.getValueAt(i, 4).toString());
+
+                    // Validate số lượng không vượt quá tồn kho
+                    if (i < dsMuaHang.size()) {
+                        int tonKho = dsMuaHang.get(i).soLuongTon;
+                        if (sl > tonKho) {
+                            sl = tonKho;
+                            modelMua.setValueAt(sl, i, 3);
+                            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
+                                    "Số lượng không thể vượt quá tồn kho (" + tonKho + ")!");
+                        }
+                        if (sl < 0) {
+                            sl = 0;
+                            modelMua.setValueAt(sl, i, 3);
+                        }
+                    }
+
                     double thanhTien = sl * gia;
                     modelMua.setValueAt(formatMoney(thanhTien), i, 5);
                     tongTienMua += thanhTien;
@@ -1018,6 +1035,7 @@ public class FormDoiHang extends JPanel {
             String tenThuoc;
             String maLo;
             int soLuong;
+            int soLuongTon; // Lưu số lượng tồn kho để validate khi sửa
             double donGia;
             double thanhTien;
             String donViTinh;
