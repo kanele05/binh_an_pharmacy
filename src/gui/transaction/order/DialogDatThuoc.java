@@ -489,10 +489,20 @@ public class DialogDatThuoc extends JDialog {
                         int tonKho = loThuocDAO.getTongTonByMaThuoc(maThuoc);
                         
                         if (soLuongQuyDoi > tonKho) {
+                            // Check for division by zero
+                            if (dv.getGiaTriQuyDoi() <= 0) {
+                                Notifications.getInstance().show(
+                                    Notifications.Type.ERROR,
+                                    Notifications.Location.TOP_CENTER,
+                                    "Đơn vị quy đổi không hợp lệ"
+                                );
+                                return;
+                            }
+                            
                             // Calculate maximum quantity for this unit
                             int soLuongToiDa = tonKho / dv.getGiaTriQuyDoi();
                             
-                             if (soLuongToiDa > 0) {
+                            if (soLuongToiDa > 0) {
                                 modelGioHang.setValueAt(soLuongToiDa, row, 2);
                                 modelGioHang.setValueAt(formatCurrency(dv.getGiaBan()), row, 4);
                                 Notifications.getInstance().show(
