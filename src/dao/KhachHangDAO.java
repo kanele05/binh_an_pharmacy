@@ -222,6 +222,67 @@ public class KhachHangDAO {
         return n > 0;
     }
 
+    public String getNextMaKH() {
+        String newID = "KH001";
+        String sql = "SELECT TOP 1 maKH FROM KhachHang ORDER BY maKH DESC";
+        try {
+            ConnectDB.getInstance();
+            Connection con = ConnectDB.getConnection();
+            Statement statement = con.createStatement();
+            ResultSet rs = statement.executeQuery(sql);
+            if (rs.next()) {
+                String lastID = rs.getString("maKH");
+                try {
+                    int num = Integer.parseInt(lastID.substring(2)) + 1;
+                    newID = String.format("KH%03d", num);
+                } catch (NumberFormatException e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return newID;
+    }
+
+    public ArrayList<KhachHang> searchKhachHang(String keyword) {
+        ArrayList<KhachHang> dsKH = new ArrayList<>();
+        String sql = "SELECT * FROM KhachHang WHERE trangThai = 1 AND (tenKH LIKE ? OR sdt LIKE ?)";
+        try {
+            ConnectDB.getInstance();
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            String searchPattern = "%" + keyword + "%";
+            stmt.setString(1, searchPattern);
+            stmt.setString(2, searchPattern);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                dsKH.add(mapResultSetToKhachHang(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return dsKH;
+    }
+
+    public ArrayList<KhachHang> filterByGioiTinh(Boolean gioiTinh) {
+        ArrayList<KhachHang> dsKH = new ArrayList<>();
+        String sql = "SELECT * FROM KhachHang WHERE trangThai = 1 AND gioiTinh = ?";
+        try {
+            ConnectDB.getInstance();
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            stmt.setBoolean(1, gioiTinh);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                dsKH.add(mapResultSetToKhachHang(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return dsKH;
+    }
+
     private KhachHang mapResultSetToKhachHang(ResultSet rs) throws SQLException {
         String maKH = rs.getString("maKH");
         String tenKH = rs.getString("tenKH");

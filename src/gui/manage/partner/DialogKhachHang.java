@@ -1,7 +1,12 @@
 package gui.manage.partner;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import dao.KhachHangDAO;
+import entities.KhachHang;
 import java.awt.Component;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import javax.swing.*;
 import net.miginfocom.swing.MigLayout;
 import raven.toast.Notifications;
@@ -11,19 +16,24 @@ public class DialogKhachHang extends JDialog {
     private final Component parent;
     private boolean isSave = false;
     private final boolean isEdit;
+    private KhachHang khachHang;
+    private KhachHangDAO khachHangDAO;
 
     private JTextField txtMaKH, txtTenKH, txtSDT, txtNgaySinh;
     private JComboBox<String> cbGioiTinh;
     private JTextArea txtDiaChi;
     private JSpinner spinDiem;
 
-    public DialogKhachHang(Component parent, Object[] data) {
+    public DialogKhachHang(Component parent, KhachHang kh) {
         super(SwingUtilities.windowForComponent(parent), "Thông Tin Khách Hàng", ModalityType.APPLICATION_MODAL);
         this.parent = parent;
-        this.isEdit = (data != null);
+        this.isEdit = (kh != null);
+        this.khachHangDAO = new KhachHangDAO();
         initComponents();
         if (isEdit) {
-            fillData(data);
+            fillData(kh);
+        } else {
+            txtMaKH.setText(khachHangDAO.getNextMaKH());
         }
     }
 
@@ -86,25 +96,95 @@ public class DialogKhachHang extends JDialog {
         setLocationRelativeTo(parent);
     }
 
-    private void fillData(Object[] data) {
-
-        txtMaKH.setText(data[0].toString());
-        txtTenKH.setText(data[1].toString());
-        txtSDT.setText(data[2].toString());
-        cbGioiTinh.setSelectedItem(data[3].toString());
-        txtNgaySinh.setText(data[4].toString());
-        txtDiaChi.setText(data[5].toString());
-        try {
-            spinDiem.setValue(Integer.parseInt(data[6].toString()));
-        } catch (Exception e) {
+    private void fillData(KhachHang kh) {
+        txtMaKH.setText(kh.getMaKH());
+        txtTenKH.setText(kh.getTenKH());
+        txtSDT.setText(kh.getSdt());
+        cbGioiTinh.setSelectedItem(kh.isGioiTinh() ? "Nam" : "Nữ");
+        if (kh.getNgaySinh() != null) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            txtNgaySinh.setText(kh.getNgaySinh().format(formatter));
         }
+        txtDiaChi.setText(kh.getDiaChi() != null ? kh.getDiaChi() : "");
+        spinDiem.setValue(kh.getDiemTichLuy());
     }
 
     private void actionSave() {
-        if (txtTenKH.getText().isEmpty() || txtSDT.getText().isEmpty()) {
-            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Vui lòng nhập tên và số điện thoại!");
+        // Validate tên khách hàng
+        String tenKH = txtTenKH.getText().trim();
+        if (tenKH.isEmpty()) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Vui lòng nhập tên khách hàng!");
+            txtTenKH.requestFocus();
             return;
         }
+        
+        // Kiểm tra tên có ít nhất 2 từ
+        String[] words = tenKH.split("\\s+");
+        if (words.length < 2) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Tên khách hàng phải có ít nhất 2 từ!");
+            txtTenKH.requestFocus();
+            return;
+        }
+        
+        // Kiểm tra mỗi từ phải bắt đầu bằng chữ hoa
+        for (String word : words) {
+            if (word.length() > 0 && !Character.isUpperCase(word.charAt(0))) {
+                Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Mỗi từ trong tên phải bắt đầu bằng chữ hoa!");
+                txtTenKH.requestFocus();
+                return;
+            }
+        }
+        
+        // Validate số điện thoại
+        String sdt = txtSDT.getText().trim();
+        if (sdt.isEmpty()) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Vui lòng nhập số điện thoại!");
+            txtSDT.requestFocus();
+            return;
+        }
+        
+        if (!sdt.matches("\\d{10}")) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Số điện thoại phải có đúng 10 chữ số!");
+            txtSDT.requestFocus();
+            return;
+        }
+        
+        if (!sdt.startsWith("0")) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Số điện thoại phải bắt đầu bằng số 0!");
+            txtSDT.requestFocus();
+            return;
+        }
+        
+        // Validate ngày sinh nếu có nhập
+        LocalDate ngaySinh = null;
+        String ngaySinhStr = txtNgaySinh.getText().trim();
+        if (!ngaySinhStr.isEmpty()) {
+            try {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                ngaySinh = LocalDate.parse(ngaySinhStr, formatter);
+                
+                // Kiểm tra không được là ngày tương lai
+                if (ngaySinh.isAfter(LocalDate.now())) {
+                    Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Ngày sinh không được là ngày tương lai!");
+                    txtNgaySinh.requestFocus();
+                    return;
+                }
+            } catch (DateTimeParseException e) {
+                Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Định dạng ngày sinh không đúng (dd/MM/yyyy)!");
+                txtNgaySinh.requestFocus();
+                return;
+            }
+        }
+        
+        // Tạo đối tượng KhachHang
+        String maKH = txtMaKH.getText();
+        boolean gioiTinh = cbGioiTinh.getSelectedItem().equals("Nam");
+        String diaChi = txtDiaChi.getText().trim();
+        int diemTichLuy = (Integer) spinDiem.getValue();
+        
+        khachHang = new KhachHang(maKH, tenKH, sdt, gioiTinh, ngaySinh, 
+                                   diaChi.isEmpty() ? null : diaChi, diemTichLuy, true);
+        
         isSave = true;
         dispose();
     }
@@ -113,15 +193,7 @@ public class DialogKhachHang extends JDialog {
         return isSave;
     }
 
-    public Object[] getData() {
-        return new Object[]{
-            txtMaKH.getText().equals("AUTO") ? "KH" + System.currentTimeMillis() % 1000 : txtMaKH.getText(),
-            txtTenKH.getText(),
-            txtSDT.getText(),
-            cbGioiTinh.getSelectedItem(),
-            txtNgaySinh.getText(),
-            txtDiaChi.getText(),
-            spinDiem.getValue()
-        };
+    public KhachHang getKhachHang() {
+        return khachHang;
     }
 }

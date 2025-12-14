@@ -1034,17 +1034,8 @@ public class FormBanHang extends JPanel {
             DialogKhachHang dialog = new DialogKhachHang(SwingUtilities.getWindowAncestor(this), null);
             dialog.setVisible(true);
             if (dialog.isSave()) {
-                Object[] data = dialog.getData();
                 try {
-                    KhachHang newKH = new KhachHang();
-                    newKH.setMaKH(data[0].toString());
-                    newKH.setTenKH(data[1].toString());
-                    newKH.setSdt(data[2].toString());
-                    newKH.setGioiTinh(data[3].toString().equals("Nam"));
-                    newKH.setDiaChi(data[5].toString());
-                    newKH.setDiemTichLuy(0);
-                    newKH.setTrangThai(true);
-
+                    KhachHang newKH = dialog.getKhachHang();
                     if (khachHangDAO.insert(newKH)) {
                         txtSDT.setText(newKH.getSdt());
                         timKiemKhachHang();

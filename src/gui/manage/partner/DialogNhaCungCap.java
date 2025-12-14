@@ -1,6 +1,8 @@
 package gui.manage.partner;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import dao.NhaCungCapDAO;
+import entities.NhaCungCap;
 import java.awt.Component;
 import javax.swing.*;
 import net.miginfocom.swing.MigLayout;
@@ -11,17 +13,22 @@ public class DialogNhaCungCap extends JDialog {
     private final Component parent;
     private boolean isSave = false;
     private final boolean isEdit;
+    private NhaCungCap nhaCungCap;
+    private NhaCungCapDAO nhaCungCapDAO;
 
     private JTextField txtMaNCC, txtTenNCC, txtSDT, txtEmail;
     private JTextArea txtDiaChi;
 
-    public DialogNhaCungCap(Component parent, Object[] data) {
+    public DialogNhaCungCap(Component parent, NhaCungCap ncc) {
         super(SwingUtilities.windowForComponent(parent), "Thông Tin Nhà Cung Cấp", ModalityType.APPLICATION_MODAL);
         this.parent = parent;
-        this.isEdit = (data != null);
+        this.isEdit = (ncc != null);
+        this.nhaCungCapDAO = new NhaCungCapDAO();
         initComponents();
         if (isEdit) {
-            fillData(data);
+            fillData(ncc);
+        } else {
+            txtMaNCC.setText(nhaCungCapDAO.getNewMaNCC());
         }
     }
 
@@ -72,20 +79,61 @@ public class DialogNhaCungCap extends JDialog {
         setLocationRelativeTo(parent);
     }
 
-    private void fillData(Object[] data) {
-
-        txtMaNCC.setText(data[0].toString());
-        txtTenNCC.setText(data[1].toString());
-        txtSDT.setText(data[2].toString());
-        txtEmail.setText(data[3].toString());
-        txtDiaChi.setText(data[4].toString());
+    private void fillData(NhaCungCap ncc) {
+        txtMaNCC.setText(ncc.getMaNCC());
+        txtTenNCC.setText(ncc.getTenNCC());
+        txtSDT.setText(ncc.getSdt());
+        txtEmail.setText(ncc.getEmail() != null ? ncc.getEmail() : "");
+        txtDiaChi.setText(ncc.getDiaChi() != null ? ncc.getDiaChi() : "");
     }
 
     private void actionSave() {
-        if (txtTenNCC.getText().trim().isEmpty() || txtSDT.getText().trim().isEmpty()) {
-            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Vui lòng nhập tên và số điện thoại!");
+        // Validate tên NCC
+        String tenNCC = txtTenNCC.getText().trim();
+        if (tenNCC.isEmpty()) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Vui lòng nhập tên nhà cung cấp!");
+            txtTenNCC.requestFocus();
             return;
         }
+        
+        // Validate số điện thoại
+        String sdt = txtSDT.getText().trim();
+        if (sdt.isEmpty()) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Vui lòng nhập số điện thoại!");
+            txtSDT.requestFocus();
+            return;
+        }
+        
+        if (!sdt.matches("\\d{10}")) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Số điện thoại phải có đúng 10 chữ số!");
+            txtSDT.requestFocus();
+            return;
+        }
+        
+        if (!sdt.startsWith("0")) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Số điện thoại phải bắt đầu bằng số 0!");
+            txtSDT.requestFocus();
+            return;
+        }
+        
+        // Validate email nếu có nhập
+        String email = txtEmail.getText().trim();
+        if (!email.isEmpty()) {
+            if (!email.endsWith("@gmail.com") && !email.endsWith("@yahoo.com")) {
+                Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Email phải kết thúc bằng @gmail.com hoặc @yahoo.com!");
+                txtEmail.requestFocus();
+                return;
+            }
+        }
+        
+        // Tạo đối tượng NhaCungCap
+        String maNCC = txtMaNCC.getText();
+        String diaChi = txtDiaChi.getText().trim();
+        
+        nhaCungCap = new NhaCungCap(maNCC, tenNCC, sdt, 
+                                     email.isEmpty() ? null : email, 
+                                     diaChi.isEmpty() ? null : diaChi);
+        
         isSave = true;
         dispose();
     }
@@ -94,13 +142,7 @@ public class DialogNhaCungCap extends JDialog {
         return isSave;
     }
 
-    public Object[] getData() {
-        return new Object[]{
-            txtMaNCC.getText().equals("AUTO") ? "NCC" + System.currentTimeMillis() % 1000 : txtMaNCC.getText(),
-            txtTenNCC.getText(),
-            txtSDT.getText(),
-            txtEmail.getText(),
-            txtDiaChi.getText()
-        };
+    public NhaCungCap getNhaCungCap() {
+        return nhaCungCap;
     }
 }

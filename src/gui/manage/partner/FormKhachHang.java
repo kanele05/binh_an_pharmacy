@@ -1,7 +1,11 @@
 package gui.manage.partner;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import dao.KhachHangDAO;
+import entities.KhachHang;
 import java.awt.Component;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -14,8 +18,10 @@ public class FormKhachHang extends JPanel {
     private JComboBox<String> cbLocGioiTinh;
     private JTable table;
     private DefaultTableModel model;
+    private KhachHangDAO khachHangDAO;
 
     public FormKhachHang() {
+        khachHangDAO = new KhachHangDAO();
         initComponents();
         init();
     }
@@ -51,8 +57,10 @@ public class FormKhachHang extends JPanel {
         txtTimKiem.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Tìm theo tên, SĐT...");
 
         JButton btnTim = new JButton("Tìm kiếm");
+        btnTim.addActionListener(e -> actionTimKiem());
 
         cbLocGioiTinh = new JComboBox<>(new String[]{"Tất cả", "Nam", "Nữ"});
+        cbLocGioiTinh.addActionListener(e -> actionLocGioiTinh());
 
         JButton btnThem = new JButton("Thêm mới");
         btnThem.putClientProperty(FlatClientProperties.STYLE, "background:#4CAF50; foreground:#fff; font:bold");
@@ -116,17 +124,40 @@ public class FormKhachHang extends JPanel {
     }
 
     private void loadData() {
-        model.addRow(new Object[]{"KH001", "Nguyễn Văn A", "0901234567", "Nam", "01/01/1990", "Q1, TP.HCM", "150"});
-        model.addRow(new Object[]{"KH002", "Trần Thị B", "0912345678", "Nữ", "15/05/1995", "Q3, TP.HCM", "320"});
-        model.addRow(new Object[]{"KH003", "Lê Văn C", "0987654321", "Nam", "20/10/1988", "Bình Thạnh", "50"});
+        model.setRowCount(0);
+        ArrayList<KhachHang> dsKH = khachHangDAO.getAllKhachHang();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        for (KhachHang kh : dsKH) {
+            String ngaySinh = kh.getNgaySinh() != null ? kh.getNgaySinh().format(formatter) : "";
+            String gioiTinh = kh.isGioiTinh() ? "Nam" : "Nữ";
+            model.addRow(new Object[]{
+                kh.getMaKH(),
+                kh.getTenKH(),
+                kh.getSdt(),
+                gioiTinh,
+                ngaySinh,
+                kh.getDiaChi() != null ? kh.getDiaChi() : "",
+                kh.getDiemTichLuy()
+            });
+        }
     }
 
     private void actionThem() {
         DialogKhachHang dialog = new DialogKhachHang(this, null);
         dialog.setVisible(true);
         if (dialog.isSave()) {
-            model.addRow(dialog.getData());
-            Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Thêm khách hàng thành công!");
+            try {
+                KhachHang kh = dialog.getKhachHang();
+                if (khachHangDAO.insert(kh)) {
+                    loadData();
+                    Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Thêm khách hàng thành công!");
+                } else {
+                    Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Thêm khách hàng thất bại!");
+                }
+            } catch (java.sql.SQLException e) {
+                e.printStackTrace();
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi cơ sở dữ liệu: " + e.getMessage());
+            }
         }
     }
 
@@ -142,32 +173,107 @@ public class FormKhachHang extends JPanel {
             return;
         }
 
-        Object[] currentData = new Object[model.getColumnCount()];
-        for (int i = 0; i < model.getColumnCount(); i++) {
-            currentData[i] = model.getValueAt(row, i);
+        String maKH = model.getValueAt(row, 0).toString();
+        KhachHang kh = khachHangDAO.getKhachHangByID(maKH);
+        
+        if (kh == null) {
+            Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Không tìm thấy khách hàng!");
+            return;
         }
 
-        DialogKhachHang dialog = new DialogKhachHang(this, currentData);
+        DialogKhachHang dialog = new DialogKhachHang(this, kh);
         dialog.setVisible(true);
 
         if (dialog.isSave()) {
-            Object[] newData = dialog.getData();
-            for (int i = 0; i < model.getColumnCount(); i++) {
-                model.setValueAt(newData[i], row, i);
+            try {
+                KhachHang updatedKH = dialog.getKhachHang();
+                if (khachHangDAO.update(updatedKH)) {
+                    loadData();
+                    Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Cập nhật thành công!");
+                } else {
+                    Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Cập nhật thất bại!");
+                }
+            } catch (java.sql.SQLException e) {
+                e.printStackTrace();
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi cơ sở dữ liệu: " + e.getMessage());
             }
-            Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Cập nhật thành công!");
         }
     }
 
     private void actionXoa() {
         int row = table.getSelectedRow();
         if (row == -1) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Chọn khách hàng cần xóa!");
             return;
         }
 
-        if (JOptionPane.showConfirmDialog(this, "Xóa khách hàng này?", "Xác nhận", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
-            model.removeRow(row);
-            Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Đã xóa!");
+        String maKH = model.getValueAt(row, 0).toString();
+        String tenKH = model.getValueAt(row, 1).toString();
+
+        if (JOptionPane.showConfirmDialog(this, "Xóa khách hàng: " + tenKH + "?", "Xác nhận", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+            try {
+                if (khachHangDAO.delete(maKH)) {
+                    loadData();
+                    Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Đã xóa!");
+                } else {
+                    Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Xóa thất bại!");
+                }
+            } catch (java.sql.SQLException e) {
+                e.printStackTrace();
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi cơ sở dữ liệu: " + e.getMessage());
+            }
+        }
+    }
+
+    private void actionTimKiem() {
+        String keyword = txtTimKiem.getText().trim();
+        if (keyword.isEmpty()) {
+            loadData();
+            return;
+        }
+        
+        model.setRowCount(0);
+        ArrayList<KhachHang> dsKH = khachHangDAO.searchKhachHang(keyword);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        for (KhachHang kh : dsKH) {
+            String ngaySinh = kh.getNgaySinh() != null ? kh.getNgaySinh().format(formatter) : "";
+            String gioiTinh = kh.isGioiTinh() ? "Nam" : "Nữ";
+            model.addRow(new Object[]{
+                kh.getMaKH(),
+                kh.getTenKH(),
+                kh.getSdt(),
+                gioiTinh,
+                ngaySinh,
+                kh.getDiaChi() != null ? kh.getDiaChi() : "",
+                kh.getDiemTichLuy()
+            });
+        }
+    }
+
+    private void actionLocGioiTinh() {
+        String selected = cbLocGioiTinh.getSelectedItem().toString();
+        
+        if (selected.equals("Tất cả")) {
+            loadData();
+            return;
+        }
+        
+        Boolean gioiTinh = selected.equals("Nam");
+        model.setRowCount(0);
+        ArrayList<KhachHang> dsKH = khachHangDAO.filterByGioiTinh(gioiTinh);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        for (KhachHang kh : dsKH) {
+            String ngaySinh = kh.getNgaySinh() != null ? kh.getNgaySinh().format(formatter) : "";
+            String gt = kh.isGioiTinh() ? "Nam" : "Nữ";
+            model.addRow(new Object[]{
+                kh.getMaKH(),
+                kh.getTenKH(),
+                kh.getSdt(),
+                gt,
+                ngaySinh,
+                kh.getDiaChi() != null ? kh.getDiaChi() : "",
+                kh.getDiemTichLuy()
+            });
         }
     }
 
