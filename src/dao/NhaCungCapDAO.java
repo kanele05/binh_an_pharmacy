@@ -55,15 +55,14 @@ public class NhaCungCapDAO {
         PreparedStatement stmt = null;
         int n = 0;
         try {
-            String sql = "INSERT INTO NhaCungCap (maNCC, tenNCC, sdt, email, diaChi, nguoiLienHe) "
-                    + "VALUES (?, ?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO NhaCungCap (maNCC, tenNCC, sdt, email, diaChi) "
+                    + "VALUES (?, ?, ?, ?, ?)";
             stmt = con.prepareStatement(sql);
             stmt.setString(1, ncc.getMaNCC());
             stmt.setString(2, ncc.getTenNCC());
             stmt.setString(3, ncc.getSdt());
             stmt.setString(4, ncc.getEmail());
             stmt.setString(5, ncc.getDiaChi());
-            stmt.setString(6, ncc.getNguoiLienHe());
 
             n = stmt.executeUpdate();
         } catch (SQLException e) {
@@ -86,14 +85,13 @@ public class NhaCungCapDAO {
         PreparedStatement stmt = null;
         int n = 0;
         try {
-            String sql = "UPDATE NhaCungCap SET tenNCC = ?, sdt = ?, email = ?, diaChi = ?, nguoiLienHe = ? WHERE maNCC = ?";
+            String sql = "UPDATE NhaCungCap SET tenNCC = ?, sdt = ?, email = ?, diaChi = ? WHERE maNCC = ?";
             stmt = con.prepareStatement(sql);
             stmt.setString(1, ncc.getTenNCC());
             stmt.setString(2, ncc.getSdt());
             stmt.setString(3, ncc.getEmail());
             stmt.setString(4, ncc.getDiaChi());
-            stmt.setString(5, ncc.getNguoiLienHe());
-            stmt.setString(6, ncc.getMaNCC());
+            stmt.setString(5, ncc.getMaNCC());
 
             n = stmt.executeUpdate();
         } catch (SQLException e) {
@@ -157,13 +155,51 @@ public class NhaCungCapDAO {
         return newID;
     }
 
+    public ArrayList<NhaCungCap> searchNhaCungCap(String keyword) {
+        ArrayList<NhaCungCap> dsNCC = new ArrayList<>();
+        String sql = "SELECT * FROM NhaCungCap WHERE tenNCC LIKE ? OR sdt LIKE ? OR email LIKE ?";
+        try {
+            ConnectDB.getInstance();
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            String searchPattern = "%" + keyword + "%";
+            stmt.setString(1, searchPattern);
+            stmt.setString(2, searchPattern);
+            stmt.setString(3, searchPattern);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                dsNCC.add(mapResultSetToNhaCungCap(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return dsNCC;
+    }
+
+    public boolean hasPhieuNhap(String maNCC) {
+        boolean hasPhieuNhap = false;
+        String sql = "SELECT COUNT(*) AS count FROM PhieuNhap WHERE maNCC = ?";
+        try {
+            ConnectDB.getInstance();
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            stmt.setString(1, maNCC);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                hasPhieuNhap = rs.getInt("count") > 0;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return hasPhieuNhap;
+    }
+
     private NhaCungCap mapResultSetToNhaCungCap(ResultSet rs) throws SQLException {
         String maNCC = rs.getString("maNCC");
         String tenNCC = rs.getString("tenNCC");
         String sdt = rs.getString("sdt");
         String email = rs.getString("email");
         String diaChi = rs.getString("diaChi");
-        String nguoiLienHe = rs.getString("nguoiLienHe");
-        return new NhaCungCap(maNCC, tenNCC, sdt, email, diaChi, nguoiLienHe);
+        return new NhaCungCap(maNCC, tenNCC, sdt, email, diaChi);
     }
 }

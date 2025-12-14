@@ -1,7 +1,10 @@
 package gui.manage.partner;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import dao.NhaCungCapDAO;
+import entities.NhaCungCap;
 import java.awt.Component;
+import java.util.ArrayList;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -13,8 +16,10 @@ public class FormNhaCungCap extends JPanel {
     private JTextField txtTimKiem;
     private JTable table;
     private DefaultTableModel model;
+    private NhaCungCapDAO nhaCungCapDAO;
 
     public FormNhaCungCap() {
+        nhaCungCapDAO = new NhaCungCapDAO();
         initComponents();
         init();
     }
@@ -50,6 +55,7 @@ public class FormNhaCungCap extends JPanel {
         txtTimKiem.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Tìm tên NCC, SĐT, Email...");
 
         JButton btnTim = new JButton("Tìm kiếm");
+        btnTim.addActionListener(e -> actionTimKiem());
 
         JButton btnThem = new JButton("Thêm mới");
         btnThem.putClientProperty(FlatClientProperties.STYLE, "background:#4CAF50; foreground:#fff; font:bold");
@@ -95,20 +101,40 @@ public class FormNhaCungCap extends JPanel {
     }
 
     private void loadData() {
-
-        model.addRow(new Object[]{"NCC001", "Dược Hậu Giang (DHG)", "02923891433", "dhgpharma@dhgpharma.com.vn", "288 Nguyễn Văn Cừ, Cần Thơ"});
-        model.addRow(new Object[]{"NCC002", "Sanofi Việt Nam", "02838298526", "contact-vn@sanofi.com", "Q1, TP.HCM"});
-        model.addRow(new Object[]{"NCC003", "Zuellig Pharma", "02839102650", "info@zuelligpharma.com", "Tân Bình, TP.HCM"});
-        model.addRow(new Object[]{"NCC004", "Dược phẩm Imexpharm", "02773851941", "imexpharm@imexpharm.com", "Cao Lãnh, Đồng Tháp"});
+        model.setRowCount(0);
+        ArrayList<NhaCungCap> dsNCC = nhaCungCapDAO.getAllNhaCungCap();
+        for (NhaCungCap ncc : dsNCC) {
+            model.addRow(new Object[]{
+                ncc.getMaNCC(),
+                ncc.getTenNCC(),
+                ncc.getSdt(),
+                ncc.getEmail() != null ? ncc.getEmail() : "",
+                ncc.getDiaChi() != null ? ncc.getDiaChi() : ""
+            });
+        }
     }
 
     private void actionThem() {
         DialogNhaCungCap dialog = new DialogNhaCungCap(this, null);
         dialog.setVisible(true);
         if (dialog.isSave()) {
-            model.addRow(dialog.getData());
-            Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Thêm nhà cung cấp thành công!");
+            try {
+                NhaCungCap ncc = dialog.getNhaCungCap();
+                if (nhaCungCapDAO.insert(ncc)) {
+                    loadData();
+                    Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Thêm nhà cung cấp thành công!");
+                } else {
+                    Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Thêm nhà cung cấp thất bại!");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi: " + e.getMessage());
+            }
         }
+    }
+
+    public void openThemMoi() {
+        actionThem();
     }
 
     private void actionSua() {
@@ -118,20 +144,30 @@ public class FormNhaCungCap extends JPanel {
             return;
         }
 
-        Object[] currentData = new Object[model.getColumnCount()];
-        for (int i = 0; i < model.getColumnCount(); i++) {
-            currentData[i] = model.getValueAt(row, i);
+        String maNCC = model.getValueAt(row, 0).toString();
+        NhaCungCap ncc = nhaCungCapDAO.getNhaCungCapByID(maNCC);
+        
+        if (ncc == null) {
+            Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Không tìm thấy nhà cung cấp!");
+            return;
         }
 
-        DialogNhaCungCap dialog = new DialogNhaCungCap(this, currentData);
+        DialogNhaCungCap dialog = new DialogNhaCungCap(this, ncc);
         dialog.setVisible(true);
 
         if (dialog.isSave()) {
-            Object[] newData = dialog.getData();
-            for (int i = 0; i < model.getColumnCount(); i++) {
-                model.setValueAt(newData[i], row, i);
+            try {
+                NhaCungCap updatedNCC = dialog.getNhaCungCap();
+                if (nhaCungCapDAO.update(updatedNCC)) {
+                    loadData();
+                    Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Cập nhật thành công!");
+                } else {
+                    Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Cập nhật thất bại!");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi: " + e.getMessage());
             }
-            Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Cập nhật thành công!");
         }
     }
 
@@ -142,10 +178,47 @@ public class FormNhaCungCap extends JPanel {
             return;
         }
 
+        String maNCC = model.getValueAt(row, 0).toString();
         String tenNCC = model.getValueAt(row, 1).toString();
-        if (JOptionPane.showConfirmDialog(this, "Xóa nhà cung cấp: " + tenNCC + "?\nLưu ý: Không thể xóa nếu đã có lịch sử nhập hàng.", "Xác nhận", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
-            model.removeRow(row);
-            Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Đã xóa!");
+        
+        // Kiểm tra xem NCC có phiếu nhập hay không
+        if (nhaCungCapDAO.hasPhieuNhap(maNCC)) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Không thể xóa nhà cung cấp đã có phiếu nhập!");
+            return;
+        }
+
+        if (JOptionPane.showConfirmDialog(this, "Xóa nhà cung cấp: " + tenNCC + "?", "Xác nhận", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+            try {
+                if (nhaCungCapDAO.delete(maNCC)) {
+                    loadData();
+                    Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Đã xóa!");
+                } else {
+                    Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Xóa thất bại!");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi: " + e.getMessage());
+            }
+        }
+    }
+
+    private void actionTimKiem() {
+        String keyword = txtTimKiem.getText().trim();
+        if (keyword.isEmpty()) {
+            loadData();
+            return;
+        }
+        
+        model.setRowCount(0);
+        ArrayList<NhaCungCap> dsNCC = nhaCungCapDAO.searchNhaCungCap(keyword);
+        for (NhaCungCap ncc : dsNCC) {
+            model.addRow(new Object[]{
+                ncc.getMaNCC(),
+                ncc.getTenNCC(),
+                ncc.getSdt(),
+                ncc.getEmail() != null ? ncc.getEmail() : "",
+                ncc.getDiaChi() != null ? ncc.getDiaChi() : ""
+            });
         }
     }
 
