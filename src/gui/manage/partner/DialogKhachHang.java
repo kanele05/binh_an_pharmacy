@@ -155,9 +155,6 @@ public class DialogKhachHang extends JDialog {
             return;
         }
         
-        // Validate email nếu có nhập
-        String email = ""; // Không có trường email trong form khách hàng
-        
         // Validate ngày sinh nếu có nhập
         LocalDate ngaySinh = null;
         String ngaySinhStr = txtNgaySinh.getText().trim();

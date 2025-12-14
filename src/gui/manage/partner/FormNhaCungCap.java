@@ -126,9 +126,9 @@ public class FormNhaCungCap extends JPanel {
                 } else {
                     Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Thêm nhà cung cấp thất bại!");
                 }
-            } catch (Exception e) {
+            } catch (java.sql.SQLException e) {
                 e.printStackTrace();
-                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi: " + e.getMessage());
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi cơ sở dữ liệu: " + e.getMessage());
             }
         }
     }
@@ -164,9 +164,9 @@ public class FormNhaCungCap extends JPanel {
                 } else {
                     Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Cập nhật thất bại!");
                 }
-            } catch (Exception e) {
+            } catch (java.sql.SQLException e) {
                 e.printStackTrace();
-                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi: " + e.getMessage());
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi cơ sở dữ liệu: " + e.getMessage());
             }
         }
     }
@@ -195,9 +195,9 @@ public class FormNhaCungCap extends JPanel {
                 } else {
                     Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Xóa thất bại!");
                 }
-            } catch (Exception e) {
+            } catch (java.sql.SQLException e) {
                 e.printStackTrace();
-                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi: " + e.getMessage());
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi cơ sở dữ liệu: " + e.getMessage());
             }
         }
     }
