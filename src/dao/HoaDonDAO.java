@@ -271,10 +271,10 @@ public class HoaDonDAO {
                 NhanVien nv = new NhanVien();
                 nv.setMaNV(rs.getString("maNV"));
                 nv.setHoTen(rs.getString("tenNV"));
-                
+
                 KhachHang kh = new KhachHang();
                 kh.setMaKH(maKH);
-                
+
                 HoaDon hd = new HoaDon(
                     rs.getString("maHD"),
                     rs.getTimestamp("ngayTao").toLocalDateTime(),
@@ -284,6 +284,101 @@ public class HoaDonDAO {
                     rs.getString("hinhThucTT"),
                     rs.getString("ghiChu"),
                     nv, kh
+                );
+                list.add(hd);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public HoaDon getHoaDonByMaHD(String maHD) {
+        HoaDon hd = null;
+        String sql = "SELECT hd.*, nv.hoTen as tenNV, kh.tenKH, kh.sdt as sdtKH "
+                + "FROM HoaDon hd "
+                + "JOIN NhanVien nv ON hd.maNV = nv.maNV "
+                + "LEFT JOIN KhachHang kh ON hd.maKH = kh.maKH "
+                + "WHERE hd.maHD = ?";
+        try {
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            stmt.setString(1, maHD);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                NhanVien nv = new NhanVien();
+                nv.setMaNV(rs.getString("maNV"));
+                nv.setHoTen(rs.getString("tenNV"));
+
+                KhachHang kh = null;
+                if (rs.getString("maKH") != null) {
+                    kh = new KhachHang();
+                    kh.setMaKH(rs.getString("maKH"));
+                    kh.setTenKH(rs.getString("tenKH"));
+                    kh.setSdt(rs.getString("sdtKH"));
+                } else {
+                    kh = new KhachHang();
+                    kh.setTenKH("Khách lẻ");
+                }
+
+                hd = new HoaDon(
+                        rs.getString("maHD"),
+                        rs.getTimestamp("ngayTao").toLocalDateTime(),
+                        rs.getDouble("tongTien"),
+                        rs.getDouble("giamGia"),
+                        rs.getDouble("thue"),
+                        rs.getString("hinhThucTT"),
+                        rs.getString("ghiChu"),
+                        nv, kh
+                );
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return hd;
+    }
+
+    public ArrayList<HoaDon> searchHoaDon(String keyword) {
+        ArrayList<HoaDon> list = new ArrayList<>();
+        String sql = "SELECT hd.*, nv.hoTen as tenNV, kh.tenKH, kh.sdt as sdtKH "
+                + "FROM HoaDon hd "
+                + "JOIN NhanVien nv ON hd.maNV = nv.maNV "
+                + "LEFT JOIN KhachHang kh ON hd.maKH = kh.maKH "
+                + "WHERE hd.maHD LIKE ? OR kh.sdt LIKE ? OR kh.tenKH LIKE ? "
+                + "ORDER BY hd.ngayTao DESC";
+        try {
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            String searchPattern = "%" + keyword + "%";
+            stmt.setString(1, searchPattern);
+            stmt.setString(2, searchPattern);
+            stmt.setString(3, searchPattern);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                NhanVien nv = new NhanVien();
+                nv.setMaNV(rs.getString("maNV"));
+                nv.setHoTen(rs.getString("tenNV"));
+
+                KhachHang kh = null;
+                if (rs.getString("maKH") != null) {
+                    kh = new KhachHang();
+                    kh.setMaKH(rs.getString("maKH"));
+                    kh.setTenKH(rs.getString("tenKH"));
+                    kh.setSdt(rs.getString("sdtKH"));
+                } else {
+                    kh = new KhachHang();
+                    kh.setTenKH("Khách lẻ");
+                }
+
+                HoaDon hd = new HoaDon(
+                        rs.getString("maHD"),
+                        rs.getTimestamp("ngayTao").toLocalDateTime(),
+                        rs.getDouble("tongTien"),
+                        rs.getDouble("giamGia"),
+                        rs.getDouble("thue"),
+                        rs.getString("hinhThucTT"),
+                        rs.getString("ghiChu"),
+                        nv, kh
                 );
                 list.add(hd);
             }
