@@ -463,6 +463,7 @@ public class DialogDatThuoc extends JDialog {
 
 
     private void updateGiaKhiDoiDonVi(int row) {
+        isUpdating = true;
         try {
 
             Object valDVT = modelGioHang.getValueAt(row, 3);
@@ -478,8 +479,39 @@ public class DialogDatThuoc extends JDialog {
 
                 for (entities.DonViQuyDoi dv : list) {
                     if (dv.getTenDonVi().equals(tenMoi)) {
-
-                        modelGioHang.setValueAt(formatCurrency(dv.getGiaBan()), row, 4);
+                        
+                        // Validate stock when changing unit
+                        String maThuoc = modelGioHang.getValueAt(row, 0).toString();
+                        int soLuongDat = Integer.parseInt(modelGioHang.getValueAt(row, 2).toString());
+                        int soLuongQuyDoi = soLuongDat * dv.getGiaTriQuyDoi();
+                        
+                        // Get total stock for this drug
+                        int tonKho = loThuocDAO.getTongTonByMaThuoc(maThuoc);
+                        
+                        if (soLuongQuyDoi > tonKho) {
+                            // Calculate maximum quantity for this unit
+                            int soLuongToiDa = tonKho / dv.getGiaTriQuyDoi();
+                            
+                            if (soLuongToiDa > 0) {
+                                modelGioHang.setValueAt(soLuongToiDa, row, 2);
+                                modelGioHang.setValueAt(formatCurrency(dv.getGiaBan()), row, 4);
+                                Notifications.getInstance().show(
+                                    Notifications.Type.WARNING,
+                                    "Số lượng quy đổi (" + soLuongQuyDoi + ") vượt tồn kho (" + tonKho + "). Đã tự động điều chỉnh về " + soLuongToiDa + " " + tenMoi
+                                );
+                            } else {
+                                // Cannot change to this unit - not enough stock
+                                Notifications.getInstance().show(
+                                    Notifications.Type.ERROR,
+                                    "Không đủ tồn kho để đặt với đơn vị " + tenMoi + ". Tồn kho hiện tại: " + tonKho
+                                );
+                                // Don't update the unit - user needs to reduce quantity first
+                                return;
+                            }
+                        } else {
+                            // Stock is sufficient, proceed with update
+                            modelGioHang.setValueAt(formatCurrency(dv.getGiaBan()), row, 4);
+                        }
 
                         tinhTongTien();
                         return;
@@ -488,6 +520,8 @@ public class DialogDatThuoc extends JDialog {
             }
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            isUpdating = false;
         }
     }
 

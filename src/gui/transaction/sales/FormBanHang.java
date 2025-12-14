@@ -607,6 +607,7 @@ public class FormBanHang extends JPanel {
 
 
         private void updateGiaKhiDoiDonVi(int row) {
+            isUpdating = true;
             try {
 
                 Object valDVT = modelGioHang.getValueAt(row, 2);
@@ -623,7 +624,40 @@ public class FormBanHang extends JPanel {
                     for (entities.DonViQuyDoi dv : list) {
                         if (dv.getTenDonVi().equals(tenMoi)) {
 
-                            modelGioHang.setValueAt(formatCurrency(dv.getGiaBan()), row, 4);
+                            // Validate stock when changing unit
+                            String maLo = modelGioHang.getValueAt(row, 0).toString();
+                            int soLuongBan = Integer.parseInt(modelGioHang.getValueAt(row, 3).toString());
+                            int soLuongQuyDoi = soLuongBan * dv.getGiaTriQuyDoi();
+                            
+                            // Get stock for this specific lot
+                            int tonKho = loThuocDAO.getTonKhoByMaLo(maLo);
+                            
+                            if (soLuongQuyDoi > tonKho) {
+                                // Calculate maximum quantity for this unit
+                                int soLuongToiDa = tonKho / dv.getGiaTriQuyDoi();
+                                
+                                if (soLuongToiDa > 0) {
+                                    modelGioHang.setValueAt(soLuongToiDa, row, 3);
+                                    modelGioHang.setValueAt(formatCurrency(dv.getGiaBan()), row, 4);
+                                    Notifications.getInstance().show(
+                                        Notifications.Type.WARNING,
+                                        Notifications.Location.TOP_CENTER,
+                                        "Số lượng quy đổi (" + soLuongQuyDoi + ") vượt tồn lô (" + tonKho + "). Đã tự động điều chỉnh về " + soLuongToiDa + " " + tenMoi
+                                    );
+                                } else {
+                                    // Cannot change to this unit - not enough stock
+                                    Notifications.getInstance().show(
+                                        Notifications.Type.ERROR,
+                                        Notifications.Location.TOP_CENTER,
+                                        "Không đủ tồn lô để bán với đơn vị " + tenMoi + ". Tồn lô hiện tại: " + tonKho
+                                    );
+                                    // Don't update the unit - user needs to reduce quantity first
+                                    return;
+                                }
+                            } else {
+                                // Stock is sufficient, proceed with update
+                                modelGioHang.setValueAt(formatCurrency(dv.getGiaBan()), row, 4);
+                            }
 
                             tinhTongTien();
                             return;
@@ -632,6 +666,8 @@ public class FormBanHang extends JPanel {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
+            } finally {
+                isUpdating = false;
             }
         }
 
