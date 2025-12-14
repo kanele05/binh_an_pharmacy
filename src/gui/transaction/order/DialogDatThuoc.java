@@ -480,12 +480,22 @@ public class DialogDatThuoc extends JDialog {
                 for (entities.DonViQuyDoi dv : list) {
                     if (dv.getTenDonVi().equals(tenMoi)) {
                         
+                        // Validate conversion rate first (fail fast)
+                        if (dv.getGiaTriQuyDoi() <= 0) {
+                            Notifications.getInstance().show(
+                                Notifications.Type.ERROR,
+                                Notifications.Location.TOP_CENTER,
+                                "Đơn vị quy đổi không hợp lệ"
+                            );
+                            return;
+                        }
+                        
                         // Validate stock when changing unit
                         String maThuoc = modelGioHang.getValueAt(row, 0).toString();
                         int soLuongDat = Integer.parseInt(modelGioHang.getValueAt(row, 2).toString());
                         
                         // Calculate converted quantity using long to prevent overflow
-                        long soLuongQuyDoiLong = (long) soLuongDat * dv.getGiaTriQuyDoi();
+                        long soLuongQuyDoiLong = (long) soLuongDat * (long) dv.getGiaTriQuyDoi();
                         if (soLuongQuyDoiLong > Integer.MAX_VALUE) {
                             Notifications.getInstance().show(
                                 Notifications.Type.ERROR,
@@ -500,16 +510,6 @@ public class DialogDatThuoc extends JDialog {
                         int tonKho = loThuocDAO.getTongTonByMaThuoc(maThuoc);
                         
                         if (soLuongQuyDoi > tonKho) {
-                            // Check for division by zero
-                            if (dv.getGiaTriQuyDoi() <= 0) {
-                                Notifications.getInstance().show(
-                                    Notifications.Type.ERROR,
-                                    Notifications.Location.TOP_CENTER,
-                                    "Đơn vị quy đổi không hợp lệ"
-                                );
-                                return;
-                            }
-                            
                             // Calculate maximum quantity for this unit
                             int soLuongToiDa = tonKho / dv.getGiaTriQuyDoi();
                             

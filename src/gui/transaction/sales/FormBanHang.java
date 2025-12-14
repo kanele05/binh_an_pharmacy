@@ -624,12 +624,22 @@ public class FormBanHang extends JPanel {
                     for (entities.DonViQuyDoi dv : list) {
                         if (dv.getTenDonVi().equals(tenMoi)) {
 
+                            // Validate conversion rate first (fail fast)
+                            if (dv.getGiaTriQuyDoi() <= 0) {
+                                Notifications.getInstance().show(
+                                    Notifications.Type.ERROR,
+                                    Notifications.Location.TOP_CENTER,
+                                    "Đơn vị quy đổi không hợp lệ"
+                                );
+                                return;
+                            }
+
                             // Validate stock when changing unit
                             String maLo = modelGioHang.getValueAt(row, 0).toString();
                             int soLuongBan = Integer.parseInt(modelGioHang.getValueAt(row, 3).toString());
                             
                             // Calculate converted quantity using long to prevent overflow
-                            long soLuongQuyDoiLong = (long) soLuongBan * dv.getGiaTriQuyDoi();
+                            long soLuongQuyDoiLong = (long) soLuongBan * (long) dv.getGiaTriQuyDoi();
                             if (soLuongQuyDoiLong > Integer.MAX_VALUE) {
                                 Notifications.getInstance().show(
                                     Notifications.Type.ERROR,
@@ -644,16 +654,6 @@ public class FormBanHang extends JPanel {
                             int tonKho = loThuocDAO.getTonKhoByMaLo(maLo);
                             
                             if (soLuongQuyDoi > tonKho) {
-                                // Check for division by zero
-                                if (dv.getGiaTriQuyDoi() <= 0) {
-                                    Notifications.getInstance().show(
-                                        Notifications.Type.ERROR,
-                                        Notifications.Location.TOP_CENTER,
-                                        "Đơn vị quy đổi không hợp lệ"
-                                    );
-                                    return;
-                                }
-                                
                                 // Calculate maximum quantity for this unit
                                 int soLuongToiDa = tonKho / dv.getGiaTriQuyDoi();
                                 
