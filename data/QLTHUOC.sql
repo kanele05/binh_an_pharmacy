@@ -513,8 +513,10 @@ INSERT INTO ChiTietPhieuNhap (maPN, maThuoc, maLo, hanSuDung, soLuong, donGia, t
 (N'PN024', N'T028', N'L024', '2028-05-10', 2000, 25000, 50000000),
 (N'PN025', N'T029', N'L025', '2026-07-20', 500, 3000, 1500000),
 (N'PN026', N'T030', N'L026', '2027-03-15', 300, 17500, 5250000);
+GO
 ALTER TABLE ChiTietPhieuNhap
-ADD donViTinh NVARCHAR(50)
+ADD donViTinh NVARCHAR(50);
+GO
 DELETE FROM ChiTietPhieuNhap;
 INSERT INTO ChiTietPhieuNhap (maPN, maThuoc, maLo, hanSuDung, soLuong, donGia, thanhTien, donViTinh) VALUES
 (N'PN001', N'T001', N'L001', '2025-01-10', 500, 10000, 5000000, N'Vỉ'),
