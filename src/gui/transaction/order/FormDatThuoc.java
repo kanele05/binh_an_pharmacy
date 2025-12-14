@@ -760,7 +760,18 @@ public class FormDatThuoc extends javax.swing.JPanel {
                             // Validate stock when changing unit
                             String maThuoc = modelGioHang.getValueAt(row, 0).toString();
                             int soLuongDat = Integer.parseInt(modelGioHang.getValueAt(row, 2).toString());
-                            int soLuongQuyDoi = soLuongDat * dv.getGiaTriQuyDoi();
+                            
+                            // Calculate converted quantity using long to prevent overflow
+                            long soLuongQuyDoiLong = (long) soLuongDat * dv.getGiaTriQuyDoi();
+                            if (soLuongQuyDoiLong > Integer.MAX_VALUE) {
+                                Notifications.getInstance().show(
+                                    Notifications.Type.ERROR,
+                                    Notifications.Location.TOP_CENTER,
+                                    "Số lượng quy đổi vượt quá giới hạn cho phép"
+                                );
+                                return;
+                            }
+                            int soLuongQuyDoi = (int) soLuongQuyDoiLong;
                             
                             // Get total stock for this drug
                             int tonKho = loThuocDAO.getTongTonByMaThuoc(maThuoc);

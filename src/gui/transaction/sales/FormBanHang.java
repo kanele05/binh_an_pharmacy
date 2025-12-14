@@ -627,7 +627,18 @@ public class FormBanHang extends JPanel {
                             // Validate stock when changing unit
                             String maLo = modelGioHang.getValueAt(row, 0).toString();
                             int soLuongBan = Integer.parseInt(modelGioHang.getValueAt(row, 3).toString());
-                            int soLuongQuyDoi = soLuongBan * dv.getGiaTriQuyDoi();
+                            
+                            // Calculate converted quantity using long to prevent overflow
+                            long soLuongQuyDoiLong = (long) soLuongBan * dv.getGiaTriQuyDoi();
+                            if (soLuongQuyDoiLong > Integer.MAX_VALUE) {
+                                Notifications.getInstance().show(
+                                    Notifications.Type.ERROR,
+                                    Notifications.Location.TOP_CENTER,
+                                    "Số lượng quy đổi vượt quá giới hạn cho phép"
+                                );
+                                return;
+                            }
+                            int soLuongQuyDoi = (int) soLuongQuyDoiLong;
                             
                             // Get stock for this specific lot
                             int tonKho = loThuocDAO.getTonKhoByMaLo(maLo);
