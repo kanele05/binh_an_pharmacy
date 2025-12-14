@@ -1,5 +1,8 @@
 package gui.manage.partner;
 
+import ca.odell.glazedlists.*;
+import ca.odell.glazedlists.swing.*;
+import ca.odell.glazedlists.matchers.*;
 import com.formdev.flatlaf.FlatClientProperties;
 import dao.KhachHangDAO;
 import entities.KhachHang;
@@ -7,7 +10,6 @@ import java.awt.Component;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import net.miginfocom.swing.MigLayout;
 import raven.toast.Notifications;
@@ -17,8 +19,14 @@ public class FormKhachHang extends JPanel {
     private JTextField txtTimKiem;
     private JComboBox<String> cbLocGioiTinh;
     private JTable table;
-    private DefaultTableModel model;
     private KhachHangDAO khachHangDAO;
+    
+    // GlazedLists components
+    private EventList<KhachHang> khachHangList;
+    private FilterList<KhachHang> filteredList;
+    private FilterList<KhachHang> gioiTinhFilteredList;
+    private SortedList<KhachHang> sortedList;
+    private GioiTinhMatcherEditor gioiTinhMatcherEditor;
 
     public FormKhachHang() {
         khachHangDAO = new KhachHangDAO();
@@ -48,16 +56,13 @@ public class FormKhachHang extends JPanel {
     }
 
     private JPanel createToolBarPanel() {
-        JPanel panel = new JPanel(new MigLayout("insets 10", "[]10[]push[][]", "[]"));
+        JPanel panel = new JPanel(new MigLayout("insets 10", "[]push[][]", "[]"));
         panel.putClientProperty(FlatClientProperties.STYLE, ""
                 + "arc:20;"
                 + "background:darken(@background,3%)");
 
         txtTimKiem = new JTextField();
         txtTimKiem.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Tìm theo tên, SĐT...");
-
-        JButton btnTim = new JButton("Tìm kiếm");
-        btnTim.addActionListener(e -> actionTimKiem());
 
         cbLocGioiTinh = new JComboBox<>(new String[]{"Tất cả", "Nam", "Nữ"});
         cbLocGioiTinh.addActionListener(e -> actionLocGioiTinh());
@@ -78,7 +83,6 @@ public class FormKhachHang extends JPanel {
         btnLichSu.addActionListener(e -> actionXemLichSu());
 
         panel.add(txtTimKiem, "w 250");
-        panel.add(btnTim);
         panel.add(new JLabel("Giới tính:"));
         panel.add(cbLocGioiTinh);
 
@@ -95,15 +99,27 @@ public class FormKhachHang extends JPanel {
         panel.putClientProperty(FlatClientProperties.STYLE, "arc:20; background:darken(@background,3%)");
         panel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
-        String[] columns = {"Mã KH", "Họ Tên", "Số ĐT", "Giới Tính", "Ngày Sinh", "Địa Chỉ", "Điểm Tích Lũy"};
-        model = new DefaultTableModel(columns, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
-
-        table = new JTable(model);
+        // Initialize GlazedLists
+        khachHangList = new BasicEventList<>();
+        
+        // Create text filter for live search
+        filteredList = new FilterList<>(khachHangList, 
+            new TextComponentMatcherEditor<>(txtTimKiem, new KhachHangTextFilterator()));
+        
+        // Create gender filter on top of text filter
+        gioiTinhMatcherEditor = new GioiTinhMatcherEditor();
+        gioiTinhFilteredList = new FilterList<>(filteredList, gioiTinhMatcherEditor);
+        
+        // Create sorted list
+        sortedList = new SortedList<>(gioiTinhFilteredList, null);
+        
+        // Create custom TableFormat
+        ca.odell.glazedlists.gui.TableFormat<KhachHang> tableFormat = new KhachHangTableFormat();
+        
+        // Create EventTableModel
+        EventTableModel<KhachHang> eventTableModel = new EventTableModel<>(sortedList, tableFormat);
+        
+        table = new JTable(eventTableModel);
         table.putClientProperty(FlatClientProperties.STYLE, "rowHeight:30; showHorizontalLines:true");
         table.getTableHeader().putClientProperty(FlatClientProperties.STYLE, "height:35; font:bold");
 
@@ -111,6 +127,64 @@ public class FormKhachHang extends JPanel {
 
         panel.add(new JScrollPane(table));
         return panel;
+    }
+    
+    // Custom MatcherEditor for Gender filter
+    private class GioiTinhMatcherEditor extends AbstractMatcherEditor<KhachHang> {
+        public void setGioiTinh(Boolean gioiTinh) {
+            if (gioiTinh == null) {
+                fireMatchAll();
+            } else {
+                fireChanged(new GioiTinhMatcher(gioiTinh));
+            }
+        }
+    }
+    
+    private class GioiTinhMatcher implements Matcher<KhachHang> {
+        private final Boolean gioiTinh;
+        
+        public GioiTinhMatcher(Boolean gioiTinh) {
+            this.gioiTinh = gioiTinh;
+        }
+        
+        public boolean matches(KhachHang kh) {
+            return kh.isGioiTinh() == gioiTinh;
+        }
+    }
+    
+    // Custom TableFormat class
+    private class KhachHangTableFormat implements ca.odell.glazedlists.gui.TableFormat<KhachHang> {
+        private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        
+        public int getColumnCount() {
+            return 7;
+        }
+        
+        public String getColumnName(int column) {
+            switch (column) {
+                case 0: return "Mã KH";
+                case 1: return "Họ Tên";
+                case 2: return "Số ĐT";
+                case 3: return "Giới Tính";
+                case 4: return "Ngày Sinh";
+                case 5: return "Địa Chỉ";
+                case 6: return "Điểm Tích Lũy";
+                default: return "";
+            }
+        }
+        
+        public Object getColumnValue(KhachHang kh, int column) {
+            switch (column) {
+                case 0: return kh.getMaKH();
+                case 1: return kh.getTenKH();
+                case 2: return kh.getSdt();
+                case 3: return kh.isGioiTinh() ? "Nam" : "Nữ";
+                case 4: return kh.getNgaySinh() != null ? kh.getNgaySinh().format(formatter) : "";
+                case 5: return kh.getDiaChi() != null ? kh.getDiaChi() : "";
+                case 6: return kh.getDiemTichLuy();
+                default: return "";
+            }
+        }
     }
 
     private class RightAlignRenderer extends DefaultTableCellRenderer {
@@ -124,22 +198,9 @@ public class FormKhachHang extends JPanel {
     }
 
     private void loadData() {
-        model.setRowCount(0);
+        khachHangList.clear();
         ArrayList<KhachHang> dsKH = khachHangDAO.getAllKhachHang();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        for (KhachHang kh : dsKH) {
-            String ngaySinh = kh.getNgaySinh() != null ? kh.getNgaySinh().format(formatter) : "";
-            String gioiTinh = kh.isGioiTinh() ? "Nam" : "Nữ";
-            model.addRow(new Object[]{
-                kh.getMaKH(),
-                kh.getTenKH(),
-                kh.getSdt(),
-                gioiTinh,
-                ngaySinh,
-                kh.getDiaChi() != null ? kh.getDiaChi() : "",
-                kh.getDiemTichLuy()
-            });
-        }
+        khachHangList.addAll(dsKH);
     }
 
     private void actionThem() {
@@ -173,8 +234,7 @@ public class FormKhachHang extends JPanel {
             return;
         }
 
-        String maKH = model.getValueAt(row, 0).toString();
-        KhachHang kh = khachHangDAO.getKhachHangByID(maKH);
+        KhachHang kh = sortedList.get(row);
         
         if (kh == null) {
             Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Không tìm thấy khách hàng!");
@@ -207,8 +267,9 @@ public class FormKhachHang extends JPanel {
             return;
         }
 
-        String maKH = model.getValueAt(row, 0).toString();
-        String tenKH = model.getValueAt(row, 1).toString();
+        KhachHang kh = sortedList.get(row);
+        String maKH = kh.getMaKH();
+        String tenKH = kh.getTenKH();
 
         if (JOptionPane.showConfirmDialog(this, "Xóa khách hàng: " + tenKH + "?", "Xác nhận", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
             try {
@@ -225,71 +286,33 @@ public class FormKhachHang extends JPanel {
         }
     }
 
-    private void actionTimKiem() {
-        String keyword = txtTimKiem.getText().trim();
-        if (keyword.isEmpty()) {
-            loadData();
-            return;
-        }
-        
-        model.setRowCount(0);
-        ArrayList<KhachHang> dsKH = khachHangDAO.searchKhachHang(keyword);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        for (KhachHang kh : dsKH) {
-            String ngaySinh = kh.getNgaySinh() != null ? kh.getNgaySinh().format(formatter) : "";
-            String gioiTinh = kh.isGioiTinh() ? "Nam" : "Nữ";
-            model.addRow(new Object[]{
-                kh.getMaKH(),
-                kh.getTenKH(),
-                kh.getSdt(),
-                gioiTinh,
-                ngaySinh,
-                kh.getDiaChi() != null ? kh.getDiaChi() : "",
-                kh.getDiemTichLuy()
-            });
-        }
-    }
-
     private void actionLocGioiTinh() {
         String selected = cbLocGioiTinh.getSelectedItem().toString();
         
         if (selected.equals("Tất cả")) {
-            loadData();
-            return;
-        }
-        
-        Boolean gioiTinh = selected.equals("Nam");
-        model.setRowCount(0);
-        ArrayList<KhachHang> dsKH = khachHangDAO.filterByGioiTinh(gioiTinh);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        for (KhachHang kh : dsKH) {
-            String ngaySinh = kh.getNgaySinh() != null ? kh.getNgaySinh().format(formatter) : "";
-            String gt = kh.isGioiTinh() ? "Nam" : "Nữ";
-            model.addRow(new Object[]{
-                kh.getMaKH(),
-                kh.getTenKH(),
-                kh.getSdt(),
-                gt,
-                ngaySinh,
-                kh.getDiaChi() != null ? kh.getDiaChi() : "",
-                kh.getDiemTichLuy()
-            });
+            gioiTinhMatcherEditor.setGioiTinh(null);
+        } else {
+            Boolean gioiTinh = selected.equals("Nam");
+            gioiTinhMatcherEditor.setGioiTinh(gioiTinh);
         }
     }
 
     private void actionXemLichSu() {
         int row = table.getSelectedRow();
         if (row == -1) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Vui lòng chọn khách hàng!");
             return;
         }
-        String tenKH = model.getValueAt(row, 1).toString();
-
-        JOptionPane.showMessageDialog(this,
-                "Lịch sử mua hàng của: " + tenKH + "\n\n"
-                + "- 08/12/2023: Panadol (50.000đ)\n"
-                + "- 01/12/2023: Vitamin C (120.000đ)\n"
-                + "- 20/11/2023: Khẩu trang (35.000đ)",
-                "Lịch sử giao dịch", JOptionPane.INFORMATION_MESSAGE);
+        
+        KhachHang kh = sortedList.get(row);
+        
+        if (kh == null) {
+            Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Không tìm thấy khách hàng!");
+            return;
+        }
+        
+        DialogLichSuMuaHang dialog = new DialogLichSuMuaHang(this, kh);
+        dialog.setVisible(true);
     }
 
     @SuppressWarnings("unchecked")

@@ -254,4 +254,42 @@ public class HoaDonDAO {
         }
         return false;
     }
+
+    public ArrayList<HoaDon> getHoaDonByKhachHang(String maKH) {
+        ArrayList<HoaDon> list = new ArrayList<>();
+        String sql = "SELECT hd.*, nv.hoTen as tenNV " +
+                     "FROM HoaDon hd " +
+                     "JOIN NhanVien nv ON hd.maNV = nv.maNV " +
+                     "WHERE hd.maKH = ? " +
+                     "ORDER BY hd.ngayTao DESC";
+        try {
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            stmt.setString(1, maKH);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                NhanVien nv = new NhanVien();
+                nv.setMaNV(rs.getString("maNV"));
+                nv.setHoTen(rs.getString("tenNV"));
+                
+                KhachHang kh = new KhachHang();
+                kh.setMaKH(maKH);
+                
+                HoaDon hd = new HoaDon(
+                    rs.getString("maHD"),
+                    rs.getTimestamp("ngayTao").toLocalDateTime(),
+                    rs.getDouble("tongTien"),
+                    rs.getDouble("giamGia"),
+                    rs.getDouble("thue"),
+                    rs.getString("hinhThucTT"),
+                    rs.getString("ghiChu"),
+                    nv, kh
+                );
+                list.add(hd);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
 }
