@@ -213,4 +213,36 @@ public class LoThuocDAO {
         }
         return list;
     }
+
+    public int getTongTonByMaThuoc(String maThuoc) {
+        String sql = "SELECT COALESCE(SUM(soLuongTon), 0) as tongTon FROM LoThuoc WHERE maThuoc = ? AND trangThai != N'Đã hết hạn' AND isDeleted = 0";
+        try (Connection con = ConnectDB.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, maThuoc);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("tongTon");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public int getTonKhoByMaLo(String maLo) {
+        String sql = "SELECT soLuongTon FROM LoThuoc WHERE maLo = ? AND trangThai != N'Đã hết hạn' AND isDeleted = 0";
+        try (Connection con = ConnectDB.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, maLo);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("soLuongTon");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
 }
