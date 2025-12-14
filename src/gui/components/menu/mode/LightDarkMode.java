@@ -1,4 +1,4 @@
-package gui.components.mode;
+package gui.components.menu.mode;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.FlatLaf;

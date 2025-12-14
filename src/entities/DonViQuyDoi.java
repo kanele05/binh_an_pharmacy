@@ -7,18 +7,18 @@ public class DonViQuyDoi {
     private String tenDonVi;        // Ví dụ: "Hộp", "Vỉ"
     private int giaTriQuyDoi;       // Ví dụ: 1 Hộp = 100 (viên cơ bản)
     private double giaBan;          // Giá bán riêng cho đơn vị này
-    private boolean trangThai;      // Còn dùng hay không
+    private boolean laDonViCoBan;      // Còn dùng hay không
 
     public DonViQuyDoi() {
     }
 
-    public DonViQuyDoi(int id, String maThuoc, String tenDonVi, int giaTriQuyDoi, double giaBan, boolean trangThai) {
+    public DonViQuyDoi(int id, String maThuoc, String tenDonVi, int giaTriQuyDoi, double giaBan, boolean laDonViCoBan) {
         this.id = id;
         this.maThuoc = maThuoc;
         this.tenDonVi = tenDonVi;
         this.giaTriQuyDoi = giaTriQuyDoi;
         this.giaBan = giaBan;
-        this.trangThai = trangThai;
+        this.laDonViCoBan = laDonViCoBan;
     }
 
     // Getters and Setters
@@ -62,13 +62,15 @@ public class DonViQuyDoi {
         this.giaBan = giaBan;
     }
 
-    public boolean isTrangThai() {
-        return trangThai;
+    public boolean isLaDonViCoBan() {
+        return laDonViCoBan;
     }
 
-    public void setTrangThai(boolean trangThai) {
-        this.trangThai = trangThai;
+    public void setLaDonViCoBan(boolean laDonViCoBan) {
+        this.laDonViCoBan = laDonViCoBan;
     }
+
+    
 
     @Override
     public String toString() {

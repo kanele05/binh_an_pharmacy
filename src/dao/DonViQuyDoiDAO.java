@@ -14,27 +14,19 @@ public class DonViQuyDoiDAO {
     public ArrayList<DonViQuyDoi> getAllDonViByMaThuoc(String maThuoc) {
         ArrayList<DonViQuyDoi> list = new ArrayList<>();
 
-        // Sử dụng UNION ALL để lấy cả Đơn vị cơ bản (trong bảng Thuoc) và Đơn vị quy đổi
-        String sql = "SELECT 0 as id, t.maThuoc, t.donViCoBan as tenDonVi, 1 as giaTriQuyDoi, "
-                + "       ISNULL((SELECT TOP 1 ctbg.giaBan FROM ChiTietBangGia ctbg "
-                + "               JOIN BangGia bg ON ctbg.maBG = bg.maBG "
-                + "               WHERE ctbg.maThuoc = t.maThuoc AND ctbg.donViTinh = t.donViCoBan AND bg.trangThai = 1), 0) as giaBanHienTai, "
-                + "       CAST(1 as BIT) as trangThai "
-                + "FROM Thuoc t WHERE t.maThuoc = ? "
-                + "UNION ALL "
-                + "SELECT dv.id, dv.maThuoc, dv.tenDonVi, dv.giaTriQuyDoi, "
-                + "       ISNULL((SELECT TOP 1 ctbg.giaBan FROM ChiTietBangGia ctbg "
-                + "               JOIN BangGia bg ON ctbg.maBG = bg.maBG "
-                + "               WHERE ctbg.maThuoc = dv.maThuoc AND ctbg.donViTinh = dv.tenDonVi AND bg.trangThai = 1), 0) as giaBanHienTai, "
-                + "       dv.trangThai "
-                + "FROM DonViQuyDoi dv WHERE dv.maThuoc = ? AND dv.trangThai = 1 "
-                + "ORDER BY giaTriQuyDoi ASC";
+        // Chỉ lấy từ bảng DonViQuyDoi (đã bao gồm đơn vị cơ bản với giaTriQuyDoi = 1)
+        String sql = "SELECT dv.id, dv.maThuoc, dv.tenDonVi, dv. giaTriQuyDoi, dv.laDonViCoBan, "
+                + "       ISNULL((SELECT TOP 1 ctbg. giaBan FROM ChiTietBangGia ctbg "
+                + "               JOIN BangGia bg ON ctbg. maBG = bg.maBG "
+                + "               WHERE ctbg.maThuoc = dv.maThuoc AND ctbg.donViTinh = dv.tenDonVi AND bg.trangThai = 1), dv.giaBan) as giaBanHienTai "
+                + "FROM DonViQuyDoi dv "
+                + "WHERE dv. maThuoc = ? "
+                + "ORDER BY dv.giaTriQuyDoi ASC";
 
         try {
             Connection con = ConnectDB.getConnection();
             PreparedStatement stmt = con.prepareStatement(sql);
-            stmt.setString(1, maThuoc); // Tham số cho vế 1 (Bảng Thuoc)
-            stmt.setString(2, maThuoc); // Tham số cho vế 2 (Bảng DonViQuyDoi)
+            stmt.setString(1, maThuoc);
 
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
@@ -44,7 +36,7 @@ public class DonViQuyDoiDAO {
                         rs.getString("tenDonVi"),
                         rs.getInt("giaTriQuyDoi"),
                         rs.getDouble("giaBanHienTai"),
-                        rs.getBoolean("trangThai")
+                        rs.getBoolean("laDonViCoBan")
                 );
                 list.add(dv);
             }
@@ -56,15 +48,15 @@ public class DonViQuyDoiDAO {
 
     public DonViQuyDoi getDonViByTen(String maThuoc, String tenDonVi) {
         DonViQuyDoi dv = null;
-        String sql = "SELECT dv.*, "
+        String sql = "SELECT dv.id, dv.maThuoc, dv.tenDonVi, dv.giaTriQuyDoi, dv.laDonViCoBan, "
                 + "ISNULL((SELECT TOP 1 ctbg.giaBan "
                 + "        FROM ChiTietBangGia ctbg "
                 + "        JOIN BangGia bg ON ctbg.maBG = bg.maBG "
                 + "        WHERE ctbg.maThuoc = dv.maThuoc "
                 + "          AND ctbg.donViTinh = dv.tenDonVi "
-                + "          AND bg.trangThai = 1), 0) as giaBanHienTai "
+                + "          AND bg.trangThai = 1), dv.giaBan) as giaBanHienTai "
                 + "FROM DonViQuyDoi dv "
-                + "WHERE dv.maThuoc = ? AND dv.tenDonVi = ?";
+                + "WHERE dv. maThuoc = ? AND dv.tenDonVi = ? ";
         try {
             Connection con = ConnectDB.getConnection();
             PreparedStatement stmt = con.prepareStatement(sql);
@@ -78,7 +70,7 @@ public class DonViQuyDoiDAO {
                         rs.getString("tenDonVi"),
                         rs.getInt("giaTriQuyDoi"),
                         rs.getDouble("giaBanHienTai"),
-                        rs.getBoolean("trangThai")
+                        rs.getBoolean("laDonViCoBan")
                 );
             }
         } catch (SQLException e) {
@@ -88,14 +80,15 @@ public class DonViQuyDoiDAO {
     }
 
     public boolean insert(DonViQuyDoi dv) {
-        String sql = "INSERT INTO DonViQuyDoi (maThuoc, tenDonVi, giaTriQuyDoi, trangThai) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO DonViQuyDoi (maThuoc, tenDonVi, giaTriQuyDoi, giaBan, laDonViCoBan) VALUES (?, ?, ?, ?, ?)";
         try {
             Connection con = ConnectDB.getConnection();
             PreparedStatement stmt = con.prepareStatement(sql);
             stmt.setString(1, dv.getMaThuoc());
             stmt.setString(2, dv.getTenDonVi());
             stmt.setInt(3, dv.getGiaTriQuyDoi());
-            stmt.setBoolean(4, true);
+            stmt.setDouble(4, dv.getGiaBan());
+            stmt.setBoolean(5, dv.isLaDonViCoBan());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -104,7 +97,7 @@ public class DonViQuyDoiDAO {
     }
 
     public boolean delete(int id) {
-        String sql = "UPDATE DonViQuyDoi SET trangThai = 0 WHERE id = ?";
+        String sql = "DELETE FROM DonViQuyDoi WHERE id = ?";
         try {
             Connection con = ConnectDB.getConnection();
             PreparedStatement stmt = con.prepareStatement(sql);
@@ -117,7 +110,7 @@ public class DonViQuyDoiDAO {
     }
 
     public boolean checkExist(String maThuoc, String tenDonVi) {
-        String sql = "SELECT COUNT(*) FROM DonViQuyDoi WHERE maThuoc = ? AND tenDonVi = ? AND trangThai = 1";
+        String sql = "SELECT COUNT(*) FROM DonViQuyDoi WHERE maThuoc = ? AND tenDonVi = ?";
         try {
             Connection con = ConnectDB.getConnection();
             PreparedStatement stmt = con.prepareStatement(sql);

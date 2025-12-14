@@ -797,7 +797,7 @@ public class FormDatThuoc extends javax.swing.JPanel {
                                 
                                 if (soLuongToiDa > 0) {
                                     modelGioHang.setValueAt(soLuongToiDa, row, 2);
-                                    modelGioHang.setValueAt(formatCurrency(dv.getGiaBan()), row, 4);
+                                    modelGioHang.setValueAt(formatMoney(dv.getGiaBan()), row, 4);
                                     Notifications.getInstance().show(
                                         Notifications.Type.WARNING,
                                         Notifications.Location.TOP_CENTER,

@@ -1,6 +1,6 @@
 package gui.components.menu;
 
-import gui.components.mode.LightDarkMode;
+import gui.components.menu.mode.LightDarkMode;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.ui.FlatUIUtils;
 import com.formdev.flatlaf.util.UIScale;
@@ -16,7 +16,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
-import gui.components.mode.ToolBarAccentColor;
+import gui.components.menu.mode.ToolBarAccentColor;
 
 /**
  *
