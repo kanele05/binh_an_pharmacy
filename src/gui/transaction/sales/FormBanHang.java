@@ -718,14 +718,24 @@ public class FormBanHang extends JPanel {
                 int tonKho = loThuocDAO.getTonKhoByMaLo(maLo);
                 
                 if (soLuongThucTe > tonKho) {
-                    Notifications.getInstance().show(
-                        Notifications.Type.WARNING,
-                        Notifications.Location.TOP_CENTER,
-                        "Số lượng (" + soLuongThucTe + ") vượt quá tồn lô (" + tonKho + ")!"
-                    );
                     // Tự động điều chỉnh về số lượng tối đa
                     int soLuongToiDa = tonKho / giaTriQuyDoi;
-                    modelGioHang.setValueAt(Math.max(1, soLuongToiDa), row, 3);
+                    if (soLuongToiDa > 0) {
+                        modelGioHang.setValueAt(soLuongToiDa, row, 3);
+                        Notifications.getInstance().show(
+                            Notifications.Type.WARNING,
+                            Notifications.Location.TOP_CENTER,
+                            "Số lượng (" + soLuongThucTe + ") vượt quá tồn lô (" + tonKho + ")! Đã điều chỉnh về " + soLuongToiDa
+                        );
+                    } else {
+                        // No stock available, remove the row
+                        modelGioHang.removeRow(row);
+                        Notifications.getInstance().show(
+                            Notifications.Type.ERROR,
+                            Notifications.Location.TOP_CENTER,
+                            "Không đủ tồn lô! Đã xóa thuốc khỏi giỏ hàng."
+                        );
+                    }
                 }
             } catch (Exception ex) {
                 ex.printStackTrace();

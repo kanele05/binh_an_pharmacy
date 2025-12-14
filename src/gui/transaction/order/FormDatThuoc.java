@@ -851,14 +851,24 @@ public class FormDatThuoc extends javax.swing.JPanel {
                 int tonKho = loThuocDAO.getTongTonByMaThuoc(maThuoc);
                 
                 if (soLuongThucTe > tonKho) {
-                    Notifications.getInstance().show(
-                        Notifications.Type.WARNING,
-                        Notifications.Location.TOP_CENTER,
-                        "Số lượng (" + soLuongThucTe + ") vượt quá tồn kho (" + tonKho + ")!"
-                    );
                     // Tự động điều chỉnh về số lượng tối đa
                     int soLuongToiDa = tonKho / giaTriQuyDoi;
-                    modelGioHang.setValueAt(Math.max(1, soLuongToiDa), row, 2);
+                    if (soLuongToiDa > 0) {
+                        modelGioHang.setValueAt(soLuongToiDa, row, 2);
+                        Notifications.getInstance().show(
+                            Notifications.Type.WARNING,
+                            Notifications.Location.TOP_CENTER,
+                            "Số lượng (" + soLuongThucTe + ") vượt quá tồn kho (" + tonKho + ")! Đã điều chỉnh về " + soLuongToiDa
+                        );
+                    } else {
+                        // No stock available, remove the row
+                        modelGioHang.removeRow(row);
+                        Notifications.getInstance().show(
+                            Notifications.Type.ERROR,
+                            Notifications.Location.TOP_CENTER,
+                            "Không đủ tồn kho! Đã xóa thuốc khỏi giỏ hàng."
+                        );
+                    }
                 }
             } catch (Exception ex) {
                 ex.printStackTrace();
