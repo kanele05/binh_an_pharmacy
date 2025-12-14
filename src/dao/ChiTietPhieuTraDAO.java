@@ -23,7 +23,7 @@ public class ChiTietPhieuTraDAO {
         PreparedStatement stmt = null;
         int n = 0;
         try {
-            String sql = "INSERT INTO ChiTietPhieuTra (maPhieuTra, maThuoc, maLo, soLuongTra, donGiaTra, thanhTienHoanTra, donViTinh) "
+            String sql = "INSERT INTO ChiTietPhieuTra (maPT, maThuoc, maLo, soLuongTra, donGiaTra, thanhTienHoanTra, donViTinh) "
                     + "VALUES (?, ?, ?, ?, ?, ?, ?)";
             stmt = con.prepareStatement(sql);
             stmt.setString(1, ct.getPhieuTra().getMaPT());
@@ -53,7 +53,7 @@ public class ChiTietPhieuTraDAO {
         List<ChiTietPhieuTra> listCT = new ArrayList<>();
         String sql = "SELECT ct.*, t.tenThuoc FROM ChiTietPhieuTra ct "
                 + "JOIN Thuoc t ON ct.maThuoc = t.maThuoc "
-                + "WHERE ct.maPhieuTra = ?";
+                + "WHERE ct.maPT = ?";
         try {
             ConnectDB.getInstance();
             Connection con = ConnectDB.getConnection();

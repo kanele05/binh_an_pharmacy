@@ -33,6 +33,10 @@ public class NhaCungCap {
         this.nguoiLienHe = nguoiLienHe;
     }
 
+    public NhaCungCap(String maNCC) {
+        this.maNCC = maNCC;
+    }
+   
     public String getMaNCC() {
         return maNCC;
     }

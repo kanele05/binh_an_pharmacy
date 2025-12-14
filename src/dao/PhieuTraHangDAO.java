@@ -22,14 +22,14 @@ public class PhieuTraHangDAO {
 
     public String getNewMaPhieuTra() {
         String newID = "PT001";
-        String sql = "SELECT TOP 1 maPhieuTra FROM PhieuTraHang ORDER BY maPhieuTra DESC";
+        String sql = "SELECT TOP 1 maPT FROM PhieuTraHang ORDER BY maPT DESC";
         try {
             ConnectDB.getInstance();
             Connection con = ConnectDB.getConnection();
             Statement statement = con.createStatement();
             ResultSet rs = statement.executeQuery(sql);
             if (rs.next()) {
-                String lastID = rs.getString("maPhieuTra");
+                String lastID = rs.getString("maPT");
                 try {
                     int num = Integer.parseInt(lastID.substring(2)) + 1;
                     newID = String.format("PT%03d", num);
@@ -49,7 +49,7 @@ public class PhieuTraHangDAO {
         PreparedStatement stmt = null;
         int n = 0;
         try {
-            String sql = "INSERT INTO PhieuTraHang (maPhieuTra, maHD, maNV, maKH, ngayTra, lyDoTra, tongTienHoanTra, trangThai, ghiChu) "
+            String sql = "INSERT INTO PhieuTraHang (maPT, maHD, maNV, maKH, ngayTra, lyDo, tongTienHoanTra, trangThai, ghiChu) "
                     + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             stmt = con.prepareStatement(sql);
             stmt.setString(1, phieu.getMaPT());
@@ -109,10 +109,10 @@ public class PhieuTraHangDAO {
                 }
 
                 PhieuTraHang pt = new PhieuTraHang(
-                        rs.getString("maPhieuTra"),
+                        rs.getString("maPT"),
                         rs.getDate("ngayTra") != null ? rs.getDate("ngayTra").toLocalDate() : null,
                         rs.getDouble("tongTienHoanTra"),
-                        rs.getString("lyDoTra"),
+                        rs.getString("lyDo"),
                         hd, nv, kh,
                         rs.getString("trangThai"),
                         rs.getString("ghiChu")
@@ -131,7 +131,7 @@ public class PhieuTraHangDAO {
                 + "FROM PhieuTraHang pt "
                 + "LEFT JOIN KhachHang kh ON pt.maKH = kh.maKH "
                 + "LEFT JOIN NhanVien nv ON pt.maNV = nv.maNV "
-                + "WHERE pt.maPhieuTra LIKE ? OR kh.tenKH LIKE ? OR kh.sdt LIKE ? "
+                + "WHERE pt.maPT LIKE ? OR kh.tenKH LIKE ? OR kh.sdt LIKE ? "
                 + "ORDER BY pt.ngayTra DESC";
         try {
             ConnectDB.getInstance();
@@ -162,10 +162,10 @@ public class PhieuTraHangDAO {
                 }
 
                 PhieuTraHang pt = new PhieuTraHang(
-                        rs.getString("maPhieuTra"),
+                        rs.getString("maPT"),
                         rs.getDate("ngayTra") != null ? rs.getDate("ngayTra").toLocalDate() : null,
                         rs.getDouble("tongTienHoanTra"),
-                        rs.getString("lyDoTra"),
+                        rs.getString("lyDo"),
                         hd, nv, kh,
                         rs.getString("trangThai"),
                         rs.getString("ghiChu")
@@ -184,7 +184,7 @@ public class PhieuTraHangDAO {
                 + "FROM PhieuTraHang pt "
                 + "LEFT JOIN KhachHang kh ON pt.maKH = kh.maKH "
                 + "LEFT JOIN NhanVien nv ON pt.maNV = nv.maNV "
-                + "WHERE pt.maPhieuTra = ?";
+                + "WHERE pt.maPT = ?";
         try {
             ConnectDB.getInstance();
             Connection con = ConnectDB.getConnection();
@@ -211,10 +211,10 @@ public class PhieuTraHangDAO {
                 }
 
                 pt = new PhieuTraHang(
-                        rs.getString("maPhieuTra"),
+                        rs.getString("maPT"),
                         rs.getDate("ngayTra") != null ? rs.getDate("ngayTra").toLocalDate() : null,
                         rs.getDouble("tongTienHoanTra"),
-                        rs.getString("lyDoTra"),
+                        rs.getString("lyDo"),
                         hd, nv, kh,
                         rs.getString("trangThai"),
                         rs.getString("ghiChu")
@@ -233,16 +233,19 @@ public class PhieuTraHangDAO {
             con.setAutoCommit(false);
 
             // Insert PhieuTraHang
-            String sqlPhieu = "INSERT INTO PhieuTraHang (maPhieuTra, maHD, maNV, maKH, ngayTra, lyDoTra, tongTienHoanTra, trangThai, ghiChu) "
+            String sqlPhieu = "INSERT INTO PhieuTraHang (maPT, ngayTra, tongTienHoanTra, lyDo, maHD, maNV, maKH, trangThai, ghiChu) "
                     + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             PreparedStatement stmtPhieu = con.prepareStatement(sqlPhieu);
             stmtPhieu.setString(1, phieu.getMaPT());
-            stmtPhieu.setString(2, phieu.getHoaDon() != null ? phieu.getHoaDon().getMaHD() : null);
-            stmtPhieu.setString(3, phieu.getNhanVien().getMaNV());
-            stmtPhieu.setString(4, phieu.getKhachHang() != null ? phieu.getKhachHang().getMaKH() : null);
-            stmtPhieu.setDate(5, Date.valueOf(phieu.getNgayTra()));
-            stmtPhieu.setString(6, phieu.getLyDo());
-            stmtPhieu.setDouble(7, phieu.getTongTienHoanTra());
+            stmtPhieu.setDate(2, Date.valueOf(phieu.getNgayTra()));
+            stmtPhieu.setDouble(3, phieu.getTongTienHoanTra());
+            stmtPhieu.setString(4, phieu.getLyDo());
+            stmtPhieu.setString(5, phieu.getHoaDon() != null ? phieu.getHoaDon().getMaHD() : null);
+            stmtPhieu.setString(6, phieu.getNhanVien().getMaNV());
+            stmtPhieu.setString(7, phieu.getKhachHang() != null ? phieu.getKhachHang().getMaKH() : null);
+            
+            
+            
             stmtPhieu.setString(8, phieu.getTrangThai());
             stmtPhieu.setString(9, phieu.getGhiChu());
             stmtPhieu.executeUpdate();
