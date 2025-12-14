@@ -26,7 +26,7 @@ public class FormKhachHang extends JPanel {
     private FilterList<KhachHang> filteredList;
     private FilterList<KhachHang> gioiTinhFilteredList;
     private SortedList<KhachHang> sortedList;
-    private MatcherEditor<KhachHang> gioiTinhMatcherEditor;
+    private GioiTinhMatcherEditor gioiTinhMatcherEditor;
 
     public FormKhachHang() {
         khachHangDAO = new KhachHangDAO();
@@ -107,14 +107,14 @@ public class FormKhachHang extends JPanel {
             new TextComponentMatcherEditor<>(txtTimKiem, new KhachHangTextFilterator()));
         
         // Create gender filter on top of text filter
-        gioiTinhMatcherEditor = new AbstractMatcherEditor<KhachHang>() {};
+        gioiTinhMatcherEditor = new GioiTinhMatcherEditor();
         gioiTinhFilteredList = new FilterList<>(filteredList, gioiTinhMatcherEditor);
         
         // Create sorted list
         sortedList = new SortedList<>(gioiTinhFilteredList, null);
         
         // Create custom TableFormat
-        TableFormat<KhachHang> tableFormat = new KhachHangTableFormat();
+        ca.odell.glazedlists.gui.TableFormat<KhachHang> tableFormat = new KhachHangTableFormat();
         
         // Create EventTableModel
         EventTableModel<KhachHang> eventTableModel = new EventTableModel<>(sortedList, tableFormat);
@@ -129,16 +129,37 @@ public class FormKhachHang extends JPanel {
         return panel;
     }
     
+    // Custom MatcherEditor for Gender filter
+    private class GioiTinhMatcherEditor extends AbstractMatcherEditor<KhachHang> {
+        public void setGioiTinh(Boolean gioiTinh) {
+            if (gioiTinh == null) {
+                fireMatchAll();
+            } else {
+                fireChanged(new GioiTinhMatcher(gioiTinh));
+            }
+        }
+    }
+    
+    private class GioiTinhMatcher implements Matcher<KhachHang> {
+        private final Boolean gioiTinh;
+        
+        public GioiTinhMatcher(Boolean gioiTinh) {
+            this.gioiTinh = gioiTinh;
+        }
+        
+        public boolean matches(KhachHang kh) {
+            return kh.isGioiTinh() == gioiTinh;
+        }
+    }
+    
     // Custom TableFormat class
-    private class KhachHangTableFormat implements TableFormat<KhachHang> {
+    private class KhachHangTableFormat implements ca.odell.glazedlists.gui.TableFormat<KhachHang> {
         private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         
-        @Override
         public int getColumnCount() {
             return 7;
         }
         
-        @Override
         public String getColumnName(int column) {
             switch (column) {
                 case 0: return "Mã KH";
@@ -152,7 +173,6 @@ public class FormKhachHang extends JPanel {
             }
         }
         
-        @Override
         public Object getColumnValue(KhachHang kh, int column) {
             switch (column) {
                 case 0: return kh.getMaKH();
@@ -270,15 +290,10 @@ public class FormKhachHang extends JPanel {
         String selected = cbLocGioiTinh.getSelectedItem().toString();
         
         if (selected.equals("Tất cả")) {
-            gioiTinhMatcherEditor.setMatcher(null);
+            gioiTinhMatcherEditor.setGioiTinh(null);
         } else {
-            final Boolean gioiTinh = selected.equals("Nam");
-            gioiTinhMatcherEditor.setMatcher(new Matcher<KhachHang>() {
-                @Override
-                public boolean matches(KhachHang kh) {
-                    return kh.isGioiTinh() == gioiTinh;
-                }
-            });
+            Boolean gioiTinh = selected.equals("Nam");
+            gioiTinhMatcherEditor.setGioiTinh(gioiTinh);
         }
     }
 

@@ -97,7 +97,7 @@ public class FormNhaCungCap extends JPanel {
         sortedList = new SortedList<>(filteredList, null);
         
         // Create custom TableFormat
-        TableFormat<NhaCungCap> tableFormat = new NhaCungCapTableFormat();
+        ca.odell.glazedlists.gui.TableFormat<NhaCungCap> tableFormat = new NhaCungCapTableFormat();
         
         // Create EventTableModel
         EventTableModel<NhaCungCap> eventTableModel = new EventTableModel<>(sortedList, tableFormat);
@@ -111,13 +111,11 @@ public class FormNhaCungCap extends JPanel {
     }
     
     // Custom TableFormat class
-    private class NhaCungCapTableFormat implements TableFormat<NhaCungCap> {
-        @Override
+    private class NhaCungCapTableFormat implements ca.odell.glazedlists.gui.TableFormat<NhaCungCap> {
         public int getColumnCount() {
             return 5;
         }
         
-        @Override
         public String getColumnName(int column) {
             switch (column) {
                 case 0: return "Mã NCC";
@@ -129,7 +127,6 @@ public class FormNhaCungCap extends JPanel {
             }
         }
         
-        @Override
         public Object getColumnValue(NhaCungCap ncc, int column) {
             switch (column) {
                 case 0: return ncc.getMaNCC();
