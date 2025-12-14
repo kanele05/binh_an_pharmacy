@@ -231,7 +231,7 @@ public class LoThuocDAO {
     }
 
     public int getTonKhoByMaLo(String maLo) {
-        String sql = "SELECT soLuongTon FROM LoThuoc WHERE maLo = ? AND isDeleted = 0";
+        String sql = "SELECT soLuongTon FROM LoThuoc WHERE maLo = ? AND trangThai != N'Đã hết hạn' AND isDeleted = 0";
         try {
             Connection con = ConnectDB.getConnection();
             PreparedStatement ps = con.prepareStatement(sql);
