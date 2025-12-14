@@ -15,6 +15,7 @@ public class Thuoc {
     private String donViCoBan;
     private boolean trangThai;
     private NhomThuoc nhomThuoc;
+    private int tonToiThieu = 10;
 
     public Thuoc(String maThuoc, String tenThuoc, String hoatChat, String donViCoBan, boolean trangThai, NhomThuoc nhomThuoc) {
         this.maThuoc = maThuoc;
@@ -75,6 +76,14 @@ public class Thuoc {
 
     public void setNhomThuoc(NhomThuoc nhomThuoc) {
         this.nhomThuoc = nhomThuoc;
+    }
+
+    public int getTonToiThieu() {
+        return tonToiThieu;
+    }
+
+    public void setTonToiThieu(int tonToiThieu) {
+        this.tonToiThieu = tonToiThieu;
     }
 
     @Override
