@@ -135,6 +135,8 @@ public class PhieuNhapDAO {
             stmtPhieu.executeUpdate();
 
             // Insert ChiTietPhieuNhap and update/create LoThuoc
+            // NOTE: ctDAO.insert() uses its own connection (same pattern as existing code)
+            // All operations share same ConnectDB singleton connection pool
             ChiTietPhieuNhapDAO ctDAO = new ChiTietPhieuNhapDAO();
             for (ChiTietPhieuNhap ct : listCT) {
                 // Insert ChiTietPhieuNhap

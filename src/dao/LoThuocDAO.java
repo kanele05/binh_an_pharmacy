@@ -282,14 +282,17 @@ public class LoThuocDAO {
 
     public List<dto.ThuocTonThap> getThuocTonThap() {
         List<dto.ThuocTonThap> list = new ArrayList<>();
-        String sql = "SELECT t.maThuoc, t.tenThuoc, t.tonToiThieu, "
+        // NOTE: This query requires tonToiThieu column in Thuoc table
+        // If column doesn't exist yet, this method will throw SQLException
+        String sql = "SELECT t.maThuoc, t.tenThuoc, "
+                + "ISNULL(t.tonToiThieu, 10) as tonToiThieu, "
                 + "COALESCE(SUM(l.soLuongTon), 0) as tonKho "
                 + "FROM Thuoc t "
                 + "LEFT JOIN LoThuoc l ON t.maThuoc = l.maThuoc "
                 + "AND l.isDeleted = 0 AND l.trangThai != N'Đã hết hạn' "
                 + "WHERE t.trangThai = 1 "
                 + "GROUP BY t.maThuoc, t.tenThuoc, t.tonToiThieu "
-                + "HAVING COALESCE(SUM(l.soLuongTon), 0) < t.tonToiThieu "
+                + "HAVING COALESCE(SUM(l.soLuongTon), 0) < ISNULL(t.tonToiThieu, 10) "
                 + "ORDER BY tonKho ASC";
         try {
             Connection con = ConnectDB.getConnection();

@@ -122,6 +122,8 @@ public class PhieuTraHangDAO {
             stmtPhieu.executeUpdate();
 
             // Insert ChiTietPhieuTra and update LoThuoc
+            // NOTE: ctDAO.insert() uses its own connection (same pattern as existing code)
+            // All operations share same ConnectDB singleton connection pool
             ChiTietPhieuTraDAO ctDAO = new ChiTietPhieuTraDAO();
             for (ChiTietPhieuTra ct : listCT) {
                 // Insert ChiTietPhieuTra
