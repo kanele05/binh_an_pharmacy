@@ -79,9 +79,8 @@ public class PhieuTraHangDAO {
 
     public ArrayList<PhieuTraHang> getAllPhieuTra() {
         ArrayList<PhieuTraHang> dsPhieu = new ArrayList<>();
-        String sql = "SELECT pt.*, hd.maHD, kh.tenKH, nv.tenNV "
+        String sql = "SELECT pt.*, kh.tenKH, kh.sdt as sdtKH, nv.hoTen as tenNV "
                 + "FROM PhieuTraHang pt "
-                + "LEFT JOIN HoaDon hd ON pt.maHD = hd.maHD "
                 + "LEFT JOIN KhachHang kh ON pt.maKH = kh.maKH "
                 + "LEFT JOIN NhanVien nv ON pt.maNV = nv.maNV "
                 + "ORDER BY pt.ngayTra DESC";
@@ -91,13 +90,140 @@ public class PhieuTraHangDAO {
             Statement statement = con.createStatement();
             ResultSet rs = statement.executeQuery(sql);
             while (rs.next()) {
-                // This would need proper entity mapping
-                // Simplified for now
+                entities.NhanVien nv = new entities.NhanVien();
+                nv.setMaNV(rs.getString("maNV"));
+                nv.setHoTen(rs.getString("tenNV"));
+
+                entities.KhachHang kh = null;
+                if (rs.getString("maKH") != null) {
+                    kh = new entities.KhachHang();
+                    kh.setMaKH(rs.getString("maKH"));
+                    kh.setTenKH(rs.getString("tenKH"));
+                    kh.setSdt(rs.getString("sdtKH"));
+                }
+
+                HoaDon hd = null;
+                if (rs.getString("maHD") != null) {
+                    hd = new HoaDon();
+                    hd.setMaHD(rs.getString("maHD"));
+                }
+
+                PhieuTraHang pt = new PhieuTraHang(
+                        rs.getString("maPhieuTra"),
+                        rs.getDate("ngayTra") != null ? rs.getDate("ngayTra").toLocalDate() : null,
+                        rs.getDouble("tongTienHoanTra"),
+                        rs.getString("lyDoTra"),
+                        hd, nv, kh,
+                        rs.getString("trangThai"),
+                        rs.getString("ghiChu")
+                );
+                dsPhieu.add(pt);
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return dsPhieu;
+    }
+
+    public ArrayList<PhieuTraHang> searchPhieuTra(String keyword) {
+        ArrayList<PhieuTraHang> dsPhieu = new ArrayList<>();
+        String sql = "SELECT pt.*, kh.tenKH, kh.sdt as sdtKH, nv.hoTen as tenNV "
+                + "FROM PhieuTraHang pt "
+                + "LEFT JOIN KhachHang kh ON pt.maKH = kh.maKH "
+                + "LEFT JOIN NhanVien nv ON pt.maNV = nv.maNV "
+                + "WHERE pt.maPhieuTra LIKE ? OR kh.tenKH LIKE ? OR kh.sdt LIKE ? "
+                + "ORDER BY pt.ngayTra DESC";
+        try {
+            ConnectDB.getInstance();
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            String searchPattern = "%" + keyword + "%";
+            stmt.setString(1, searchPattern);
+            stmt.setString(2, searchPattern);
+            stmt.setString(3, searchPattern);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                entities.NhanVien nv = new entities.NhanVien();
+                nv.setMaNV(rs.getString("maNV"));
+                nv.setHoTen(rs.getString("tenNV"));
+
+                entities.KhachHang kh = null;
+                if (rs.getString("maKH") != null) {
+                    kh = new entities.KhachHang();
+                    kh.setMaKH(rs.getString("maKH"));
+                    kh.setTenKH(rs.getString("tenKH"));
+                    kh.setSdt(rs.getString("sdtKH"));
+                }
+
+                HoaDon hd = null;
+                if (rs.getString("maHD") != null) {
+                    hd = new HoaDon();
+                    hd.setMaHD(rs.getString("maHD"));
+                }
+
+                PhieuTraHang pt = new PhieuTraHang(
+                        rs.getString("maPhieuTra"),
+                        rs.getDate("ngayTra") != null ? rs.getDate("ngayTra").toLocalDate() : null,
+                        rs.getDouble("tongTienHoanTra"),
+                        rs.getString("lyDoTra"),
+                        hd, nv, kh,
+                        rs.getString("trangThai"),
+                        rs.getString("ghiChu")
+                );
+                dsPhieu.add(pt);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return dsPhieu;
+    }
+
+    public PhieuTraHang getPhieuTraByMa(String maPhieu) {
+        PhieuTraHang pt = null;
+        String sql = "SELECT pt.*, kh.tenKH, kh.sdt as sdtKH, nv.hoTen as tenNV "
+                + "FROM PhieuTraHang pt "
+                + "LEFT JOIN KhachHang kh ON pt.maKH = kh.maKH "
+                + "LEFT JOIN NhanVien nv ON pt.maNV = nv.maNV "
+                + "WHERE pt.maPhieuTra = ?";
+        try {
+            ConnectDB.getInstance();
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            stmt.setString(1, maPhieu);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                entities.NhanVien nv = new entities.NhanVien();
+                nv.setMaNV(rs.getString("maNV"));
+                nv.setHoTen(rs.getString("tenNV"));
+
+                entities.KhachHang kh = null;
+                if (rs.getString("maKH") != null) {
+                    kh = new entities.KhachHang();
+                    kh.setMaKH(rs.getString("maKH"));
+                    kh.setTenKH(rs.getString("tenKH"));
+                    kh.setSdt(rs.getString("sdtKH"));
+                }
+
+                HoaDon hd = null;
+                if (rs.getString("maHD") != null) {
+                    hd = new HoaDon();
+                    hd.setMaHD(rs.getString("maHD"));
+                }
+
+                pt = new PhieuTraHang(
+                        rs.getString("maPhieuTra"),
+                        rs.getDate("ngayTra") != null ? rs.getDate("ngayTra").toLocalDate() : null,
+                        rs.getDouble("tongTienHoanTra"),
+                        rs.getString("lyDoTra"),
+                        hd, nv, kh,
+                        rs.getString("trangThai"),
+                        rs.getString("ghiChu")
+                );
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return pt;
     }
 
     public boolean taoPhieuTra(PhieuTraHang phieu, List<ChiTietPhieuTra> listCT) {
