@@ -416,7 +416,7 @@ public class FormDatThuoc extends javax.swing.JPanel {
 
         public void loadDataToForm(DonDatHang donEdit) {
             this.donHienTai = donEdit;
-            
+
             txtSDT.setText(donEdit.getSdtLienHe());
             if (donEdit.getKhachHang() != null) {
                 khachHangSelected = donEdit.getKhachHang();
@@ -710,30 +710,29 @@ public class FormDatThuoc extends javax.swing.JPanel {
                     return;
                 }
 
-                boolean exist = false;
+                // Check if item already exists in cart
                 for (int i = 0; i < modelGioHang.getRowCount(); i++) {
                     String maTrongGio = modelGioHang.getValueAt(i, 0).toString();
                     String dvtTrongGio = modelGioHang.getValueAt(i, 3).toString();
 
                     if (maTrongGio.equals(t.getMaThuoc()) && dvtTrongGio.equals(dvtChuan.getTenDonVi())) {
                         int slCu = Integer.parseInt(modelGioHang.getValueAt(i, 2).toString());
-                        modelGioHang.setValueAt(slCu + 1, i, 2);
+                        modelGioHang.setValueAt(slCu + sl, i, 2);
                         tinhThanhTienRow(i);
                         return;
                     }
                 }
 
-                if (!exist) {
-                    modelGioHang.addRow(new Object[]{
-                        t.getMaThuoc(),
-                        t.getTenThuoc(),
-                        sl,
-                        dvtChuan.getTenDonVi(),
-                        formatMoney(dvtChuan.getGiaBan()),
-                        formatMoney(dvtChuan.getGiaBan()),
-                        listDVT
-                    });
-                }
+                // Add new item if not exists
+                modelGioHang.addRow(new Object[]{
+                    t.getMaThuoc(),
+                    t.getTenThuoc(),
+                    sl,
+                    dvtChuan.getTenDonVi(),
+                    formatMoney(dvtChuan.getGiaBan()),
+                    formatMoney(dvtChuan.getGiaBan() * sl),
+                    listDVT
+                });
                 tinhTongTien();
 
             } catch (Exception e) {
