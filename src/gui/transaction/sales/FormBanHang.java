@@ -524,6 +524,7 @@ public class FormBanHang extends JPanel {
             tableGioHang.getColumnModel().getColumn(2).setCellEditor(unitEditor);
 
             modelGioHang.addTableModelListener(e -> {
+                // Column 3 is "SL" (Quantity)
                 if (e.getColumn() == 3 && e.getType() == javax.swing.event.TableModelEvent.UPDATE) {
                     int row = e.getFirstRow();
                     if (row >= 0 && !isUpdating) {

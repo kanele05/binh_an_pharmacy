@@ -610,6 +610,7 @@ public class FormDatThuoc extends javax.swing.JPanel {
             tableGioHang.getColumnModel().getColumn(3).setCellEditor(unitEditor);
 
             modelGioHang.addTableModelListener(e -> {
+                // Column 2 is "SL Đặt" (Quantity Ordered)
                 if (e.getColumn() == 2 && e.getType() == javax.swing.event.TableModelEvent.UPDATE) {
                     int row = e.getFirstRow();
                     if (row >= 0 && !isUpdating) {

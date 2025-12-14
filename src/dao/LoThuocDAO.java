@@ -18,6 +18,8 @@ import java.util.Map;
 
 public class LoThuocDAO {
 
+    private static final int DEFAULT_TON_TOI_THIEU = 10;
+
     public LoThuocDAO() {
     }
 
@@ -285,14 +287,14 @@ public class LoThuocDAO {
         // NOTE: This query requires tonToiThieu column in Thuoc table
         // If column doesn't exist yet, this method will throw SQLException
         String sql = "SELECT t.maThuoc, t.tenThuoc, "
-                + "ISNULL(t.tonToiThieu, 10) as tonToiThieu, "
+                + "ISNULL(t.tonToiThieu, " + DEFAULT_TON_TOI_THIEU + ") as tonToiThieu, "
                 + "COALESCE(SUM(l.soLuongTon), 0) as tonKho "
                 + "FROM Thuoc t "
                 + "LEFT JOIN LoThuoc l ON t.maThuoc = l.maThuoc "
                 + "AND l.isDeleted = 0 AND l.trangThai != N'Đã hết hạn' "
                 + "WHERE t.trangThai = 1 "
                 + "GROUP BY t.maThuoc, t.tenThuoc, t.tonToiThieu "
-                + "HAVING COALESCE(SUM(l.soLuongTon), 0) < ISNULL(t.tonToiThieu, 10) "
+                + "HAVING COALESCE(SUM(l.soLuongTon), 0) < ISNULL(t.tonToiThieu, " + DEFAULT_TON_TOI_THIEU + ") "
                 + "ORDER BY tonKho ASC";
         try {
             Connection con = ConnectDB.getConnection();
