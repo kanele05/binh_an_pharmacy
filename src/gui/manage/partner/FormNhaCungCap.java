@@ -1,12 +1,14 @@
 package gui.manage.partner;
 
+import ca.odell.glazedlists.*;
+import ca.odell.glazedlists.swing.*;
+import ca.odell.glazedlists.matchers.*;
 import com.formdev.flatlaf.FlatClientProperties;
 import dao.NhaCungCapDAO;
 import entities.NhaCungCap;
 import java.awt.Component;
 import java.util.ArrayList;
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import net.miginfocom.swing.MigLayout;
 import raven.toast.Notifications;
@@ -15,8 +17,12 @@ public class FormNhaCungCap extends JPanel {
 
     private JTextField txtTimKiem;
     private JTable table;
-    private DefaultTableModel model;
     private NhaCungCapDAO nhaCungCapDAO;
+    
+    // GlazedLists components
+    private EventList<NhaCungCap> nhaCungCapList;
+    private FilterList<NhaCungCap> filteredList;
+    private SortedList<NhaCungCap> sortedList;
 
     public FormNhaCungCap() {
         nhaCungCapDAO = new NhaCungCapDAO();
@@ -46,16 +52,13 @@ public class FormNhaCungCap extends JPanel {
     }
 
     private JPanel createToolBarPanel() {
-        JPanel panel = new JPanel(new MigLayout("insets 10", "[]10[]push[][]", "[]"));
+        JPanel panel = new JPanel(new MigLayout("insets 10", "[]push[][]", "[]"));
         panel.putClientProperty(FlatClientProperties.STYLE, ""
                 + "arc:20;"
                 + "background:darken(@background,3%)");
 
         txtTimKiem = new JTextField();
         txtTimKiem.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Tìm tên NCC, SĐT, Email...");
-
-        JButton btnTim = new JButton("Tìm kiếm");
-        btnTim.addActionListener(e -> actionTimKiem());
 
         JButton btnThem = new JButton("Thêm mới");
         btnThem.putClientProperty(FlatClientProperties.STYLE, "background:#4CAF50; foreground:#fff; font:bold");
@@ -70,7 +73,6 @@ public class FormNhaCungCap extends JPanel {
         btnXoa.addActionListener(e -> actionXoa());
 
         panel.add(txtTimKiem, "w 250");
-        panel.add(btnTim);
 
         panel.add(btnThem);
         panel.add(btnSua);
@@ -84,34 +86,66 @@ public class FormNhaCungCap extends JPanel {
         panel.putClientProperty(FlatClientProperties.STYLE, "arc:20; background:darken(@background,3%)");
         panel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
-        String[] columns = {"Mã NCC", "Tên Nhà Cung Cấp", "Số Điện Thoại", "Email", "Địa Chỉ"};
-        model = new DefaultTableModel(columns, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
-
-        table = new JTable(model);
+        // Initialize GlazedLists
+        nhaCungCapList = new BasicEventList<>();
+        
+        // Create text filter for live search
+        filteredList = new FilterList<>(nhaCungCapList, 
+            new TextComponentMatcherEditor<>(txtTimKiem, new NhaCungCapTextFilterator()));
+        
+        // Create sorted list
+        sortedList = new SortedList<>(filteredList, null);
+        
+        // Create custom TableFormat
+        TableFormat<NhaCungCap> tableFormat = new NhaCungCapTableFormat();
+        
+        // Create EventTableModel
+        EventTableModel<NhaCungCap> eventTableModel = new EventTableModel<>(sortedList, tableFormat);
+        
+        table = new JTable(eventTableModel);
         table.putClientProperty(FlatClientProperties.STYLE, "rowHeight:30; showHorizontalLines:true");
         table.getTableHeader().putClientProperty(FlatClientProperties.STYLE, "height:35; font:bold");
 
         panel.add(new JScrollPane(table));
         return panel;
     }
+    
+    // Custom TableFormat class
+    private class NhaCungCapTableFormat implements TableFormat<NhaCungCap> {
+        @Override
+        public int getColumnCount() {
+            return 5;
+        }
+        
+        @Override
+        public String getColumnName(int column) {
+            switch (column) {
+                case 0: return "Mã NCC";
+                case 1: return "Tên Nhà Cung Cấp";
+                case 2: return "Số Điện Thoại";
+                case 3: return "Email";
+                case 4: return "Địa Chỉ";
+                default: return "";
+            }
+        }
+        
+        @Override
+        public Object getColumnValue(NhaCungCap ncc, int column) {
+            switch (column) {
+                case 0: return ncc.getMaNCC();
+                case 1: return ncc.getTenNCC();
+                case 2: return ncc.getSdt();
+                case 3: return ncc.getEmail() != null ? ncc.getEmail() : "";
+                case 4: return ncc.getDiaChi() != null ? ncc.getDiaChi() : "";
+                default: return "";
+            }
+        }
+    }
 
     private void loadData() {
-        model.setRowCount(0);
+        nhaCungCapList.clear();
         ArrayList<NhaCungCap> dsNCC = nhaCungCapDAO.getAllNhaCungCap();
-        for (NhaCungCap ncc : dsNCC) {
-            model.addRow(new Object[]{
-                ncc.getMaNCC(),
-                ncc.getTenNCC(),
-                ncc.getSdt(),
-                ncc.getEmail() != null ? ncc.getEmail() : "",
-                ncc.getDiaChi() != null ? ncc.getDiaChi() : ""
-            });
-        }
+        nhaCungCapList.addAll(dsNCC);
     }
 
     private void actionThem() {
@@ -144,8 +178,7 @@ public class FormNhaCungCap extends JPanel {
             return;
         }
 
-        String maNCC = model.getValueAt(row, 0).toString();
-        NhaCungCap ncc = nhaCungCapDAO.getNhaCungCapByID(maNCC);
+        NhaCungCap ncc = sortedList.get(row);
         
         if (ncc == null) {
             Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Không tìm thấy nhà cung cấp!");
@@ -178,8 +211,9 @@ public class FormNhaCungCap extends JPanel {
             return;
         }
 
-        String maNCC = model.getValueAt(row, 0).toString();
-        String tenNCC = model.getValueAt(row, 1).toString();
+        NhaCungCap ncc = sortedList.get(row);
+        String maNCC = ncc.getMaNCC();
+        String tenNCC = ncc.getTenNCC();
         
         // Kiểm tra xem NCC có phiếu nhập hay không
         if (nhaCungCapDAO.hasPhieuNhap(maNCC)) {
@@ -199,26 +233,6 @@ public class FormNhaCungCap extends JPanel {
                 e.printStackTrace();
                 Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi cơ sở dữ liệu: " + e.getMessage());
             }
-        }
-    }
-
-    private void actionTimKiem() {
-        String keyword = txtTimKiem.getText().trim();
-        if (keyword.isEmpty()) {
-            loadData();
-            return;
-        }
-        
-        model.setRowCount(0);
-        ArrayList<NhaCungCap> dsNCC = nhaCungCapDAO.searchNhaCungCap(keyword);
-        for (NhaCungCap ncc : dsNCC) {
-            model.addRow(new Object[]{
-                ncc.getMaNCC(),
-                ncc.getTenNCC(),
-                ncc.getSdt(),
-                ncc.getEmail() != null ? ncc.getEmail() : "",
-                ncc.getDiaChi() != null ? ncc.getDiaChi() : ""
-            });
         }
     }
 
