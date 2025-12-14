@@ -45,6 +45,15 @@ import raven.datetime.component.date.DatePicker;
 import raven.toast.Notifications;
 import utils.Auth;
 
+/**
+ * @deprecated This dialog has been deprecated in favor of embedded panel approach.
+ * The functionality has been moved to {@link FormDatThuoc} as inner panels
+ * (PanelDatThuocGiaoDien and PanelDanhSachDonDat) using CardLayout pattern.
+ * This class is kept for backward compatibility only.
+ * 
+ * Use FormDatThuoc.showTaoPhieu() or FormDatThuoc.showSuaPhieu() instead.
+ */
+@Deprecated
 public class DialogDatThuoc extends JDialog {
 
     private final Component parent;
