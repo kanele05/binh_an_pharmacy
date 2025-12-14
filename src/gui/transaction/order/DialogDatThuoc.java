@@ -8,14 +8,17 @@ import ca.odell.glazedlists.gui.TableFormat;
 import ca.odell.glazedlists.swing.EventTableModel;
 import ca.odell.glazedlists.swing.TextComponentMatcherEditor;
 import com.formdev.flatlaf.FlatClientProperties;
+import dao.ChiTietBangGiaDAO;
 import dao.ChiTietDonDatDAO;
 import dao.DonDatHangDAO;
+import dao.DonViQuyDoiDAO;
 import dao.KhachHangDAO;
 import dao.LoThuocDAO;
 import dao.ThuocDAO;
 import dto.ThuocTimKiem;
 import entities.ChiTietDonDat;
 import entities.DonDatHang;
+import entities.DonViQuyDoi;
 import entities.KhachHang;
 import entities.NhanVien;
 import entities.Thuoc;
@@ -32,8 +35,11 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import javax.swing.*;
+import javax.swing.event.CellEditorListener;
+import javax.swing.event.ChangeEvent;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumn;
 import net.miginfocom.swing.MigLayout;
 import raven.datetime.component.date.DatePicker;
 import raven.toast.Notifications;
@@ -70,6 +76,7 @@ public class DialogDatThuoc extends JDialog {
 
     private DonDatHang donHienTai = null;
     private ChiTietDonDatDAO ctDAO = new ChiTietDonDatDAO();
+    private DonViQuyDoiDAO dvqdDAO = new DonViQuyDoiDAO();
 
     public DialogDatThuoc(Component parent) {
         super(SwingUtilities.windowForComponent(parent), "Tạo Phiếu Đặt Hàng", ModalityType.APPLICATION_MODAL);
@@ -180,12 +187,13 @@ public class DialogDatThuoc extends JDialog {
         TableFormat<ThuocTimKiem> tf = new TableFormat<ThuocTimKiem>() {
             @Override
             public int getColumnCount() {
-                return 4;
+                return 5;
             }
 
             @Override
             public String getColumnName(int i) {
-                return new String[]{"Mã", "Tên Thuốc", "Tồn Tổng", "Giá Bán"}[i];
+                // --- THÊM CỘT ĐVT ---
+                return new String[]{"Mã", "Tên Thuốc", "ĐVT", "Tồn Tổng", "Giá Bán"}[i];
             }
 
             @Override
@@ -196,8 +204,10 @@ public class DialogDatThuoc extends JDialog {
                     case 1:
                         return t.getTenThuoc();
                     case 2:
-                        return t.getSoLuongTon();
+                        return t.getDonViTinh();
                     case 3:
+                        return t.getSoLuongTon();
+                    case 4:
                         return formatMoney(t.getGiaBan());
                     default:
                         return null;
@@ -208,7 +218,7 @@ public class DialogDatThuoc extends JDialog {
         EventTableModel<ThuocTimKiem> etm = new EventTableModel<>(filterList, tf);
         tableThuoc = new JTable(etm);
         tableThuoc.putClientProperty(FlatClientProperties.STYLE, "rowHeight:25; showHorizontalLines:true");
-        tableThuoc.getColumnModel().getColumn(3).setCellRenderer(new RightAlignRenderer());
+        tableThuoc.getColumnModel().getColumn(4).setCellRenderer(new RightAlignRenderer());
 
         tableThuoc.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent e) {
@@ -232,11 +242,11 @@ public class DialogDatThuoc extends JDialog {
         JPanel panel = new JPanel(new java.awt.BorderLayout());
         panel.setBorder(BorderFactory.createTitledBorder("Danh sách đặt"));
 
-        String[] cols = {"Mã Thuốc", "Tên thuốc", "SL Đặt", "Đơn giá", "Thành tiền"};
+        String[] cols = {"Mã Thuốc", "Tên thuốc", "SL Đặt", "Đơn vị tính", "Đơn giá", "Thành tiền", "Hidden_List"};
         modelGioHang = new DefaultTableModel(cols, 0) {
             @Override
             public boolean isCellEditable(int r, int c) {
-                return c == 2;
+                return c == 2 || c == 3;
             }
         };
 
@@ -249,7 +259,32 @@ public class DialogDatThuoc extends JDialog {
         tableGioHang = new JTable(modelGioHang);
         tableGioHang.putClientProperty(FlatClientProperties.STYLE, "rowHeight:30; showHorizontalLines:true");
         tableGioHang.getColumnModel().getColumn(4).setCellRenderer(new RightAlignRenderer());
+        tableGioHang.getColumnModel().getColumn(5).setCellRenderer(new RightAlignRenderer());
+        tableGioHang.removeColumn(tableGioHang.getColumnModel().getColumn(6));
+        UnitCellEditor unitEditor = new UnitCellEditor();
 
+            unitEditor.addCellEditorListener(new CellEditorListener() {
+                @Override
+                public void editingStopped(ChangeEvent e) {
+
+                    int row = tableGioHang.getSelectedRow();
+                    if (row != -1) {
+                        updateGiaKhiDoiDonVi(row);
+                    }
+                }
+
+                @Override
+                public void editingCanceled(ChangeEvent e) {
+                }
+            });
+
+            tableGioHang.getColumnModel().getColumn(3).setCellEditor(unitEditor);
+
+            modelGioHang.addTableModelListener(e -> {
+                if (e.getColumn() == 2) {
+                    tinhTongTien();
+                }
+            });
         JScrollPane scroll = new JScrollPane(tableGioHang);
 
         JButton btnXoa = new JButton("Xóa dòng");
@@ -257,6 +292,9 @@ public class DialogDatThuoc extends JDialog {
         btnXoa.addActionListener(e -> {
             int row = tableGioHang.getSelectedRow();
             if (row != -1) {
+                if (tableGioHang.isEditing()) {
+                    tableGioHang.getCellEditor().stopCellEditing();
+                }
                 modelGioHang.removeRow(row);
                 tinhTongTien();
             }
@@ -307,22 +345,25 @@ public class DialogDatThuoc extends JDialog {
             txtTenKH.setEditable(true);
         }
 
-        LocalDateTime henLay = donHienTai.getGioHenLay();
-        datePicker.setSelectedDate(henLay.toLocalDate());
-
-        Date dateVal = Date.from(henLay.atZone(ZoneId.systemDefault()).toInstant());
-        timeSpinner.setValue(dateVal);
+        
 
         List<ChiTietDonDat> listCT = ctDAO.getChiTietByMaDon(donHienTai.getMaDonDat());
         modelGioHang.setRowCount(0);
 
         for (ChiTietDonDat ct : listCT) {
+            List<DonViQuyDoi> listDVT = dvqdDAO.getAllDonViByMaThuoc(ct.getThuoc().getMaThuoc());
+            listDVT.removeIf(dv -> dv.getGiaBan() <= 0);
+            if (listDVT.isEmpty()) { 
+                 listDVT.add(new DonViQuyDoi(0, ct.getThuoc().getMaThuoc(), ct.getDonViTinh(), 1, ct.getDonGia(), true));
+            }
             modelGioHang.addRow(new Object[]{
                 ct.getThuoc().getMaThuoc(),
                 ct.getThuoc().getTenThuoc(),
                 ct.getSoLuong(),
+                ct.getDonViTinh(),
                 formatMoney(ct.getDonGia()),
-                formatMoney(ct.getThanhTien())
+                formatMoney(ct.getThanhTien()),
+                listDVT
             });
         }
         tinhTongTien();
@@ -356,6 +397,17 @@ public class DialogDatThuoc extends JDialog {
         }
 
         ThuocTimKiem t = filterList.get(row);
+        List<DonViQuyDoi> listDVT = dvqdDAO.getAllDonViByMaThuoc(t.getMaThuoc());
+        if (listDVT.isEmpty()) {
+            listDVT.add(new DonViQuyDoi(0, t.getMaThuoc(), t.getDonViTinh(), 1, t.getGiaBan(), true));
+        }
+        DonViQuyDoi dvtChuan = listDVT.get(0);
+        for (DonViQuyDoi dv : listDVT) {
+            if (dv.getGiaTriQuyDoi() == 1) {
+                dvtChuan = dv;
+                break;
+            }
+        }
 
         String input = JOptionPane.showInputDialog(this, "Nhập số lượng đặt (Tổng tồn: " + t.getSoLuongTon() + "):", "1");
         if (input == null) {
@@ -371,13 +423,14 @@ public class DialogDatThuoc extends JDialog {
 
             boolean exist = false;
             for (int i = 0; i < modelGioHang.getRowCount(); i++) {
-                if (modelGioHang.getValueAt(i, 0).equals(t.getMaThuoc())) {
-                    int oldSL = Integer.parseInt(modelGioHang.getValueAt(i, 2).toString());
-                    modelGioHang.setValueAt(oldSL + sl, i, 2);
-                    double tt = (oldSL + sl) * t.getGiaBan();
-                    modelGioHang.setValueAt(formatMoney(tt), i, 4);
-                    exist = true;
-                    break;
+                String maTrongGio = modelGioHang.getValueAt(i, 0).toString();
+                String dvtTrongGio = modelGioHang.getValueAt(i, 3).toString();
+
+                if (maTrongGio.equals(t.getMaThuoc()) && dvtTrongGio.equals(dvtChuan.getTenDonVi())) {
+                    int slCu = Integer.parseInt(modelGioHang.getValueAt(i, 2).toString());
+                    modelGioHang.setValueAt(slCu + 1, i, 2);
+                    tinhThanhTienRow(i);
+                    return;
                 }
             }
 
@@ -386,14 +439,67 @@ public class DialogDatThuoc extends JDialog {
                     t.getMaThuoc(),
                     t.getTenThuoc(),
                     sl,
-                    formatMoney(t.getGiaBan()),
-                    formatMoney(sl * t.getGiaBan())
+                    dvtChuan.getTenDonVi(),
+                    formatMoney(dvtChuan.getGiaBan()),
+                    formatMoney(dvtChuan.getGiaBan()),
+                    listDVT // Lưu list này để load vào combobox
                 });
             }
             tinhTongTien();
 
         } catch (Exception e) {
             Notifications.getInstance().show(Notifications.Type.WARNING, "Vui lòng nhập số!");
+        }
+    }
+
+
+    private void updateGiaKhiDoiDonVi(int row) {
+        try {
+
+            Object valDVT = modelGioHang.getValueAt(row, 3);
+            if (valDVT == null) {
+                return;
+            }
+            String tenMoi = valDVT.toString();
+
+            Object valList = modelGioHang.getValueAt(row, 6);
+
+            if (valList instanceof List) {
+                List<entities.DonViQuyDoi> list = (List<entities.DonViQuyDoi>) valList;
+
+                for (entities.DonViQuyDoi dv : list) {
+                    if (dv.getTenDonVi().equals(tenMoi)) {
+
+                        modelGioHang.setValueAt(formatCurrency(dv.getGiaBan()), row, 4);
+
+                        tinhTongTien();
+                        return;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String formatCurrency(double amount) {
+        return NumberFormat.getInstance(new Locale("vi", "VN")).format(amount) + " ₫";
+    }
+
+    private void tinhThanhTienRow(int row) {
+        if (row < 0) {
+            return;
+        }
+        try {
+            int sl = Integer.parseInt(modelGioHang.getValueAt(row, 2).toString());
+            double donGia = parseMoney(modelGioHang.getValueAt(row, 4));
+
+            double thanhTien = sl * donGia;
+            modelGioHang.setValueAt(formatMoney(thanhTien), row, 5);
+
+            tinhTongTien(); // Cập nhật tổng hóa đơn
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -408,11 +514,11 @@ public class DialogDatThuoc extends JDialog {
                 try {
                     int sl = Integer.parseInt(modelGioHang.getValueAt(i, 2).toString());
 
-                    double gia = parseMoney(modelGioHang.getValueAt(i, 3));
+                    double gia = parseMoney(modelGioHang.getValueAt(i, 4));
 
                     double tt = sl * gia;
 
-                    modelGioHang.setValueAt(formatMoney(tt), i, 4);
+                    modelGioHang.setValueAt(formatMoney(tt), i, 5);
 
                     total += tt;
                 } catch (Exception e) {
@@ -449,12 +555,13 @@ public class DialogDatThuoc extends JDialog {
             for (int i = 0; i < modelGioHang.getRowCount(); i++) {
                 String maThuoc = modelGioHang.getValueAt(i, 0).toString();
                 int sl = Integer.parseInt(modelGioHang.getValueAt(i, 2).toString());
-                double donGia = parseMoney(modelGioHang.getValueAt(i, 3));
-                double thanhTien = parseMoney(modelGioHang.getValueAt(i, 4));
+                String donViTinh = modelGioHang.getValueAt(i, 3).toString();
+                double donGia = parseMoney(modelGioHang.getValueAt(i, 4));
+                double thanhTien = parseMoney(modelGioHang.getValueAt(i, 5));
 
                 Thuoc t = new Thuoc(maThuoc);
 
-                ChiTietDonDat ct = new ChiTietDonDat(null, t, sl, donGia, thanhTien);
+                ChiTietDonDat ct = new ChiTietDonDat(null, t, sl, donGia, thanhTien, donViTinh);
                 listChiTiet.add(ct);
             }
 
@@ -550,6 +657,38 @@ public class DialogDatThuoc extends JDialog {
             super.getTableCellRendererComponent(t, v, s, f, r, c);
             setHorizontalAlignment(JLabel.RIGHT);
             return this;
+        }
+    }
+
+    private class UnitCellEditor extends javax.swing.DefaultCellEditor {
+
+        private javax.swing.JComboBox<String> comboBox;
+
+        public UnitCellEditor() {
+            super(new javax.swing.JComboBox<>());
+            this.comboBox = (javax.swing.JComboBox<String>) getComponent();
+        }
+
+        @Override
+        public java.awt.Component getTableCellEditorComponent(javax.swing.JTable table, Object value, boolean isSelected, int row, int column) {
+            comboBox.removeAllItems();
+
+            int modelRow = table.convertRowIndexToModel(row);
+            Object valList = table.getModel().getValueAt(modelRow, 6);
+
+            if (valList instanceof java.util.List) {
+                java.util.List<entities.DonViQuyDoi> list = (java.util.List<entities.DonViQuyDoi>) valList;
+                for (entities.DonViQuyDoi dv : list) {
+                    comboBox.addItem(dv.getTenDonVi());
+                }
+            }
+
+            if (comboBox.getItemCount() == 0) {
+                comboBox.addItem(value != null ? value.toString() : "");
+            }
+
+            comboBox.setSelectedItem(value);
+            return super.getTableCellEditorComponent(table, value, isSelected, row, column);
         }
     }
 }

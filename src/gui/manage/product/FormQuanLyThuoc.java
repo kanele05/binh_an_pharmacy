@@ -183,7 +183,7 @@ public class FormQuanLyThuoc extends javax.swing.JPanel {
                     case 3:
                         return e.getHoatChat();
                     case 4:
-                        return e.getDonViTinh();
+                        return e.getDonViCoBan();
                     case 5:
                         return e.getGiaNhap();
                     case 6:
@@ -343,7 +343,7 @@ public class FormQuanLyThuoc extends javax.swing.JPanel {
                 thuocFull.getTenThuoc(),
                 thuocFull.getTenNhom(),
                 thuocFull.getHoatChat(),
-                thuocFull.getDonViTinh(),
+                thuocFull.getDonViCoBan(),
                 thuocFull.getGiaBan(),};
             DialogThuoc dialog = new DialogThuoc(this, data);
             dialog.setVisible(true);
@@ -389,7 +389,8 @@ public class FormQuanLyThuoc extends javax.swing.JPanel {
 
             Component com = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
-            ThuocFullInfo t = medicines.get(table.convertRowIndexToModel(row));
+            int modelRow = table.convertRowIndexToModel(row);
+            ThuocFullInfo t = comboFiltered.get(modelRow);
 
             if (!t.isTrangThai()) {
                 com.setForeground(new Color(211, 47, 47));

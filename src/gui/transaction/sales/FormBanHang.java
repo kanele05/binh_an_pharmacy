@@ -9,11 +9,14 @@ import ca.odell.glazedlists.gui.TableFormat;
 import ca.odell.glazedlists.swing.EventTableModel;
 import ca.odell.glazedlists.swing.TextComponentMatcherEditor;
 import com.formdev.flatlaf.FlatClientProperties;
+import dao.ChiTietBangGiaDAO;
+import dao.DonViQuyDoiDAO;
 import dao.HoaDonDAO;
 import dao.KhachHangDAO;
 import dao.LoThuocDAO;
 import dto.ThuocTimKiem;
 import entities.ChiTietHoaDon;
+import entities.DonViQuyDoi;
 import entities.HoaDon;
 import entities.KhachHang;
 import entities.LoThuoc;
@@ -31,8 +34,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import javax.swing.*;
+import javax.swing.event.CellEditorListener;
+import javax.swing.event.ChangeEvent;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumn;
 import net.miginfocom.swing.MigLayout;
 import raven.toast.Notifications;
 import utils.Auth;
@@ -43,6 +49,8 @@ public class FormBanHang extends JPanel {
     private JPanel mainPanel;
     private PanelDanhSachHoaDon panelDanhSach;
     private PanelBanHangGiaoDien panelBanHang;
+    private DonViQuyDoiDAO donViQuyDoiDAO = new DonViQuyDoiDAO();
+    private ChiTietBangGiaDAO chiTietBangGiaDAO = new ChiTietBangGiaDAO();
 
     public FormBanHang() {
         init();
@@ -85,7 +93,7 @@ public class FormBanHang extends JPanel {
 
         private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
         private final DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-
+ 
         public PanelDanhSachHoaDon() {
             setLayout(new MigLayout("wrap,fill,insets 20", "[fill]", "[][][grow]"));
 
@@ -288,6 +296,8 @@ public class FormBanHang extends JPanel {
         private LoThuocDAO loThuocDAO = new LoThuocDAO();
         private KhachHangDAO khachHangDAO = new KhachHangDAO();
         private HoaDonDAO hoaDonDAO = new HoaDonDAO();
+        private dao.DonViQuyDoiDAO dvqdDAO = new dao.DonViQuyDoiDAO();
+
         private JLabel lbMaHD;
         private KhachHang currentKhachHang = null;
         private boolean isUpdating = false;
@@ -367,7 +377,6 @@ public class FormBanHang extends JPanel {
             btnTimKH.addActionListener(e -> timKiemKhachHang());
             JButton btnThemKH = new JButton("+");
             btnThemKH.putClientProperty(FlatClientProperties.STYLE, "background:#4CAF50; foreground:#fff; font:bold");
-            btnThemKH.setToolTipText("Thêm khách hàng mới");
             btnThemKH.addActionListener(e -> themKhachHangMoi());
 
             panel.add(new JLabel("SĐT:"));
@@ -422,8 +431,7 @@ public class FormBanHang extends JPanel {
 
                 @Override
                 public String getColumnName(int i) {
-                    String[] cols = {"Mã Thuốc", "Tên Thuốc", "Lô", "HSD", "Tồn", "Giá Bán"};
-                    return cols[i];
+                    return new String[]{"Mã Thuốc", "Tên Thuốc", "Lô", "HSD", "Tồn", "Giá Bán"}[i];
                 }
 
                 @Override
@@ -440,7 +448,7 @@ public class FormBanHang extends JPanel {
                         case 4:
                             return t.getSoLuongTon();
                         case 5:
-                            return t.getGiaBan();
+                            return formatCurrency(t.getGiaBan());
                         default:
                             return null;
                     }
@@ -450,11 +458,22 @@ public class FormBanHang extends JPanel {
             tableModelThuoc = new EventTableModel<>(filterList, tableFormat);
             tableThuoc = new JTable(tableModelThuoc);
 
-            tableThuoc.getColumnModel().getColumn(3).setCellRenderer(new DateRenderer());
-            tableThuoc.getColumnModel().getColumn(5).setCellRenderer(new CurrencyRenderer());
             tableThuoc.putClientProperty(FlatClientProperties.STYLE, "showHorizontalLines:true; rowHeight:30");
             tableThuoc.getTableHeader().putClientProperty(FlatClientProperties.STYLE, "height:35; font:bold");
-
+            tableThuoc.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer(){
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                @Override
+                public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                    super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                    
+                    if (value instanceof java.time.LocalDate) {
+                        setText(((java.time.LocalDate) value).format(formatter));
+                    }
+                    
+                    setHorizontalAlignment(JLabel.CENTER); // Căn giữa cho đẹp
+                    return this;
+                }
+            });
             btnThemVaoGio = new JButton("Thêm vào giỏ");
             btnThemVaoGio.putClientProperty(FlatClientProperties.STYLE, "background:#4CAF50; foreground:#fff; font:bold");
             btnThemVaoGio.addActionListener(e -> themVaoGioHang());
@@ -472,19 +491,40 @@ public class FormBanHang extends JPanel {
             JLabel title = new JLabel("Giỏ hàng");
             title.putClientProperty(FlatClientProperties.STYLE, "font:bold +1");
 
-            String[] cols = {"Mã Lô", "Tên thuốc", "SL", "Giá", "Thành tiền"};
+            String[] cols = {"Mã Lô", "Tên thuốc", "Đơn vị", "SL", "Đơn giá", "Thành tiền", "Hidden_List"};
             modelGioHang = new DefaultTableModel(cols, 0) {
                 @Override
                 public boolean isCellEditable(int row, int col) {
-                    return col == 2;
+                    return col == 2 || col == 3;
                 }
             };
             tableGioHang = new JTable(modelGioHang);
             tableGioHang.putClientProperty(FlatClientProperties.STYLE, "showHorizontalLines:true; rowHeight:30");
             tableGioHang.getTableHeader().putClientProperty(FlatClientProperties.STYLE, "height:35; font:bold");
 
+            tableGioHang.removeColumn(tableGioHang.getColumnModel().getColumn(6));
+
+            UnitCellEditor unitEditor = new UnitCellEditor();
+
+            unitEditor.addCellEditorListener(new CellEditorListener() {
+                @Override
+                public void editingStopped(ChangeEvent e) {
+
+                    int row = tableGioHang.getSelectedRow();
+                    if (row != -1) {
+                        updateGiaKhiDoiDonVi(row);
+                    }
+                }
+
+                @Override
+                public void editingCanceled(ChangeEvent e) {
+                }
+            });
+
+            tableGioHang.getColumnModel().getColumn(2).setCellEditor(unitEditor);
+
             modelGioHang.addTableModelListener(e -> {
-                if (!isUpdating) {
+                if (e.getColumn() == 3) {
                     tinhTongTien();
                 }
             });
@@ -522,7 +562,6 @@ public class FormBanHang extends JPanel {
 
             infoPanel.add(new JLabel("Tổng tiền hàng:"));
             infoPanel.add(lbTongTien);
-
             infoPanel.add(new JLabel("Giảm giá (Điểm):"));
             infoPanel.add(lbGiamGia);
 
@@ -532,6 +571,7 @@ public class FormBanHang extends JPanel {
             pTax.add(txtThueVAT);
             infoPanel.add(pTax);
             infoPanel.add(lbTienThue);
+
             lbMaHD = new JLabel("Loading...");
             lbMaHD.putClientProperty(FlatClientProperties.STYLE, "font:bold; foreground:#2196F3");
             infoPanel.add(new JLabel("Mã hóa đơn:"));
@@ -565,26 +605,238 @@ public class FormBanHang extends JPanel {
             return panel;
         }
 
-        private void generateNewMaHD() {
-            String lastID = hoaDonDAO.getMaxMaHD();
-            String newID = "HD001";
 
-            if (lastID != null && !lastID.isEmpty()) {
-                try {
+        private void updateGiaKhiDoiDonVi(int row) {
+            try {
 
-                    String numberPart = lastID.substring(2);
+                Object valDVT = modelGioHang.getValueAt(row, 2);
+                if (valDVT == null) {
+                    return;
+                }
+                String tenMoi = valDVT.toString();
 
-                    int number = Integer.parseInt(numberPart);
-                    number++;
+                Object valList = modelGioHang.getValueAt(row, 6);
 
-                    newID = String.format("HD%03d", number);
+                if (valList instanceof List) {
+                    List<entities.DonViQuyDoi> list = (List<entities.DonViQuyDoi>) valList;
 
-                } catch (Exception e) {
+                    for (entities.DonViQuyDoi dv : list) {
+                        if (dv.getTenDonVi().equals(tenMoi)) {
 
-                    e.printStackTrace();
+                            modelGioHang.setValueAt(formatCurrency(dv.getGiaBan()), row, 4);
+
+                            tinhTongTien();
+                            return;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        private void themVaoGioHang() {
+            int row = tableThuoc.getSelectedRow();
+            if (row == -1) {
+                return;
+            }
+            ThuocTimKiem t = filterList.get(row);
+
+            List<entities.DonViQuyDoi> listDVT = dvqdDAO.getAllDonViByMaThuoc(t.getMaThuoc());
+            listDVT.removeIf(dv -> dv.getGiaBan() <= 0);
+            if (listDVT.isEmpty()) {
+
+                listDVT.add(new entities.DonViQuyDoi(0, t.getMaThuoc(), t.getDonViTinh(), 1, t.getGiaBan(), true));
+            }
+
+            entities.DonViQuyDoi baseUnit = listDVT.get(0);
+            for (entities.DonViQuyDoi dv : listDVT) {
+                if (dv.getGiaTriQuyDoi() == 1) {
+                    baseUnit = dv;
+                    break;
                 }
             }
 
+            String slStr = JOptionPane.showInputDialog(this,
+                    "Số lượng bán (" + baseUnit.getTenDonVi() + ") - Tồn Lô: " + t.getSoLuongTon(), "1");
+            try {
+                if (slStr == null) {
+                    return;
+                }
+                int sl = Integer.parseInt(slStr);
+                if (sl <= 0 || sl > t.getSoLuongTon()) {
+                    Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Số lượng không hợp lệ hoặc quá tồn!");
+                    return;
+                }
+
+                boolean exists = false;
+                for (int i = 0; i < modelGioHang.getRowCount(); i++) {
+
+                    if (modelGioHang.getValueAt(i, 0).equals(t.getMaLo())
+                            && modelGioHang.getValueAt(i, 2).equals(baseUnit.getTenDonVi())) {
+
+                        int slOld = Integer.parseInt(modelGioHang.getValueAt(i, 3).toString());
+                        int slNew = slOld + sl;
+                        if (slNew > t.getSoLuongTon()) {
+                            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Vượt quá tồn kho!");
+                            return;
+                        }
+                        modelGioHang.setValueAt(slNew, i, 3);
+                        modelGioHang.setValueAt(formatCurrency(slNew * baseUnit.getGiaBan()), i, 5);
+                        exists = true;
+                        break;
+                    }
+                }
+
+                if (!exists) {
+
+                    modelGioHang.addRow(new Object[]{
+                        t.getMaLo(),
+                        t.getTenThuoc(),
+                        baseUnit.getTenDonVi(),
+                        sl,
+                        formatCurrency(baseUnit.getGiaBan()),
+                        formatCurrency(sl * baseUnit.getGiaBan()),
+                        listDVT
+                    });
+                }
+                tinhTongTien();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        private void xoaKhoiGioHang() {
+            int row = tableGioHang.getSelectedRow();
+            if (row != -1) {
+
+                if (tableGioHang.isEditing()) {
+                    tableGioHang.getCellEditor().stopCellEditing();
+                }
+                modelGioHang.removeRow(row);
+                tinhTongTien();
+            }
+        }
+
+        private void tinhTongTien() {
+            isUpdating = true;
+            try {
+                tongTien = 0;
+                for (int i = 0; i < modelGioHang.getRowCount(); i++) {
+                    try {
+                        int sl = Integer.parseInt(modelGioHang.getValueAt(i, 3).toString());
+                        String giaTxt = modelGioHang.getValueAt(i, 4).toString();
+                        double gia = parseMoney(giaTxt);
+
+                        double thanhTien = sl * gia;
+                        modelGioHang.setValueAt(formatCurrency(thanhTien), i, 5);
+                        tongTien += thanhTien;
+                    } catch (Exception e) {
+                    }
+                }
+
+                tienGiamGia = 0;
+                if (currentKhachHang != null && chkDungDiem.isSelected()) {
+                    tienGiamGia = currentKhachHang.getDiemTichLuy() * 100;
+                    if (tienGiamGia > tongTien) {
+                        tienGiamGia = tongTien;
+                    }
+                }
+
+                double tienSauGiam = tongTien - tienGiamGia;
+                thueVAT = tienSauGiam * (DEFAULT_VAT_RATE / 100);
+                double thanhTienCuoi = tienSauGiam + thueVAT;
+
+                lbTongTien.setText(formatCurrency(tongTien));
+                lbGiamGia.setText(formatCurrency(tienGiamGia));
+                lbTienThue.setText(formatCurrency(thueVAT));
+                lbThanhTien.setText(formatCurrency(thanhTienCuoi));
+            } finally {
+                isUpdating = false;
+            }
+        }
+
+        private void thanhToan() {
+            if (modelGioHang.getRowCount() == 0) {
+                Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Giỏ hàng đang trống!");
+                return;
+            }
+
+            if (tableGioHang.isEditing()) {
+                tableGioHang.getCellEditor().stopCellEditing();
+            }
+
+            int confirm = JOptionPane.showConfirmDialog(this, "Thanh toán đơn hàng " + lbMaHD.getText() + "?", "Xác nhận", JOptionPane.YES_NO_OPTION);
+            if (confirm != JOptionPane.YES_OPTION) {
+                return;
+            }
+
+            try {
+                HoaDon hd = new HoaDon();
+                hd.setMaHD(lbMaHD.getText());
+                hd.setNgayTao(java.time.LocalDateTime.now());
+                hd.setNhanVien(Auth.isLogin() ? Auth.user : new NhanVien("NV001"));
+                hd.setKhachHang(currentKhachHang);
+
+                hd.setTongTien(parseMoney(lbTongTien.getText()));
+                hd.setThue(parseMoney(lbTienThue.getText()));
+                hd.setGiamGia(parseMoney(lbGiamGia.getText()));
+                hd.setHinhThucTT(cbHinhThucTT.getSelectedItem().toString());
+                hd.setGhiChu("Bán hàng tại quầy");
+
+                List<ChiTietHoaDon> listCT = new java.util.ArrayList<>();
+                for (int i = 0; i < modelGioHang.getRowCount(); i++) {
+                    String maLo = modelGioHang.getValueAt(i, 0).toString();
+                    String tenThuoc = modelGioHang.getValueAt(i, 1).toString();
+                    String donViTinh = modelGioHang.getValueAt(i, 2).toString();
+                    int soLuong = Integer.parseInt(modelGioHang.getValueAt(i, 3).toString());
+                    double donGia = parseMoney(modelGioHang.getValueAt(i, 4).toString());
+                    double thanhTien = parseMoney(modelGioHang.getValueAt(i, 5).toString());
+
+                    Thuoc t = new Thuoc("");
+                    String maThuoc = loThuocDAO.getMaThuocByMaLo(maLo);
+                    t.setMaThuoc(maThuoc);
+                    LoThuoc lo = new LoThuoc(maLo, null, null, null, 0, "", false);
+
+                    ChiTietHoaDon ct = new ChiTietHoaDon(hd, t, lo, soLuong, donGia, thanhTien, donViTinh);
+                    ct.setDonViTinh(donViTinh);
+
+                    listCT.add(ct);
+                }
+
+                if (hoaDonDAO.taoHoaDon(hd, listCT)) {
+                    if (currentKhachHang != null) {
+                        if (chkDungDiem.isSelected()) {
+                            khachHangDAO.truDiem(currentKhachHang.getMaKH(), currentKhachHang.getDiemTichLuy());
+                        }
+                        int diemMoi = (int) ((hd.getTongTien() - hd.getGiamGia()) / 10000);
+                        if (diemMoi > 0) {
+                            khachHangDAO.congDiem(currentKhachHang.getMaKH(), diemMoi);
+                        }
+                    }
+                    Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Thanh toán thành công!");
+                    resetForm();
+                } else {
+                    Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi khi lưu hóa đơn!");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi dữ liệu!");
+            }
+        }
+
+        private void generateNewMaHD() {
+            String lastID = hoaDonDAO.getMaxMaHD();
+            String newID = "HD001";
+            if (lastID != null && !lastID.isEmpty()) {
+                try {
+                    String numberPart = lastID.substring(2);
+                    int number = Integer.parseInt(numberPart);
+                    number++;
+                    newID = String.format("HD%03d", number);
+                } catch (Exception e) {
+                }
+            }
             lbMaHD.setText(newID);
         }
 
@@ -599,14 +851,12 @@ public class FormBanHang extends JPanel {
                 setKhachVangLai();
                 return;
             }
-
             KhachHang kh = khachHangDAO.getKhachHangBySDT(sdt);
             if (kh != null) {
                 currentKhachHang = kh;
                 txtMaKH.setText(kh.getMaKH());
                 txtTenKH.setText(kh.getTenKH());
                 lbDiemHienCo.setText(kh.getDiemTichLuy() + " điểm");
-
                 if (kh.getDiemTichLuy() > 0) {
                     chkDungDiem.setEnabled(true);
                     chkDungDiem.setText("Dùng " + kh.getDiemTichLuy() + " điểm (-" + formatCurrency(kh.getDiemTichLuy() * 100) + ")");
@@ -661,198 +911,51 @@ public class FormBanHang extends JPanel {
             }
         }
 
-        private void themVaoGioHang() {
-            int row = tableThuoc.getSelectedRow();
-            if (row == -1) {
-                return;
-            }
-            ThuocTimKiem t = filterList.get(row);
-
-            String slStr = JOptionPane.showInputDialog(this, "Số lượng bán (Tồn " + t.getSoLuongTon() + "):", "1");
-            try {
-                int sl = Integer.parseInt(slStr);
-                if (sl <= 0 || sl > t.getSoLuongTon()) {
-                    Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Số lượng không hợp lệ!");
-                    return;
-                }
-
-                boolean exists = false;
-                for (int i = 0; i < modelGioHang.getRowCount(); i++) {
-                    if (modelGioHang.getValueAt(i, 0).equals(t.getMaLo())) {
-                        int slOld = Integer.parseInt(modelGioHang.getValueAt(i, 2).toString());
-                        int slNew = slOld + sl;
-                        if (slNew > t.getSoLuongTon()) {
-                            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Vượt quá tồn kho!");
-                            return;
-                        }
-                        modelGioHang.setValueAt(slNew, i, 2);
-                        modelGioHang.setValueAt(formatCurrency(slNew * t.getGiaBan()), i, 4);
-                        exists = true;
-                        break;
-                    }
-                }
-
-                if (!exists) {
-                    modelGioHang.addRow(new Object[]{t.getMaLo(), t.getTenThuoc(), sl, formatCurrency(t.getGiaBan()), formatCurrency(sl * t.getGiaBan())});
-                }
-                tinhTongTien();
-            } catch (Exception e) {
-            }
-        }
-
-        private void xoaKhoiGioHang() {
-            int row = tableGioHang.getSelectedRow();
-            if (row != -1) {
-                modelGioHang.removeRow(row);
-                tinhTongTien();
-            }
-        }
-
-        private void tinhTongTien() {
-            isUpdating = true;
-            try {
-                tongTien = 0;
-                for (int i = 0; i < modelGioHang.getRowCount(); i++) {
-                    try {
-                        int sl = Integer.parseInt(modelGioHang.getValueAt(i, 2).toString());
-                        String giaTxt = modelGioHang.getValueAt(i, 3).toString().replace(".", "").replace(" ₫", "");
-                        double gia = Double.parseDouble(giaTxt);
-                        double thanhTien = sl * gia;
-                        modelGioHang.setValueAt(formatCurrency(thanhTien), i, 4);
-                        tongTien += thanhTien;
-                    } catch (Exception e) {
-                    }
-                }
-
-                tienGiamGia = 0;
-                if (currentKhachHang != null && chkDungDiem.isSelected()) {
-                    tienGiamGia = currentKhachHang.getDiemTichLuy() * 100;
-                    if (tienGiamGia > tongTien) {
-                        tienGiamGia = tongTien;
-                    }
-                }
-
-                double tienSauGiam = tongTien - tienGiamGia;
-                thueVAT = tienSauGiam * (DEFAULT_VAT_RATE / 100);
-                double thanhTienCuoi = tienSauGiam + thueVAT;
-
-                lbTongTien.setText(formatCurrency(tongTien));
-                lbGiamGia.setText(formatCurrency(tienGiamGia));
-                lbTienThue.setText(formatCurrency(thueVAT));
-                lbThanhTien.setText(formatCurrency(thanhTienCuoi));
-            } finally {
-                isUpdating = false;
-            }
-        }
-
-        private void thanhToan() {
-            if (modelGioHang.getRowCount() == 0) {
-                Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Giỏ hàng đang trống!");
-                return;
-            }
-
-            int confirm = JOptionPane.showConfirmDialog(this, "Thanh toán đơn hàng " + lbMaHD.getText() + "?", "Xác nhận", JOptionPane.YES_NO_OPTION);
-            if (confirm != JOptionPane.YES_OPTION) {
-                return;
-            }
-
-            try {
-
-                HoaDon hd = new HoaDon();
-                hd.setMaHD(lbMaHD.getText());
-                hd.setNgayTao(java.time.LocalDateTime.now());
-                if (Auth.isLogin()) {
-                    hd.setNhanVien(Auth.user);
-                } else {
-                    hd.setNhanVien(new NhanVien("NV001"));
-                }
-                hd.setKhachHang(currentKhachHang);
-
-                String tongTienStr = lbTongTien.getText().replace(".", "").replace(" ₫", "");
-                String thueStr = lbTienThue.getText().replace(".", "").replace(" ₫", "");
-                String giamGiaStr = lbGiamGia.getText().replace(".", "").replace(" ₫", "");
-
-                hd.setTongTien(Double.parseDouble(tongTienStr));
-                hd.setThue(Double.parseDouble(thueStr));
-                hd.setGiamGia(Double.parseDouble(giamGiaStr));
-                hd.setHinhThucTT(cbHinhThucTT.getSelectedItem().toString());
-                hd.setGhiChu("Bán hàng tại quầy");
-
-                List<ChiTietHoaDon> listCT = new java.util.ArrayList<>();
-                for (int i = 0; i < modelGioHang.getRowCount(); i++) {
-                    String maLo = modelGioHang.getValueAt(i, 0).toString();
-                    String tenThuoc = modelGioHang.getValueAt(i, 1).toString();
-                    int soLuong = Integer.parseInt(modelGioHang.getValueAt(i, 2).toString());
-                    double donGia = Double.parseDouble(modelGioHang.getValueAt(i, 3).toString().replace(".", "").replace(" ₫", ""));
-                    double thanhTien = Double.parseDouble(modelGioHang.getValueAt(i, 4).toString().replace(".", "").replace(" ₫", ""));
-
-                    Thuoc t = new Thuoc("");
-
-                    LoThuoc lo = new LoThuoc(maLo, null, null, null, 0, "", false);
-
-                    String maThuoc = loThuocDAO.getMaThuocByMaLo(maLo);
-                    t.setMaThuoc(maThuoc);
-
-                    ChiTietHoaDon ct = new ChiTietHoaDon(hd, t, lo, soLuong, donGia, thanhTien);
-                    listCT.add(ct);
-                }
-
-                if (hoaDonDAO.taoHoaDon(hd, listCT)) {
-
-                    if (currentKhachHang != null) {
-
-                        if (chkDungDiem.isSelected()) {
-                            khachHangDAO.truDiem(currentKhachHang.getMaKH(), currentKhachHang.getDiemTichLuy());
-                        }
-
-                        int diemMoi = (int) ((hd.getTongTien() - hd.getGiamGia()) / 10000);
-                        if (diemMoi > 0) {
-                            khachHangDAO.congDiem(currentKhachHang.getMaKH(), diemMoi);
-                        }
-                    }
-
-                    Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Thanh toán thành công!");
-                    resetForm();
-                } else {
-                    Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi khi lưu hóa đơn!");
-                }
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi dữ liệu!");
-            }
-        }
-
         private String formatCurrency(double amount) {
             return NumberFormat.getInstance(new Locale("vi", "VN")).format(amount) + " ₫";
         }
-    }
 
-    private class DateRenderer extends DefaultTableCellRenderer {
-
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
-        @Override
-        public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int r, int c) {
-            super.getTableCellRendererComponent(t, v, s, f, r, c);
-            if (v instanceof LocalDate) {
-                setText(((LocalDate) v).format(df));
+        private double parseMoney(String text) {
+            try {
+                if (text == null) {
+                    return 0;
+                }
+                return Double.parseDouble(text.replace(".", "").replace(",", "").replace(" ₫", "").trim());
+            } catch (Exception e) {
+                return 0;
             }
-            setHorizontalAlignment(JLabel.CENTER);
-            return this;
         }
     }
 
-    private class CurrencyRenderer extends DefaultTableCellRenderer {
+    private class UnitCellEditor extends javax.swing.DefaultCellEditor {
+
+        private javax.swing.JComboBox<String> comboBox;
+
+        public UnitCellEditor() {
+            super(new javax.swing.JComboBox<>());
+            this.comboBox = (javax.swing.JComboBox<String>) getComponent();
+        }
 
         @Override
-        public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int r, int c) {
-            super.getTableCellRendererComponent(t, v, s, f, r, c);
-            if (v instanceof Double) {
-                setText(NumberFormat.getInstance(new Locale("vi", "VN")).format(v) + " ₫");
+        public java.awt.Component getTableCellEditorComponent(javax.swing.JTable table, Object value, boolean isSelected, int row, int column) {
+            comboBox.removeAllItems();
+
+            int modelRow = table.convertRowIndexToModel(row);
+            Object valList = table.getModel().getValueAt(modelRow, 6);
+
+            if (valList instanceof java.util.List) {
+                java.util.List<entities.DonViQuyDoi> list = (java.util.List<entities.DonViQuyDoi>) valList;
+                for (entities.DonViQuyDoi dv : list) {
+                    comboBox.addItem(dv.getTenDonVi());
+                }
             }
-            setHorizontalAlignment(JLabel.RIGHT);
-            return this;
+
+            if (comboBox.getItemCount() == 0) {
+                comboBox.addItem(value != null ? value.toString() : "");
+            }
+
+            comboBox.setSelectedItem(value);
+            return super.getTableCellEditorComponent(table, value, isSelected, row, column);
         }
     }
 }

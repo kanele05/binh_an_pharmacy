@@ -13,6 +13,7 @@ import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class LoThuocDAO {
@@ -106,9 +107,11 @@ public class LoThuocDAO {
 
         String sqlKho = "SELECT * FROM vw_ThuocBanHang ORDER BY maThuoc, hanSuDung ASC";
 
-        String sqlDatHang = "SELECT ct.maThuoc, SUM(ct.soLuong) as dangGiu "
+        String sqlDatHang = "SELECT ct.maThuoc, "
+                + "SUM(ct.soLuong * ISNULL(dv.giaTriQuyDoi, 1)) as dangGiu "
                 + "FROM ChiTietDonDat ct "
                 + "JOIN DonDatHang d ON ct.maDonDat = d.maDonDat "
+                + "LEFT JOIN DonViQuyDoi dv ON (ct.maThuoc = dv.maThuoc AND ct.donViTinh = dv.tenDonVi) " // Join bảng quy đổi
                 + "WHERE d.trangThai = N'Đang giữ hàng' "
                 + "GROUP BY ct.maThuoc";
 
@@ -155,9 +158,11 @@ public class LoThuocDAO {
                             rs.getString("tenThuoc"),
                             rs.getString("maLo"),
                             rs.getDate("hanSuDung").toLocalDate(),
-                            tonKhaDung,
-                            rs.getString("donViTinh"),
-                            rs.getDouble("giaBan")
+                            tonKhaDung, // Tồn kho thực tế (đơn vị gốc)
+                            rs.getString("donViTinh"), // Đơn vị bán (Vỉ/Hộp)
+//                            rs.getString("donViCoBan"), // Đơn vị gốc (Viên)
+                            rs.getInt("giaTriQuyDoi"), // Tỷ lệ quy đổi
+                            rs.getDouble("giaBan") // Giá bán của đơn vị này
                     ));
                 }
             }
@@ -181,5 +186,31 @@ public class LoThuocDAO {
         } catch (Exception e) {
         }
         return maThuoc;
+    }
+
+    public List<entities.LoThuoc> getDanhSachLoKhaDung(String maThuoc) {
+        java.util.List<entities.LoThuoc> list = new java.util.ArrayList<>();
+        String sql = "SELECT maLo, soLuongTon, hanSuDung FROM LoThuoc "
+                + "WHERE maThuoc = ? AND soLuongTon > 0 AND trangThai != N'Đã hết hạn' "
+                + "ORDER BY hanSuDung ASC";
+        try {
+            java.sql.Connection con = connectDB.ConnectDB.getConnection();
+            java.sql.PreparedStatement ps = con.prepareStatement(sql);
+            ps.setString(1, maThuoc);
+            java.sql.ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                entities.LoThuoc lo = new entities.LoThuoc(
+                        rs.getString("maLo"),
+                        null, null,
+                        rs.getDate("hanSuDung").toLocalDate(),
+                        rs.getInt("soLuongTon"),
+                        "", false
+                );
+                list.add(lo);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
     }
 }

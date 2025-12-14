@@ -67,7 +67,9 @@ public class HoaDonDAO {
     public boolean taoHoaDon(HoaDon hd, List<ChiTietHoaDon> listCTHD) {
         Connection con = null;
         PreparedStatement stmtHD = null;
+        PreparedStatement stmtCT = null;
         PreparedStatement stmtKho = null;
+        PreparedStatement stmtTyLe = null;
 
         try {
             con = ConnectDB.getConnection();
@@ -77,14 +79,13 @@ public class HoaDonDAO {
                     + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             stmtHD = con.prepareStatement(sqlHD);
             stmtHD.setString(1, hd.getMaHD());
-            stmtHD.setTimestamp(2, Timestamp.valueOf(hd.getNgayTao()));
+            stmtHD.setTimestamp(2, java.sql.Timestamp.valueOf(hd.getNgayTao()));
             stmtHD.setDouble(3, hd.getTongTien());
             stmtHD.setDouble(4, hd.getGiamGia());
             stmtHD.setDouble(5, hd.getThue());
             stmtHD.setString(6, hd.getHinhThucTT());
             stmtHD.setString(7, hd.getGhiChu());
             stmtHD.setString(8, hd.getNhanVien().getMaNV());
-
             if (hd.getKhachHang() != null) {
                 stmtHD.setString(9, hd.getKhachHang().getMaKH());
             } else {
@@ -92,14 +93,40 @@ public class HoaDonDAO {
             }
             stmtHD.executeUpdate();
 
+            String sqlCT = "INSERT INTO ChiTietHoaDon (maHD, maThuoc, maLo, soLuong, donGia, thanhTien, donViTinh) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            stmtCT = con.prepareStatement(sqlCT);
+
             String sqlUpdateKho = "UPDATE LoThuoc SET soLuongTon = soLuongTon - ? WHERE maLo = ?";
             stmtKho = con.prepareStatement(sqlUpdateKho);
 
+            String sqlGetTyLe = "SELECT giaTriQuyDoi FROM DonViQuyDoi WHERE maThuoc = ? AND tenDonVi = ?";
+            stmtTyLe = con.prepareStatement(sqlGetTyLe);
+
             for (ChiTietHoaDon ct : listCTHD) {
 
-                cthdDAO.insert(con, ct);
+                stmtCT.setString(1, hd.getMaHD());
+                stmtCT.setString(2, ct.getThuoc().getMaThuoc());
+                stmtCT.setString(3, ct.getLoThuoc().getMaLo());
+                stmtCT.setInt(4, ct.getSoLuong());
+                stmtCT.setDouble(5, ct.getDonGia());
+                stmtCT.setDouble(6, ct.getThanhTien());
+                stmtCT.setString(7, ct.getDonViTinh());
+                stmtCT.executeUpdate();
 
-                stmtKho.setInt(1, ct.getSoLuong());
+                int tyLeQuyDoi = 1;
+
+                stmtTyLe.setString(1, ct.getThuoc().getMaThuoc());
+                stmtTyLe.setString(2, ct.getDonViTinh());
+                ResultSet rsTyLe = stmtTyLe.executeQuery();
+
+                if (rsTyLe.next()) {
+                    tyLeQuyDoi = rsTyLe.getInt("giaTriQuyDoi");
+                }
+                rsTyLe.close();
+
+                int soLuongTruKho = ct.getSoLuong() * tyLeQuyDoi;
+
+                stmtKho.setInt(1, soLuongTruKho);
                 stmtKho.setString(2, ct.getLoThuoc().getMaLo());
                 stmtKho.executeUpdate();
             }
@@ -118,17 +145,23 @@ public class HoaDonDAO {
             }
         } finally {
             try {
-                if (con != null) {
-                    con.setAutoCommit(true);
-                    con.close();
-                }
                 if (stmtHD != null) {
                     stmtHD.close();
+                }
+                if (stmtCT != null) {
+                    stmtCT.close();
                 }
                 if (stmtKho != null) {
                     stmtKho.close();
                 }
-            } catch (SQLException e) {
+                if (stmtTyLe != null) {
+                    stmtTyLe.close();
+                }
+                if (con != null) {
+                    con.setAutoCommit(true);
+                    con.close();
+                }
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
@@ -137,7 +170,7 @@ public class HoaDonDAO {
 
     public String getMaxMaHD() {
         String maxID = null;
-        String sql = "SELECT TOP 1 maHD FROM HoaDon ORDER BY maHD DESC"; // Lấy mã lớn nhất
+        String sql = "SELECT TOP 1 maHD FROM HoaDon ORDER BY maHD DESC";
         try {
             ConnectDB.getInstance();
             Connection con = ConnectDB.getConnection();
@@ -150,5 +183,75 @@ public class HoaDonDAO {
             e.printStackTrace();
         }
         return maxID;
+    }
+
+    public boolean taoHoaDonTuDonDat(entities.HoaDon hd, java.util.List<entities.ChiTietHoaDon> listCTHD, String maDonDat) {
+        java.sql.Connection con = null;
+        java.sql.PreparedStatement stmtHD = null;
+        java.sql.PreparedStatement stmtKho = null;
+        java.sql.PreparedStatement stmtUpdateDon = null;
+        dao.ChiTietHoaDonDAO cthdDAO = new dao.ChiTietHoaDonDAO();
+
+        try {
+            con = connectDB.ConnectDB.getConnection();
+            con.setAutoCommit(false);
+
+            String sqlHD = "INSERT INTO HoaDon (maHD, ngayTao, tongTien, giamGia, thue, hinhThucTT, ghiChu, maNV, maKH) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            stmtHD = con.prepareStatement(sqlHD);
+            stmtHD.setString(1, hd.getMaHD());
+            stmtHD.setTimestamp(2, java.sql.Timestamp.valueOf(hd.getNgayTao()));
+            stmtHD.setDouble(3, hd.getTongTien());
+            stmtHD.setDouble(4, hd.getGiamGia());
+            stmtHD.setDouble(5, hd.getThue());
+            stmtHD.setString(6, hd.getHinhThucTT());
+            stmtHD.setString(7, "Xuất từ đơn đặt: " + maDonDat);
+            stmtHD.setString(8, hd.getNhanVien().getMaNV());
+            if (hd.getKhachHang() != null) {
+                stmtHD.setString(9, hd.getKhachHang().getMaKH());
+            } else {
+                stmtHD.setNull(9, java.sql.Types.NVARCHAR);
+            }
+            stmtHD.executeUpdate();
+
+            String sqlUpdateKho = "UPDATE LoThuoc SET soLuongTon = soLuongTon - ? WHERE maLo = ?";
+            stmtKho = con.prepareStatement(sqlUpdateKho);
+
+            for (entities.ChiTietHoaDon ct : listCTHD) {
+                cthdDAO.insert(con, ct);
+
+                stmtKho.setInt(1, ct.getSoLuong());
+                stmtKho.setString(2, ct.getLoThuoc().getMaLo());
+                stmtKho.executeUpdate();
+            }
+
+            String sqlUpdateDon = "UPDATE DonDatHang SET trangThai = N'Đã lấy hàng' WHERE maDonDat = ?";
+            stmtUpdateDon = con.prepareStatement(sqlUpdateDon);
+            stmtUpdateDon.setString(1, maDonDat);
+            stmtUpdateDon.executeUpdate();
+
+            con.commit();
+            return true;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                if (con != null) {
+                    con.rollback();
+                }
+            } catch (java.sql.SQLException ex) {
+                ex.printStackTrace();
+            }
+        } finally {
+
+            try {
+                if (con != null) {
+                    con.setAutoCommit(true);
+                }
+                con.close();
+            } catch (Exception e) {
+            }
+        }
+        return false;
     }
 }

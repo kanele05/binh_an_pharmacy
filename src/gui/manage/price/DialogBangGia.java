@@ -238,7 +238,7 @@ public class DialogBangGia extends JDialog {
         if (maBG == null) {
             list = ctDAO.getChiTietBangGiaHienTai();
         } else {
-            list = ctDAO.getChiTietByMaBG(maBG);
+            list = ctDAO.getChiTietFullByMaBG(maBG);
         }
 
         for (Object[] row : list) {

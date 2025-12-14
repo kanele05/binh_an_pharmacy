@@ -261,13 +261,24 @@ public class FormDatThuoc extends javax.swing.JPanel {
     private void actionKhachDenLay() {
         int row = table.getSelectedRow();
         if (row == -1) {
-            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Chọn phiếu giữ hàng khách muốn lấy!");
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Vui lòng chọn phiếu giữ hàng!");
             return;
         }
 
         DonDatHang don = compositeFilteredList.get(row);
 
-        JOptionPane.showMessageDialog(this, "Chức năng xử lý đơn: " + don.getMaDonDat() + " đang phát triển.");
+        if (!don.getTrangThai().equalsIgnoreCase("Đang giữ hàng")) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, "Chỉ xử lý được đơn đang giữ hàng!");
+            return;
+        }
+
+        DialogThanhToanDonDat dialog = new DialogThanhToanDonDat(this, don);
+        dialog.packAndCenter();
+        dialog.setVisible(true);
+
+        if (dialog.isSuccess()) {
+            loadData();
+        }
     }
 
     @SuppressWarnings("unchecked")

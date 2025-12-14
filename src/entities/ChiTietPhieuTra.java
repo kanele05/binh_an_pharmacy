@@ -15,14 +15,16 @@ public class ChiTietPhieuTra {
     private int soLuongTra;
     private double donGiaTra;
     private double thanhTienHoanTra;
+    private String donViTinh;
 
-    public ChiTietPhieuTra(PhieuTraHang phieuTra, Thuoc thuoc, LoThuoc loThuoc, int soLuongTra, double donGiaTra, double thanhTienHoanTra) {
+    public ChiTietPhieuTra(PhieuTraHang phieuTra, Thuoc thuoc, LoThuoc loThuoc, int soLuongTra, double donGiaTra, double thanhTienHoanTra, String donViTinh) {
         this.phieuTra = phieuTra;
         this.thuoc = thuoc;
         this.loThuoc = loThuoc;
         this.soLuongTra = soLuongTra;
         this.donGiaTra = donGiaTra;
         this.thanhTienHoanTra = thanhTienHoanTra;
+        this.donViTinh = donViTinh;
     }
 
     public PhieuTraHang getPhieuTra() {
@@ -73,9 +75,17 @@ public class ChiTietPhieuTra {
         this.thanhTienHoanTra = thanhTienHoanTra;
     }
 
+    public String getDonViTinh() {
+        return donViTinh;
+    }
+
+    public void setDonViTinh(String donViTinh) {
+        this.donViTinh = donViTinh;
+    }
+
     @Override
     public String toString() {
-        return "ChiTietPhieuTra{" + "phieuTra=" + phieuTra + ", thuoc=" + thuoc + ", loThuoc=" + loThuoc + ", soLuongTra=" + soLuongTra + ", donGiaTra=" + donGiaTra + ", thanhTienHoanTra=" + thanhTienHoanTra + '}';
+        return "ChiTietPhieuTra{" + "phieuTra=" + phieuTra + ", thuoc=" + thuoc + ", loThuoc=" + loThuoc + ", soLuongTra=" + soLuongTra + ", donGiaTra=" + donGiaTra + ", thanhTienHoanTra=" + thanhTienHoanTra + ", donViTinh=" + donViTinh + '}';
     }
     
 }

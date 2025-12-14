@@ -12,15 +12,15 @@ public class Thuoc {
     private String maThuoc;
     private String tenThuoc;
     private String hoatChat;
-    private String donViTinh;
+    private String donViCoBan;
     private boolean trangThai;
     private NhomThuoc nhomThuoc;
 
-    public Thuoc(String maThuoc, String tenThuoc, String hoatChat, String donViTinh, boolean trangThai, NhomThuoc nhomThuoc) {
+    public Thuoc(String maThuoc, String tenThuoc, String hoatChat, String donViCoBan, boolean trangThai, NhomThuoc nhomThuoc) {
         this.maThuoc = maThuoc;
         this.tenThuoc = tenThuoc;
         this.hoatChat = hoatChat;
-        this.donViTinh = donViTinh;
+        this.donViCoBan = donViCoBan;
         this.trangThai = trangThai;
         this.nhomThuoc = nhomThuoc;
     }
@@ -54,11 +54,11 @@ public class Thuoc {
     }
 
     public String getDonViTinh() {
-        return donViTinh;
+        return donViCoBan;
     }
 
-    public void setDonViTinh(String donViTinh) {
-        this.donViTinh = donViTinh;
+    public void setDonViTinh(String donViCoBan) {
+        this.donViCoBan = donViCoBan;
     }
 
     public boolean isTrangThai() {
@@ -79,7 +79,7 @@ public class Thuoc {
 
     @Override
     public String toString() {
-        return "Thuoc{" + "maThuoc=" + maThuoc + ", tenThuoc=" + tenThuoc + ", hoatChat=" + hoatChat + ", donViTinh=" + donViTinh + ", trangThai=" + trangThai + ", nhomThuoc=" + nhomThuoc + '}';
+        return "Thuoc{" + "maThuoc=" + maThuoc + ", tenThuoc=" + tenThuoc + ", hoatChat=" + hoatChat + ", donViCoBan=" + donViCoBan + ", trangThai=" + trangThai + ", nhomThuoc=" + nhomThuoc + '}';
     }
     
     

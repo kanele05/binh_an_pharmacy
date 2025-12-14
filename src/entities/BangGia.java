@@ -27,6 +27,10 @@ public class BangGia {
         this.trangThai = trangThai;
     }
 
+    public BangGia(String maBG) {
+        this.maBG = maBG;
+    }
+    
     public String getMaBG() {
         return maBG;
     }

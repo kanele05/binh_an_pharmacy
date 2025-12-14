@@ -33,6 +33,9 @@ public class DonDatHang {
         this.khachHang = khachHang;
     }
 
+    public DonDatHang() {
+    }
+    
     public String getMaDonDat() {
         return maDonDat;
     }

@@ -18,8 +18,9 @@ public class ChiTietPhieuNhap {
     private int soLuong;
     private double donGia;
     private double thanhTien;
+    private String donViTinh;
 
-    public ChiTietPhieuNhap(PhieuNhap pn, Thuoc thuoc, LoThuoc loThuoc, LocalDate hanSuDung, int soLuong, double donGia, double thanhTien) {
+    public ChiTietPhieuNhap(PhieuNhap pn, Thuoc thuoc, LoThuoc loThuoc, LocalDate hanSuDung, int soLuong, double donGia, double thanhTien, String donViTinh) {
         this.pn = pn;
         this.thuoc = thuoc;
         this.loThuoc = loThuoc;
@@ -27,6 +28,7 @@ public class ChiTietPhieuNhap {
         this.soLuong = soLuong;
         this.donGia = donGia;
         this.thanhTien = thanhTien;
+        this.donViTinh = donViTinh;
     }
 
     public PhieuNhap getPn() {
@@ -85,9 +87,18 @@ public class ChiTietPhieuNhap {
         this.thanhTien = thanhTien;
     }
 
+    public String getDonViTinh() {
+        return donViTinh;
+    }
+
+    public void setDonViTinh(String donViTinh) {
+        this.donViTinh = donViTinh;
+    }
+
     @Override
     public String toString() {
-        return "ChiTietPhieuNhap{" + "pn=" + pn + ", thuoc=" + thuoc + ", loThuoc=" + loThuoc + ", hanSuDung=" + hanSuDung + ", soLuong=" + soLuong + ", donGia=" + donGia + ", thanhTien=" + thanhTien + '}';
+        return "ChiTietPhieuNhap{" + "pn=" + pn + ", thuoc=" + thuoc + ", loThuoc=" + loThuoc + ", hanSuDung=" + hanSuDung + ", soLuong=" + soLuong + ", donGia=" + donGia + ", thanhTien=" + thanhTien + ", donViTinh=" + donViTinh + '}';
     }
+    
     
 }

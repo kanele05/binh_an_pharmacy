@@ -51,7 +51,7 @@ public class DialogChiTietHoaDon extends JDialog {
 
         add(pInfo, "gapbottom 10");
 
-        String[] cols = {"STT", "Tên Thuốc", "Lô", "Đơn Giá", "SL", "Thành Tiền"};
+        String[] cols = {"STT", "Tên Thuốc", "Lô", "Đơn Vị", "Đơn Giá", "SL", "Thành Tiền"};
 
         tableModel = new DefaultTableModel(cols, 0) {
             @Override
@@ -71,9 +71,10 @@ public class DialogChiTietHoaDon extends JDialog {
         table.getColumnModel().getColumn(0).setCellRenderer(center);
         table.getColumnModel().getColumn(1).setPreferredWidth(200);
         table.getColumnModel().getColumn(2).setCellRenderer(center);
-        table.getColumnModel().getColumn(3).setCellRenderer(right);
-        table.getColumnModel().getColumn(4).setCellRenderer(center);
-        table.getColumnModel().getColumn(5).setCellRenderer(right);
+        table.getColumnModel().getColumn(3).setCellRenderer(center);
+        table.getColumnModel().getColumn(4).setCellRenderer(right);
+        table.getColumnModel().getColumn(5).setCellRenderer(center);
+        table.getColumnModel().getColumn(6).setCellRenderer(right);
 
         JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(BorderFactory.createLineBorder(java.awt.Color.LIGHT_GRAY));
@@ -132,6 +133,7 @@ public class DialogChiTietHoaDon extends JDialog {
                 stt++,
                 ct.getThuoc().getTenThuoc(),
                 ct.getLoThuoc().getMaLo(),
+                ct.getDonViTinh(),
                 currencyFormat.format(ct.getDonGia()),
                 ct.getSoLuong(),
                 currencyFormat.format(ct.getThanhTien())

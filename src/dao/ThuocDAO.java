@@ -32,7 +32,7 @@ public class ThuocDAO {
                         rs.getString("maThuoc"),
                         rs.getString("tenThuoc"),
                         rs.getString("hoatChat"),
-                        rs.getString("donViTinh"),
+                        rs.getString("donViCoBan"),
                         rs.getString("tenNhom"),
                         rs.getDouble("giaNhap"),
                         rs.getDouble("giaBan"),
@@ -49,14 +49,14 @@ public class ThuocDAO {
 
     public ArrayList<String> getAllDonViTinh() {
         ArrayList<String> dsDVT = new ArrayList<>();
-        String sql = "SELECT DISTINCT donViTinh FROM Thuoc";
+        String sql = "SELECT DISTINCT donViCoBan FROM Thuoc";
         try {
             ConnectDB.getInstance();
             Connection con = ConnectDB.getConnection();
             Statement statement = con.createStatement();
             ResultSet rs = statement.executeQuery(sql);
             while (rs.next()) {
-                dsDVT.add(rs.getString("donViTinh"));
+                dsDVT.add(rs.getString("donViCoBan"));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -95,14 +95,14 @@ public class ThuocDAO {
                 String maThuoc = rs.getString(1);
                 String tenThuoc = rs.getString(2);
                 String hoatChat = rs.getString(3);
-                String donViTinh = rs.getString(4);
+                String donViCoBan = rs.getString(4);
                 String tenNhom = rs.getString(5);
                 double giaNhap = rs.getDouble(6);
                 double giaBan = rs.getDouble(7);
                 int tonKho = rs.getInt(8);
                 int tonKhoBanDuoc = rs.getInt(9);
                 boolean trangThai = rs.getBoolean(10);
-                thuoc = new ThuocFullInfo(maThuoc, tenThuoc, hoatChat, donViTinh, tenNhom, giaNhap, giaBan, tonKho, tonKhoBanDuoc, trangThai);
+                thuoc = new ThuocFullInfo(maThuoc, tenThuoc, hoatChat, donViCoBan, tenNhom, giaNhap, giaBan, tonKho, tonKhoBanDuoc, trangThai);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -166,12 +166,12 @@ public class ThuocDAO {
 
             con.setAutoCommit(false);
 
-            String sqlThuoc = "INSERT INTO Thuoc (maThuoc, tenThuoc, hoatChat, donViTinh, maNhom, trangThai) VALUES (?, ?, ?, ?, ?, ?)";
+            String sqlThuoc = "INSERT INTO Thuoc (maThuoc, tenThuoc, hoatChat, donViCoBan, maNhom, trangThai) VALUES (?, ?, ?, ?, ?, ?)";
             stmtThuoc = con.prepareStatement(sqlThuoc);
             stmtThuoc.setString(1, t.getMaThuoc());
             stmtThuoc.setString(2, t.getTenThuoc());
             stmtThuoc.setString(3, t.getHoatChat());
-            stmtThuoc.setString(4, t.getDonViTinh());
+            stmtThuoc.setString(4, t.getDonViCoBan());
 
             String maNhom = getMaNhomByTen(con, t.getTenNhom());
             stmtThuoc.setString(5, maNhom);
@@ -189,11 +189,11 @@ public class ThuocDAO {
                 maBG = taoBangGiaMacDinh(con);
             }
 
-            String sqlGia = "INSERT INTO ChiTietBangGia (maBG, maThuoc, donViTinh, giaBan) VALUES (?, ?, ?, ?)";
+            String sqlGia = "INSERT INTO ChiTietBangGia (maBG, maThuoc, donViCoBan, giaBan) VALUES (?, ?, ?, ?)";
             stmtGia = con.prepareStatement(sqlGia);
             stmtGia.setString(1, maBG);
             stmtGia.setString(2, t.getMaThuoc());
-            stmtGia.setString(3, t.getDonViTinh());
+            stmtGia.setString(3, t.getDonViCoBan());
             stmtGia.setDouble(4, t.getGiaBan());
             stmtGia.executeUpdate();
 

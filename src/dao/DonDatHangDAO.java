@@ -77,7 +77,6 @@ public class DonDatHangDAO {
             }
 
             stmtDon.executeUpdate();
-
             for (ChiTietDonDat ct : listCT) {
                 ctDAO.insert(con, ct);
             }
