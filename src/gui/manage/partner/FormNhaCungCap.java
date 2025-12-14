@@ -8,6 +8,7 @@ import dao.NhaCungCapDAO;
 import entities.NhaCungCap;
 import java.awt.Component;
 import java.util.ArrayList;
+import java.util.List;
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import net.miginfocom.swing.MigLayout;
@@ -18,7 +19,7 @@ public class FormNhaCungCap extends JPanel {
     private JTextField txtTimKiem;
     private JTable table;
     private NhaCungCapDAO nhaCungCapDAO;
-    
+
     // GlazedLists components
     private EventList<NhaCungCap> nhaCungCapList;
     private FilterList<NhaCungCap> filteredList;
@@ -88,20 +89,35 @@ public class FormNhaCungCap extends JPanel {
 
         // Initialize GlazedLists
         nhaCungCapList = new BasicEventList<>();
-        
-        // Create text filter for live search
-        filteredList = new FilterList<>(nhaCungCapList, 
-            new TextComponentMatcherEditor<>(txtTimKiem, new NhaCungCapTextFilterator()));
-        
+        TextFilterator<NhaCungCap> textFilterator = new TextFilterator<NhaCungCap>() {
+            @Override
+            public void getFilterStrings(List<String> baseList, NhaCungCap element) {
+                if (element.getMaNCC()!= null) {
+                    baseList.add(element.getMaNCC());
+                }
+                if (element.getTenNCC() != null) {
+                    baseList.add(element.getTenNCC());
+                }
+                if (element.getSdt() != null) {
+                    baseList.add(element.getSdt());
+                }
+                if (element.getEmail() != null) {
+                    baseList.add(element.getEmail());
+                }
+            }
+        };
+        filteredList = new FilterList<>(nhaCungCapList,
+                new TextComponentMatcherEditor<>(txtTimKiem, textFilterator));
+
         // Create sorted list
         sortedList = new SortedList<>(filteredList, null);
-        
+
         // Create custom TableFormat
         ca.odell.glazedlists.gui.TableFormat<NhaCungCap> tableFormat = new NhaCungCapTableFormat();
-        
+
         // Create EventTableModel
         EventTableModel<NhaCungCap> eventTableModel = new EventTableModel<>(sortedList, tableFormat);
-        
+
         table = new JTable(eventTableModel);
         table.putClientProperty(FlatClientProperties.STYLE, "rowHeight:30; showHorizontalLines:true");
         table.getTableHeader().putClientProperty(FlatClientProperties.STYLE, "height:35; font:bold");
@@ -109,32 +125,45 @@ public class FormNhaCungCap extends JPanel {
         panel.add(new JScrollPane(table));
         return panel;
     }
-    
+
     // Custom TableFormat class
     private class NhaCungCapTableFormat implements ca.odell.glazedlists.gui.TableFormat<NhaCungCap> {
+
         public int getColumnCount() {
             return 5;
         }
-        
+
         public String getColumnName(int column) {
             switch (column) {
-                case 0: return "Mã NCC";
-                case 1: return "Tên Nhà Cung Cấp";
-                case 2: return "Số Điện Thoại";
-                case 3: return "Email";
-                case 4: return "Địa Chỉ";
-                default: return "";
+                case 0:
+                    return "Mã NCC";
+                case 1:
+                    return "Tên Nhà Cung Cấp";
+                case 2:
+                    return "Số Điện Thoại";
+                case 3:
+                    return "Email";
+                case 4:
+                    return "Địa Chỉ";
+                default:
+                    return "";
             }
         }
-        
+
         public Object getColumnValue(NhaCungCap ncc, int column) {
             switch (column) {
-                case 0: return ncc.getMaNCC();
-                case 1: return ncc.getTenNCC();
-                case 2: return ncc.getSdt();
-                case 3: return ncc.getEmail() != null ? ncc.getEmail() : "";
-                case 4: return ncc.getDiaChi() != null ? ncc.getDiaChi() : "";
-                default: return "";
+                case 0:
+                    return ncc.getMaNCC();
+                case 1:
+                    return ncc.getTenNCC();
+                case 2:
+                    return ncc.getSdt();
+                case 3:
+                    return ncc.getEmail() != null ? ncc.getEmail() : "";
+                case 4:
+                    return ncc.getDiaChi() != null ? ncc.getDiaChi() : "";
+                default:
+                    return "";
             }
         }
     }
@@ -176,7 +205,7 @@ public class FormNhaCungCap extends JPanel {
         }
 
         NhaCungCap ncc = sortedList.get(row);
-        
+
         if (ncc == null) {
             Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Không tìm thấy nhà cung cấp!");
             return;
@@ -211,7 +240,7 @@ public class FormNhaCungCap extends JPanel {
         NhaCungCap ncc = sortedList.get(row);
         String maNCC = ncc.getMaNCC();
         String tenNCC = ncc.getTenNCC();
-        
+
         // Kiểm tra xem NCC có phiếu nhập hay không
         if (nhaCungCapDAO.hasPhieuNhap(maNCC)) {
             Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Không thể xóa nhà cung cấp đã có phiếu nhập!");

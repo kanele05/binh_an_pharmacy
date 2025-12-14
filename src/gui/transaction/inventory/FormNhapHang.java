@@ -1,10 +1,18 @@
 package gui.transaction.inventory;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import dao.NhaCungCapDAO;
+import dao.PhieuNhapDAO;
+import entities.ChiTietPhieuNhap;
+import entities.NhaCungCap;
+import entities.NhanVien;
+import entities.PhieuNhap;
 import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -12,16 +20,19 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import net.miginfocom.swing.MigLayout;
 import raven.toast.Notifications;
+import utils.Auth;
+import utils.ExcelHelper;
 
 public class FormNhapHang extends javax.swing.JPanel {
 
-    private JComboBox<String> cbNhaCungCap;
+    private JComboBox<NhaCungCap> cbNhaCungCap;
     private JTextField txtNguoiNhap;
     private JTextField txtGhiChu;
     private JLabel lbTongTien;
     private JTable table;
     private DefaultTableModel model;
-
+    private ArrayList<ChiTietPhieuNhap> gioHang = new ArrayList<>();
+    private NhaCungCapDAO nccDAO = new NhaCungCapDAO();
     private boolean isUpdating = false;
 
     public FormNhapHang() {
@@ -56,7 +67,11 @@ public class FormNhapHang extends javax.swing.JPanel {
                 + "arc:20;"
                 + "background:darken(@background,3%)");
 
-        cbNhaCungCap = new JComboBox<>(new String[]{"Công ty Dược Hậu Giang", "Sanofi Việt Nam", "Zuellig Pharma", "Nhà cung cấp khác..."});
+        cbNhaCungCap = new JComboBox<>();
+        ArrayList<NhaCungCap> listNCC = nccDAO.getAllNhaCungCap();
+        for (NhaCungCap ncc : listNCC) {
+            cbNhaCungCap.addItem(ncc);
+        }
         txtNguoiNhap = new JTextField("Admin");
         txtNguoiNhap.setEditable(false);
 
@@ -205,12 +220,49 @@ public class FormNhapHang extends javax.swing.JPanel {
 
     private void actionImportExcel() {
         JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Chọn file Excel nhập hàng");
+        fileChooser.setDialogTitle("Chọn file nhập hàng (.xlsx)");
         fileChooser.setFileFilter(new FileNameExtensionFilter("Excel Files", "xlsx", "xls"));
 
-        if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            File file = fileChooser.getSelectedFile();
-            readExcelSimulated(file);
+        int userSelection = fileChooser.showOpenDialog(this);
+
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File fileToOpen = fileChooser.getSelectedFile();
+            try {
+                // 1. Gọi hàm đọc Excel
+                List<ChiTietPhieuNhap> listFromExcel = ExcelHelper.readPhieuNhapFromExcel(fileToOpen);
+
+                if (listFromExcel.isEmpty()) {
+                    Notifications.getInstance().show(Notifications.Type.WARNING, "File Excel rỗng!");
+                    return;
+                }
+
+                // 2. Đổ dữ liệu vào Table & Giỏ hàng
+                gioHang.clear();
+                gioHang.addAll(listFromExcel);
+                model.setRowCount(0); // Xóa bảng cũ
+
+                for (ChiTietPhieuNhap ct : gioHang) {
+                    model.addRow(new Object[]{
+                        ct.getThuoc().getMaThuoc(),
+                        ct.getThuoc().getTenThuoc(),
+                        ct.getThuoc().getDonViTinh(),
+                        "Tự động sinh mã lô",
+                        ct.getHanSuDung(),
+                        ct.getSoLuong(),
+                        formatMoney(ct.getDonGia()), // Hàm format tiền bạn đã có
+
+                        formatMoney(ct.getThanhTien())
+                    });
+                }
+
+                // 3. Cập nhật tổng tiền
+                tinhTienHang(); // Hàm tính tổng tiền bạn đã có
+                Notifications.getInstance().show(Notifications.Type.SUCCESS, "Đã tải dữ liệu từ Excel!");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi đọc file: " + e.getMessage());
+            }
         }
     }
 
@@ -285,32 +337,52 @@ public class FormNhapHang extends javax.swing.JPanel {
     }
 
     private void actionLuuPhieu() {
-        if (model.getRowCount() == 0) {
-            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Danh sách nhập đang trống!");
+        if (gioHang.isEmpty()) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, "Chưa có dữ liệu để nhập!");
             return;
         }
 
-        for (int i = 0; i < model.getRowCount(); i++) {
-            String lo = model.getValueAt(i, 3).toString();
-            String hsd = model.getValueAt(i, 4).toString();
-            if (lo.trim().isEmpty() || hsd.trim().isEmpty()) {
-                Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
-                        "Dòng " + (i + 1) + " thiếu Lô SX hoặc Hạn SD!");
-                table.setRowSelectionInterval(i, i);
-                return;
-            }
-        }
-
         int confirm = JOptionPane.showConfirmDialog(this,
-                "Xác nhận nhập kho với tổng tiền: " + lbTongTien.getText() + "?\nHệ thống sẽ cập nhật tồn kho theo từng Lô.",
-                "Lưu Phiếu Nhập", JOptionPane.YES_NO_OPTION);
+                "Xác nhận nhập kho?", "Thông báo", JOptionPane.YES_NO_OPTION);
 
         if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                // 1. Tạo Header Phiếu Nhập
+                PhieuNhap pn = new PhieuNhap();
+                PhieuNhapDAO dao = new PhieuNhapDAO();
+                NhanVien nv = new NhanVien("NV001");
 
-            Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Nhập kho thành công!");
-            model.setRowCount(0);
-            lbTongTien.setText("0 ₫");
-            txtGhiChu.setText("");
+                pn.setMaPN(dao.generateNewMaPN());
+                pn.setNgayTao(java.time.LocalDate.now());
+                pn.setTongTien(Double.parseDouble(lbTongTien.getText().replaceAll("[^0-9]", ""))); // Parse từ label tổng tiền
+                if (Auth.user == null) {
+                    pn.setNhanVien(nv);
+                } else {
+                    pn.setNhanVien(Auth.user);
+                }
+
+                // Lấy NCC từ ComboBox (Cần ép kiểu về object NhaCungCap)
+                // Lưu ý: Cần đảm bảo ComboBox đang chứa Object NhaCungCap, không phải String
+                NhaCungCap ncc = (NhaCungCap) cbNhaCungCap.getSelectedItem();
+                pn.setNcc(ncc);
+                pn.setGhiChu(txtGhiChu.getText());
+
+                // 2. Gọi DAO lưu
+                boolean success = dao.createPhieuNhap(pn, gioHang);
+
+                if (success) {
+                    Notifications.getInstance().show(Notifications.Type.SUCCESS, "Nhập kho thành công!");
+                    // Reset form
+                    model.setRowCount(0);
+                    gioHang.clear();
+                    lbTongTien.setText("0 ₫");
+                } else {
+                    Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi khi lưu vào CSDL!");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi hệ thống!");
+            }
         }
     }
 

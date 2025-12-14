@@ -31,6 +31,9 @@ public class ChiTietPhieuNhap {
         this.donViTinh = donViTinh;
     }
 
+    public ChiTietPhieuNhap() {
+    }
+    
     public PhieuNhap getPn() {
         return pn;
     }

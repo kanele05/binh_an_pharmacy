@@ -38,6 +38,10 @@ public class PhieuNhap {
         this.ghiChu = ghiChu;
     }
 
+    public PhieuNhap() {
+    }
+
+    
     public String getMaPN() {
         return maPN;
     }

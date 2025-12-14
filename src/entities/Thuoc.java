@@ -17,6 +17,9 @@ public class Thuoc {
     private NhomThuoc nhomThuoc;
     private int tonToiThieu = 10;
 
+    public Thuoc() {
+    }
+    
     public Thuoc(String maThuoc, String tenThuoc, String hoatChat, String donViCoBan, boolean trangThai, NhomThuoc nhomThuoc) {
         this.maThuoc = maThuoc;
         this.tenThuoc = tenThuoc;

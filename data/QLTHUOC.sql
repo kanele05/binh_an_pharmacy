@@ -1645,3 +1645,5 @@ GO
 -- Cập nhật tất cả các dòng hiện có thành active
 UPDATE DonViQuyDoi SET trangThai = 1 WHERE trangThai IS NULL;
 GO
+ALTER TABLE NhaCungCap
+DROP COLUMN nguoiLienHe
