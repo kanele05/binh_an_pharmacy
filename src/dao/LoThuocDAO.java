@@ -216,13 +216,13 @@ public class LoThuocDAO {
 
     public int getTongTonByMaThuoc(String maThuoc) {
         String sql = "SELECT COALESCE(SUM(soLuongTon), 0) as tongTon FROM LoThuoc WHERE maThuoc = ? AND trangThai != N'Đã hết hạn' AND isDeleted = 0";
-        try {
-            Connection con = ConnectDB.getConnection();
-            PreparedStatement ps = con.prepareStatement(sql);
+        try (Connection con = ConnectDB.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, maThuoc);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return rs.getInt("tongTon");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("tongTon");
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -232,13 +232,13 @@ public class LoThuocDAO {
 
     public int getTonKhoByMaLo(String maLo) {
         String sql = "SELECT soLuongTon FROM LoThuoc WHERE maLo = ? AND trangThai != N'Đã hết hạn' AND isDeleted = 0";
-        try {
-            Connection con = ConnectDB.getConnection();
-            PreparedStatement ps = con.prepareStatement(sql);
+        try (Connection con = ConnectDB.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, maLo);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return rs.getInt("soLuongTon");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("soLuongTon");
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();

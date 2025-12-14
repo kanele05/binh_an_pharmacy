@@ -774,12 +774,14 @@ public class FormDatThuoc extends javax.swing.JPanel {
                                     modelGioHang.setValueAt(formatCurrency(dv.getGiaBan()), row, 4);
                                     Notifications.getInstance().show(
                                         Notifications.Type.WARNING,
+                                        Notifications.Location.TOP_CENTER,
                                         "Số lượng quy đổi (" + soLuongQuyDoi + ") vượt tồn kho (" + tonKho + "). Đã tự động điều chỉnh về " + soLuongToiDa + " " + tenMoi
                                     );
                                 } else {
                                     // Cannot change to this unit - not enough stock
                                     Notifications.getInstance().show(
                                         Notifications.Type.ERROR,
+                                        Notifications.Location.TOP_CENTER,
                                         "Không đủ tồn kho để đặt với đơn vị " + tenMoi + ". Tồn kho hiện tại: " + tonKho
                                     );
                                     // Don't update the unit - user needs to reduce quantity first
