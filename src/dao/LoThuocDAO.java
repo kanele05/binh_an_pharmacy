@@ -245,4 +245,72 @@ public class LoThuocDAO {
         }
         return 0;
     }
+
+    public List<dto.ThuocSapHetHan> getThuocSapHetHan(int soNgay) {
+        List<dto.ThuocSapHetHan> list = new ArrayList<>();
+        String sql = "SELECT l.maLo, l.maThuoc, t.tenThuoc, l.hanSuDung, l.soLuongTon, "
+                + "DATEDIFF(DAY, GETDATE(), l.hanSuDung) as soNgayConLai "
+                + "FROM LoThuoc l "
+                + "JOIN Thuoc t ON l.maThuoc = t.maThuoc "
+                + "WHERE l.hanSuDung > GETDATE() "
+                + "AND DATEDIFF(DAY, GETDATE(), l.hanSuDung) <= ? "
+                + "AND l.soLuongTon > 0 "
+                + "AND l.isDeleted = 0 "
+                + "AND l.trangThai != N'Đã hết hạn' "
+                + "ORDER BY l.hanSuDung ASC";
+        try {
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setInt(1, soNgay);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                dto.ThuocSapHetHan thuoc = new dto.ThuocSapHetHan(
+                        rs.getString("maThuoc"),
+                        rs.getString("tenThuoc"),
+                        rs.getString("maLo"),
+                        rs.getDate("hanSuDung").toLocalDate(),
+                        rs.getInt("soLuongTon"),
+                        rs.getInt("soNgayConLai")
+                );
+                list.add(thuoc);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public List<dto.ThuocTonThap> getThuocTonThap() {
+        List<dto.ThuocTonThap> list = new ArrayList<>();
+        String sql = "SELECT t.maThuoc, t.tenThuoc, t.tonToiThieu, "
+                + "COALESCE(SUM(l.soLuongTon), 0) as tonKho "
+                + "FROM Thuoc t "
+                + "LEFT JOIN LoThuoc l ON t.maThuoc = l.maThuoc "
+                + "AND l.isDeleted = 0 AND l.trangThai != N'Đã hết hạn' "
+                + "WHERE t.trangThai = 1 "
+                + "GROUP BY t.maThuoc, t.tenThuoc, t.tonToiThieu "
+                + "HAVING COALESCE(SUM(l.soLuongTon), 0) < t.tonToiThieu "
+                + "ORDER BY tonKho ASC";
+        try {
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                int tonKho = rs.getInt("tonKho");
+                int tonToiThieu = rs.getInt("tonToiThieu");
+                int soLuongCanNhap = tonToiThieu - tonKho;
+                dto.ThuocTonThap thuoc = new dto.ThuocTonThap(
+                        rs.getString("maThuoc"),
+                        rs.getString("tenThuoc"),
+                        tonKho,
+                        tonToiThieu,
+                        soLuongCanNhap
+                );
+                list.add(thuoc);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
 }
