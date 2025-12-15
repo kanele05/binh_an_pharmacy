@@ -2,12 +2,16 @@ package gui.report;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import dao.LoThuocDAO;
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Font;
 import java.io.File;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -16,6 +20,19 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import net.miginfocom.swing.MigLayout;
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.CategoryAxis;
+import org.jfree.chart.axis.CategoryLabelPositions;
+import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.plot.PiePlot;
+import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.chart.renderer.category.BarRenderer;
+import org.jfree.chart.renderer.category.StandardBarPainter;
+import org.jfree.data.category.DefaultCategoryDataset;
+import org.jfree.data.general.DefaultPieDataset;
 import raven.toast.Notifications;
 import utils.ExcelHelper;
 
@@ -26,6 +43,7 @@ public class FormBaoCaoTonKho extends JPanel {
     private JLabel lbTongGiaTri, lbTongSoLuong, lbThuocHetHan;
     private JTable table;
     private DefaultTableModel model;
+    private JPanel chartPanel;
 
     private LoThuocDAO loThuocDAO;
     private List<Map<String, Object>> currentData;
@@ -41,7 +59,7 @@ public class FormBaoCaoTonKho extends JPanel {
         loThuocDAO = new LoThuocDAO();
         currencyFormat = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
 
-        setLayout(new MigLayout("wrap,fill,insets 20", "[fill]", "[][][][grow]"));
+        setLayout(new MigLayout("wrap,fill,insets 20", "[fill]", "[][][][grow,fill]"));
 
         add(createHeaderPanel(), "wrap 20");
 
@@ -49,7 +67,7 @@ public class FormBaoCaoTonKho extends JPanel {
 
         add(createSummaryPanel(), "wrap 20");
 
-        add(createTablePanel(), "grow");
+        add(createContentPanel(), "grow");
 
         loadData();
     }
@@ -70,7 +88,7 @@ public class FormBaoCaoTonKho extends JPanel {
                 + "background:darken(@background,3%)");
 
         cbNhomThuoc = new JComboBox<>(new String[]{"Tất cả nhóm", "Kháng sinh", "Giảm đau", "Vitamin", "Dụng cụ y tế"});
-        cbTrangThai = new JComboBox<>(new String[]{"Tất cả", "Sắp hết hạn (< 3 tháng)", "Đã hết hạn", "Tồn kho thấp (< 10)", "Tồn kho cao (> 500)"});
+        cbTrangThai = new JComboBox<>(new String[]{"Tất cả", "Sắp hết hạn (< 1 tháng)", "Đã hết hạn", "Tồn kho thấp (< 10)", "Tồn kho cao (> 500)"});
 
         JButton btnLoc = new JButton("Lọc dữ liệu");
         btnLoc.putClientProperty(FlatClientProperties.STYLE, "background:#2196F3; foreground:#fff; font:bold");
@@ -123,8 +141,24 @@ public class FormBaoCaoTonKho extends JPanel {
         return card;
     }
 
+    private JPanel createContentPanel() {
+        JPanel panel = new JPanel(new MigLayout("fill, insets 0", "[60%,fill][40%,fill]", "[grow,fill]"));
+        panel.setOpaque(false);
+
+        // Bảng dữ liệu bên trái
+        panel.add(createTablePanel(), "grow");
+
+        // Biểu đồ bên phải
+        chartPanel = new JPanel(new BorderLayout());
+        chartPanel.putClientProperty(FlatClientProperties.STYLE, "arc:20; background:darken(@background,3%)");
+        chartPanel.setBorder(BorderFactory.createTitledBorder("Biểu đồ tồn kho"));
+        panel.add(chartPanel, "grow");
+
+        return panel;
+    }
+
     private JPanel createTablePanel() {
-        JPanel panel = new JPanel(new java.awt.BorderLayout());
+        JPanel panel = new JPanel(new BorderLayout());
         panel.putClientProperty(FlatClientProperties.STYLE, "arc:20; background:darken(@background,3%)");
         panel.setBorder(BorderFactory.createTitledBorder("Chi tiết tồn kho theo Lô"));
 
@@ -149,6 +183,163 @@ public class FormBaoCaoTonKho extends JPanel {
 
         panel.add(new JScrollPane(table));
         return panel;
+    }
+
+    private void updateChart() {
+        chartPanel.removeAll();
+
+        if (currentData == null || currentData.isEmpty()) {
+            JLabel noDataLabel = new JLabel("Không có dữ liệu để hiển thị", SwingConstants.CENTER);
+            noDataLabel.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+            chartPanel.add(noDataLabel, BorderLayout.CENTER);
+            chartPanel.revalidate();
+            chartPanel.repaint();
+            return;
+        }
+
+        // Tạo panel chứa 2 biểu đồ
+        JPanel chartsContainer = new JPanel(new MigLayout("fill, wrap 1", "[fill]", "[50%,fill][50%,fill]"));
+        chartsContainer.setOpaque(false);
+
+        // Biểu đồ 1: Bar chart - Top 10 thuốc theo giá trị tồn kho
+        chartsContainer.add(createBarChart(), "grow");
+
+        // Biểu đồ 2: Pie chart - Phân bổ theo trạng thái hạn sử dụng
+        chartsContainer.add(createPieChart(), "grow");
+
+        chartPanel.add(chartsContainer, BorderLayout.CENTER);
+        chartPanel.revalidate();
+        chartPanel.repaint();
+    }
+
+    private ChartPanel createBarChart() {
+        // Tạo dataset cho biểu đồ - Top 10 thuốc theo giá trị tồn kho
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+
+        // Sắp xếp và lấy top 10 thuốc có giá trị tồn kho cao nhất
+        currentData.stream()
+                .sorted((a, b) -> Double.compare((double) b.get("tongGiaTri"), (double) a.get("tongGiaTri")))
+                .limit(10)
+                .forEach(row -> {
+                    String tenThuoc = row.get("tenThuoc") != null ? row.get("tenThuoc").toString() : "";
+                    // Rút gọn tên nếu quá dài
+                    if (tenThuoc.length() > 15) {
+                        tenThuoc = tenThuoc.substring(0, 12) + "...";
+                    }
+                    double tongGiaTri = (double) row.get("tongGiaTri");
+                    // Chuyển đổi sang triệu đồng để dễ đọc
+                    dataset.addValue(tongGiaTri / 1000000, "Giá trị (triệu ₫)", tenThuoc);
+                });
+
+        // Tạo biểu đồ
+        JFreeChart chart = ChartFactory.createBarChart(
+                "Top 10 Thuốc Theo Giá Trị Tồn Kho",
+                null,
+                "Giá trị (triệu ₫)",
+                dataset,
+                PlotOrientation.VERTICAL,
+                false,
+                true,
+                false
+        );
+
+        // Tùy chỉnh giao diện biểu đồ
+        chart.setBackgroundPaint(new Color(0, 0, 0, 0));
+        chart.getTitle().setFont(new Font("Segoe UI", Font.BOLD, 12));
+
+        CategoryPlot plot = chart.getCategoryPlot();
+        plot.setBackgroundPaint(new Color(245, 245, 245));
+        plot.setDomainGridlinePaint(new Color(200, 200, 200));
+        plot.setRangeGridlinePaint(new Color(200, 200, 200));
+        plot.setOutlineVisible(false);
+
+        // Tùy chỉnh renderer
+        BarRenderer renderer = (BarRenderer) plot.getRenderer();
+        renderer.setBarPainter(new StandardBarPainter());
+        renderer.setSeriesPaint(0, new Color(33, 150, 243)); // Xanh dương
+        renderer.setShadowVisible(false);
+        renderer.setMaximumBarWidth(0.1);
+
+        // Xoay nhãn trục X
+        CategoryAxis domainAxis = plot.getDomainAxis();
+        domainAxis.setCategoryLabelPositions(CategoryLabelPositions.UP_45);
+        domainAxis.setTickLabelFont(new Font("Segoe UI", Font.PLAIN, 9));
+
+        NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
+        rangeAxis.setTickLabelFont(new Font("Segoe UI", Font.PLAIN, 10));
+
+        // Tạo panel chứa biểu đồ
+        ChartPanel cp = new ChartPanel(chart);
+        cp.setPreferredSize(new Dimension(350, 200));
+        cp.setMouseWheelEnabled(true);
+        cp.setOpaque(false);
+
+        return cp;
+    }
+
+    @SuppressWarnings("unchecked")
+    private ChartPanel createPieChart() {
+        // Đếm số lô theo trạng thái
+        Map<String, Integer> statusCount = new HashMap<>();
+        statusCount.put("Còn hạn", 0);
+        statusCount.put("Sắp hết hạn", 0);
+        statusCount.put("Đã hết hạn", 0);
+
+        for (Map<String, Object> row : currentData) {
+            String ghiChu = row.get("ghiChu") != null ? row.get("ghiChu").toString() : "";
+            if (ghiChu.contains("Đã hết hạn")) {
+                statusCount.put("Đã hết hạn", statusCount.get("Đã hết hạn") + 1);
+            } else if (ghiChu.contains("Sắp hết hạn")) {
+                statusCount.put("Sắp hết hạn", statusCount.get("Sắp hết hạn") + 1);
+            } else {
+                statusCount.put("Còn hạn", statusCount.get("Còn hạn") + 1);
+            }
+        }
+
+        // Tạo dataset cho biểu đồ tròn
+        DefaultPieDataset dataset = new DefaultPieDataset();
+        if (statusCount.get("Còn hạn") > 0) {
+            dataset.setValue("Còn hạn (" + statusCount.get("Còn hạn") + ")", statusCount.get("Còn hạn"));
+        }
+        if (statusCount.get("Sắp hết hạn") > 0) {
+            dataset.setValue("Sắp hết hạn (" + statusCount.get("Sắp hết hạn") + ")", statusCount.get("Sắp hết hạn"));
+        }
+        if (statusCount.get("Đã hết hạn") > 0) {
+            dataset.setValue("Đã hết hạn (" + statusCount.get("Đã hết hạn") + ")", statusCount.get("Đã hết hạn"));
+        }
+
+        // Tạo biểu đồ
+        JFreeChart chart = ChartFactory.createPieChart(
+                "Phân Bổ Theo Hạn Sử Dụng",
+                dataset,
+                true,
+                true,
+                false
+        );
+
+        // Tùy chỉnh giao diện
+        chart.setBackgroundPaint(new Color(0, 0, 0, 0));
+        chart.getTitle().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        chart.getLegend().setBackgroundPaint(new Color(0, 0, 0, 0));
+
+        PiePlot piePlot = (PiePlot) chart.getPlot();
+        piePlot.setBackgroundPaint(new Color(0, 0, 0, 0));
+        piePlot.setOutlineVisible(false);
+        piePlot.setLabelFont(new Font("Segoe UI", Font.PLAIN, 10));
+        piePlot.setShadowPaint(null);
+
+        // Màu sắc cho từng phần
+        piePlot.setSectionPaint("Còn hạn (" + statusCount.get("Còn hạn") + ")", new Color(76, 175, 80)); // Xanh lá
+        piePlot.setSectionPaint("Sắp hết hạn (" + statusCount.get("Sắp hết hạn") + ")", new Color(255, 152, 0)); // Cam
+        piePlot.setSectionPaint("Đã hết hạn (" + statusCount.get("Đã hết hạn") + ")", new Color(244, 67, 54)); // Đỏ
+
+        // Tạo panel chứa biểu đồ
+        ChartPanel cp = new ChartPanel(chart);
+        cp.setPreferredSize(new Dimension(350, 200));
+        cp.setMouseWheelEnabled(true);
+        cp.setOpaque(false);
+
+        return cp;
     }
 
     private void loadData() {
@@ -208,6 +399,9 @@ public class FormBaoCaoTonKho extends JPanel {
         lbTongGiaTri.setText(currencyFormat.format(tongGiaTri));
         lbTongSoLuong.setText(NumberFormat.getInstance(new Locale("vi", "VN")).format(tongSoLuong));
         lbThuocHetHan.setText(soLoHetHan + " Lô");
+
+        // Cập nhật biểu đồ
+        updateChart();
     }
 
     private void actionFilter() {

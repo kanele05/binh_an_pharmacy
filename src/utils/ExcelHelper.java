@@ -21,12 +21,12 @@ public class ExcelHelper {
     public static List<ChiTietPhieuNhap> readPhieuNhapFromExcel(File file) throws Exception {
         List<ChiTietPhieuNhap> list = new ArrayList<>();
         FileInputStream fis = new FileInputStream(file);
-        
+
         Workbook workbook = new XSSFWorkbook(fis);
         Sheet sheet = workbook.getSheetAt(0);
 
         Iterator<Row> iterator = sheet.iterator();
-        
+
         // Bỏ qua header
         if (iterator.hasNext()) {
             iterator.next();
@@ -36,7 +36,7 @@ public class ExcelHelper {
 
         while (iterator.hasNext()) {
             Row currentRow = iterator.next();
-            
+
             // Bỏ qua dòng trống
             if (currentRow.getCell(0) == null || fmt.formatCellValue(currentRow.getCell(0)).trim().isEmpty()) {
                 continue;
@@ -45,26 +45,26 @@ public class ExcelHelper {
             // [0] Mã Thuốc
             String maThuoc = fmt.formatCellValue(currentRow.getCell(0));
             // [1] Tên Thuốc
-            String tenThuoc = fmt.formatCellValue(currentRow.getCell(1)); 
+            String tenThuoc = fmt.formatCellValue(currentRow.getCell(1));
             // [2] Đơn vị tính
             String donVi = fmt.formatCellValue(currentRow.getCell(2));
-            
+
             // [3] Lô sản xuất (Hiện tại hệ thống đang tự sinh mã Lô L001... nên ta tạm thời chưa lưu cột này vào DB,
             // hoặc bạn có thể lưu vào ghi chú nếu cần. Ở đây mình chỉ đọc lướt qua để không bị lệch cột)
-            String loSanXuat = fmt.formatCellValue(currentRow.getCell(3)); 
+            String loSanXuat = fmt.formatCellValue(currentRow.getCell(3));
 
             // [4] Hạn sử dụng (Date)
             Cell cellHSD = currentRow.getCell(4);
             java.time.LocalDate hsd = java.time.LocalDate.now();
             if (cellHSD != null) {
                 if (DateUtil.isCellDateFormatted(cellHSD)) {
-                     // Trường hợp Excel format là Date
+                    // Trường hợp Excel format là Date
                     hsd = cellHSD.getDateCellValue().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
                 } else {
                     try {
                         // Trường hợp Excel format là Text "2025-12-25"
                         hsd = java.time.LocalDate.parse(fmt.formatCellValue(cellHSD));
-                    } catch (Exception e) { 
+                    } catch (Exception e) {
                         System.out.println("Lỗi parse ngày: " + fmt.formatCellValue(cellHSD));
                     }
                 }
@@ -78,7 +78,9 @@ public class ExcelHelper {
             } else if (cellSL != null) {
                 try {
                     soLuong = Integer.parseInt(fmt.formatCellValue(cellSL));
-                } catch (NumberFormatException e) { soLuong = 0; }
+                } catch (NumberFormatException e) {
+                    soLuong = 0;
+                }
             }
 
             // [6] Giá nhập (Number)
@@ -90,7 +92,9 @@ public class ExcelHelper {
                 try {
                     String strGia = fmt.formatCellValue(cellGia).replace(",", "");
                     donGia = Double.parseDouble(strGia);
-                } catch (NumberFormatException e) { donGia = 0; }
+                } catch (NumberFormatException e) {
+                    donGia = 0;
+                }
             }
 
             // Tạo đối tượng
@@ -117,8 +121,9 @@ public class ExcelHelper {
     }
 
     /**
-     * Xuất báo cáo doanh thu ra file Excel
-     * Bao gồm thông tin hoàn trả và doanh thu thực tế
+     * Xuất báo cáo doanh thu ra file Excel Bao gồm thông tin hoàn trả và doanh
+     * thu thực tế
+     *
      * @param file File đích
      * @param chiTietList Danh sách dữ liệu chi tiết theo ngày
      * @param tongHop Map chứa thông tin tổng hợp
@@ -270,6 +275,7 @@ public class ExcelHelper {
 
     /**
      * Xuất báo cáo tồn kho ra file Excel
+     *
      * @param file File đích
      * @param chiTietList Danh sách dữ liệu tồn kho chi tiết
      * @param tongHop Map chứa thông tin tổng hợp
@@ -290,6 +296,8 @@ public class ExcelHelper {
         CellStyle dateStyle = createDateStyle(workbook);
         CellStyle warningStyle = createWarningStyle(workbook);
         CellStyle dangerStyle = createDangerStyle(workbook);
+        CellStyle warningCurrencyStyle = createWarningCurrencyStyle(workbook);
+        CellStyle dangerCurrencyStyle = createDangerCurrencyStyle(workbook);
 
         int rowNum = 0;
 
@@ -346,10 +354,13 @@ public class ExcelHelper {
 
             // Xác định style dựa trên ghi chú
             CellStyle rowStyle = normalStyle;
+            CellStyle moneyStyle = currencyStyle;
             if (ghiChu.contains("Đã hết hạn")) {
                 rowStyle = dangerStyle;
+                moneyStyle = dangerCurrencyStyle;
             } else if (ghiChu.contains("Sắp hết hạn") || ghiChu.contains("Tồn kho thấp")) {
                 rowStyle = warningStyle;
+                moneyStyle = warningCurrencyStyle;
             }
 
             // Mã thuốc
@@ -373,12 +384,17 @@ public class ExcelHelper {
             if (hanSuDung != null) {
                 hanDungCell.setCellValue(hanSuDung.format(dtf));
             }
-            hanDungCell.setCellStyle(ghiChu.contains("hết hạn") ? dangerStyle : dateStyle);
-
+            if (ghiChu.equalsIgnoreCase("Đã hết hạn")) {
+                hanDungCell.setCellStyle(dangerStyle);
+            } else if (ghiChu.equalsIgnoreCase("Sắp hết hạn")) {
+                hanDungCell.setCellStyle(warningStyle);
+            } else {
+                hanDungCell.setCellStyle(dateStyle);
+            }
             // Đơn giá vốn
             Cell giaVonCell = dataRow.createCell(4);
             giaVonCell.setCellValue((double) row.get("giaVon"));
-            giaVonCell.setCellStyle(currencyStyle);
+            giaVonCell.setCellStyle(moneyStyle);
 
             // Tồn kho
             Cell tonKhoCell = dataRow.createCell(5);
@@ -388,7 +404,7 @@ public class ExcelHelper {
             // Tổng giá trị
             Cell tongGiaTriCell = dataRow.createCell(6);
             tongGiaTriCell.setCellValue((double) row.get("tongGiaTri"));
-            tongGiaTriCell.setCellStyle(currencyStyle);
+            tongGiaTriCell.setCellStyle(moneyStyle);
 
             // Ghi chú
             Cell ghiChuCell = dataRow.createCell(7);
@@ -409,7 +425,6 @@ public class ExcelHelper {
     }
 
     // --- Helper methods để tạo style ---
-
     private static CellStyle createHeaderStyle(Workbook workbook) {
         CellStyle style = workbook.createCellStyle();
         Font font = workbook.createFont();
@@ -512,6 +527,46 @@ public class ExcelHelper {
         DataFormat format = workbook.createDataFormat();
         style.setDataFormat(format.getFormat("#,##0\" ₫\""));
         style.setAlignment(HorizontalAlignment.RIGHT);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        return style;
+    }
+
+    private static CellStyle createWarningCurrencyStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        DataFormat format = workbook.createDataFormat();
+        style.setDataFormat(format.getFormat("#,##0\" ₫\"")); // Định dạng tiền
+        style.setAlignment(HorizontalAlignment.RIGHT);
+
+        // Màu nền vàng nhạt giống warningStyle
+        style.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        return style;
+    }
+
+    // Style cho tiền tệ nhưng có nền đỏ/hồng (Nguy hiểm)
+    private static CellStyle createDangerCurrencyStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        Font font = workbook.createFont();
+        font.setColor(IndexedColors.DARK_RED.getIndex()); // Chữ đỏ đậm
+        font.setBold(true);
+        style.setFont(font);
+
+        DataFormat format = workbook.createDataFormat();
+        style.setDataFormat(format.getFormat("#,##0\" ₫\"")); // Định dạng tiền
+        style.setAlignment(HorizontalAlignment.RIGHT);
+
+        // Màu nền hồng giống dangerStyle
+        style.setFillForegroundColor(IndexedColors.ROSE.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
         style.setBorderBottom(BorderStyle.THIN);
         style.setBorderTop(BorderStyle.THIN);
         style.setBorderLeft(BorderStyle.THIN);

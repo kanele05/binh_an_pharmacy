@@ -183,6 +183,35 @@ CREATE TABLE ChiTietPhieuTra (
     CONSTRAINT FK_CTPT_LoThuoc FOREIGN KEY (maLo) REFERENCES LoThuoc(maLo)
 );
 
+CREATE TABLE PhieuDoiHang (
+        maPD NVARCHAR(50) PRIMARY KEY,
+        ngayDoi DATE DEFAULT GETDATE(),
+        tongTienTra DECIMAL(18, 2),      -- Tổng tiền hàng trả lại
+        tongTienMoi DECIMAL(18, 2),      -- Tổng tiền hàng mới
+        chenhLech DECIMAL(18, 2),        -- Chênh lệch = tongTienMoi - tongTienTra
+        lyDo NVARCHAR(255),
+        maHDGoc NVARCHAR(50),            -- Hóa đơn gốc (hóa đơn khách mua trước đó)
+        maPT NVARCHAR(50),               -- Phiếu trả hàng được tạo
+        maHDMoi NVARCHAR(50),            -- Hóa đơn mới được tạo (cho hàng đổi)
+        maNV NVARCHAR(50),
+        maKH NVARCHAR(50),
+        trangThai NVARCHAR(50),
+        ghiChu NVARCHAR(255),
+        CONSTRAINT FK_PhieuDoiHang_HoaDonGoc FOREIGN KEY (maHDGoc) REFERENCES HoaDon(maHD),
+        CONSTRAINT FK_PhieuDoiHang_PhieuTra FOREIGN KEY (maPT) REFERENCES PhieuTraHang(maPT),
+        CONSTRAINT FK_PhieuDoiHang_HoaDonMoi FOREIGN KEY (maHDMoi) REFERENCES HoaDon(maHD),
+        CONSTRAINT FK_PhieuDoiHang_NhanVien FOREIGN KEY (maNV) REFERENCES NhanVien(maNV),
+        CONSTRAINT FK_PhieuDoiHang_KhachHang FOREIGN KEY (maKH) REFERENCES KhachHang(maKH)
+    );
+CREATE TABLE DonViQuyDoi (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        maThuoc NVARCHAR(50) NOT NULL,
+        tenDonVi NVARCHAR(50) NOT NULL,
+        giaTriQuyDoi INT NOT NULL DEFAULT 1,
+        giaBan DECIMAL(18, 2) DEFAULT 0,
+        laDonViCoBan BIT DEFAULT 0,
+        CONSTRAINT FK_DVQD_Thuoc FOREIGN KEY (maThuoc) REFERENCES Thuoc(maThuoc)
+    );
 -- =============================================
 -- 1. INSERT NHÂN VIÊN (5 người)
 -- Vai trò: 1 = Quản lý, 0 = Nhân viên
@@ -296,43 +325,52 @@ INSERT INTO Thuoc (maThuoc, tenThuoc, hoatChat, donViCoBan, trangThai, maNhom) V
 -- Lưu ý: Mình tạo dữ liệu đa dạng (Hết hạn, Sắp hết, Còn xa) để test báo cáo
 -- =============================================
 INSERT INTO LoThuoc (maLo, maThuoc, ngayNhap, hanSuDung, soLuongTon, trangThai, isDeleted) VALUES
--- Nhóm Kháng sinh
-(N'L001', N'T001', '2023-01-10', '2025-01-10', 500, N'Đã hết hạn', 0), -- Sắp hết hạn
-(N'L002', N'T002', '2023-05-20', '2026-05-20', 100, N'Còn hạn', 0),
-(N'L003', N'T003', '2023-06-15', '2024-12-01', 50, N'Đã hết hạn', 0), -- Đã hết hạn (để test báo đỏ)
-(N'L004', N'T004', '2023-08-01', '2026-08-01', 200, N'Còn hạn', 0),
-(N'L005', N'T005', '2023-09-10', '2025-09-10', 150, N'Đã hết hạn', 0),
+-- Nhóm Kháng sinh (tồn theo VIÊN)
+(N'L001', N'T001', '2024-01-10', '2026-01-10', 5000, N'Còn hạn', 0),      -- 5000 viên = 50 vỉ = 5 hộp
+(N'L002', N'T002', '2024-05-20', '2026-05-20', 1400, N'Còn hạn', 0),      -- 1400 viên = 100 hộp
+(N'L003', N'T003', '2023-06-15', '2024-12-01', 500, N'Đã hết hạn', 0),    -- Đã hết hạn
+(N'L004', N'T004', '2024-08-01', '2026-08-01', 2000, N'Còn hạn', 0),      -- 2000 viên
+(N'L005', N'T005', '2024-09-10', '2026-09-10', 900, N'Còn hạn', 0),       -- 900 viên = 150 hộp
 
--- Nhóm Giảm đau (Panadol bán chạy nên nhập nhiều lô)
-(N'L006', N'T006', '2023-10-01', '2026-10-01', 1000, N'Còn hạn', 0), -- Lô mới
-(N'L007', N'T006', '2022-12-01', '2024-12-30', 20, N'Đã hết hạn', 0),  -- Lô cũ sắp hết hạn (Ưu tiên bán trước)
-(N'L008', N'T007', '2023-02-15', '2025-02-15', 300, N'Đã hết hạn', 0),
-(N'L009', N'T008', '2023-03-20', '2025-03-20', 5, N'Đã hết hạn', 0),   -- Tồn kho thấp (Test cảnh báo hết hàng)
-(N'L010', N'T009', '2023-07-07', '2026-07-07', 400, N'Còn hạn', 0),
-(N'L011', N'T010', '2023-01-01', '2024-01-01', 0, N'Đã hết hạn', 0),   -- Hết sạch hàng
+-- Nhóm Giảm đau (Panadol bán chạy)
+(N'L006', N'T006', '2024-10-01', '2026-10-01', 12000, N'Còn hạn', 0),     -- 12000 viên = 100 hộp
+(N'L007', N'T006', '2023-12-01', '2025-01-15', 240, N'Sắp hết hạn', 0),   -- 240 viên = 2 hộp (ưu tiên bán trước)
+(N'L008', N'T007', '2024-02-15', '2026-02-15', 300, N'Còn hạn', 0),       -- 300 viên
+(N'L009', N'T008', '2024-03-20', '2026-03-20', 50, N'Còn hạn', 0),        -- 50 gói (tồn thấp)
+(N'L010', N'T009', '2024-07-07', '2026-07-07', 4000, N'Còn hạn', 0),      -- 4000 viên
+(N'L011', N'T010', '2023-01-01', '2024-01-01', 0, N'Đã hết hạn', 0),      -- Hết hàng
+(N'L012', N'T011', '2024-06-01', '2026-06-01', 400, N'Còn hạn', 0),       -- 400 miếng = 20 hộp
 
 -- Nhóm Vitamin
-(N'L012', N'T012', '2023-11-11', '2025-11-11', 500, N'Đã hết hạn', 0),
-(N'L013', N'T013', '2023-05-05', '2026-05-05', 250, N'Còn hạn', 0),
-(N'L014', N'T014', '2023-09-09', '2025-12-31', 150, N'Sắp hết hạn', 0),
-(N'L015', N'T015', '2023-12-01', '2026-01-28', 80, N'Sắp hết hạn', 0),  -- Hết hạn 
-(N'L016', N'T016', '2023-10-20', '2026-10-20', 60, N'Còn hạn', 0),
+(N'L013', N'T012', '2024-11-11', '2026-11-11', 5000, N'Còn hạn', 0),      -- 5000 viên = 50 lọ
+(N'L014', N'T013', '2024-05-05', '2026-05-05', 2500, N'Còn hạn', 0),      -- 2500 viên
+(N'L015', N'T014', '2024-09-09', '2025-01-20', 1500, N'Sắp hết hạn', 0),  -- 1500 viên (sắp hết hạn)
+(N'L016', N'T015', '2024-12-01', '2026-06-01', 800, N'Còn hạn', 0),       -- 800 ống
+(N'L017', N'T016', '2024-10-20', '2026-10-20', 600, N'Còn hạn', 0),       -- 600 viên = 60 tuýp
 
 -- Nhóm Tiêu hóa
-(N'L017', N'T017', '2023-04-30', '2026-04-30', 300, N'Còn hạn', 0),
-(N'L018', N'T018', '2023-08-15', '2026-02-26', 1200, N'Sắp hết hạn', 0), -- Tồn nhiều
-(N'L019', N'T019', '2023-06-01', '2026-06-01', 100, N'Còn hạn', 0),
-(N'L020', N'T020', '2023-02-28', '2025-02-28', 10, N'Đã hết hạn', 0), -- Tồn thấp
+(N'L018', N'T017', '2024-04-30', '2026-04-30', 3000, N'Còn hạn', 0),      -- 3000 viên = 30 lọ
+(N'L019', N'T018', '2024-08-15', '2026-02-26', 1200, N'Sắp hết hạn', 0),  -- 1200 gói = 40 hộp
+(N'L020', N'T019', '2024-06-01', '2026-06-01', 1000, N'Còn hạn', 0),      -- 1000 viên
+(N'L021', N'T020', '2024-02-28', '2025-02-28', 100, N'Sắp hết hạn', 0),   -- 100 gói (tồn thấp)
+(N'L022', N'T021', '2024-07-15', '2026-07-15', 400, N'Còn hạn', 0),       -- 400 ống = 20 hộp
 
 -- Nhóm Hô hấp
-(N'L021', N'T022', '2023-09-15', '2026-09-15', 80, N'Còn hạn', 0),
-(N'L022', N'T023', '2023-01-20', '2025-01-20', 200, N'Đã hết hạn', 0),
-(N'L023', N'T024', '2023-11-01', '2026-11-01', 150, N'Còn hạn', 0),
+(N'L023', N'T022', '2024-09-15', '2026-09-15', 80, N'Còn hạn', 0),        -- 80 chai
+(N'L024', N'T023', '2024-01-20', '2025-01-20', 2000, N'Sắp hết hạn', 0),  -- 2000 viên
+(N'L025', N'T024', '2024-11-01', '2026-11-01', 1500, N'Còn hạn', 0),      -- 1500 viên
+(N'L026', N'T025', '2024-08-01', '2026-08-01', 50, N'Còn hạn', 0),        -- 50 chai
+
+-- Nhóm Tim mạch
+(N'L027', N'T026', '2024-06-01', '2026-06-01', 3000, N'Còn hạn', 0),      -- 3000 viên = 100 hộp
+(N'L028', N'T027', '2024-07-01', '2026-07-01', 3000, N'Còn hạn', 0),      -- 3000 viên = 100 hộp
 
 -- Nhóm Dụng cụ
-(N'L024', N'T028', '2023-05-10', '2028-05-10', 2000, N'Còn hạn', 0), -- Khẩu trang hạn dài
-(N'L025', N'T029', '2023-07-20', '2026-07-20', 500, N'Còn hạn', 0),
-(N'L026', N'T030', '2023-03-15', '2027-03-15', 300, N'Còn hạn', 0);
+(N'L029', N'T028', '2024-05-10', '2028-05-10', 10000, N'Còn hạn', 0),     -- 10000 cái = 200 hộp
+(N'L030', N'T029', '2024-07-20', '2026-07-20', 500, N'Còn hạn', 0),       -- 500 chai
+(N'L031', N'T030', '2024-03-15', '2027-03-15', 3000, N'Còn hạn', 0),      -- 3000 miếng = 30 hộp
+(N'L032', N'T031', '2024-04-01', '2026-04-01', 100, N'Còn hạn', 0);       -- 100 chai
+GO
 
 -- =============================================
 -- 7. INSERT BẢNG GIÁ (Header)
@@ -346,60 +384,137 @@ INSERT INTO BangGia (maBG, tenBG, ngayHieuLuc, ngayKetThuc, ghiChu, trangThai) V
 -- Link vào bảng giá BG001 (Giá chuẩn)
 -- =============================================
 INSERT INTO ChiTietBangGia (maBG, maThuoc, donViTinh, giaBan) VALUES
--- Kháng sinh
-(N'BG001', N'T001', N'Vỉ', 15000),
+-- ===== T001: Amoxicillin 500mg =====
+(N'BG001', N'T001', N'Viên', 1500),
+(N'BG001', N'T001', N'Vỉ', 14000),
+(N'BG001', N'T001', N'Hộp', 135000),
+
+-- ===== T002: Augmentin 625mg =====
+(N'BG001', N'T002', N'Viên', 16000),
 (N'BG001', N'T002', N'Hộp', 220000),
-(N'BG001', N'T003', N'Vỉ', 12000),
-(N'BG001', N'T004', N'Vỉ', 18000),
+
+-- ===== T003: Cephalexin 500mg =====
+(N'BG001', N'T003', N'Viên', 1200),
+(N'BG001', N'T003', N'Vỉ', 11000),
+
+-- ===== T004: Ciprofloxacin 500mg =====
+(N'BG001', N'T004', N'Viên', 1800),
+(N'BG001', N'T004', N'Vỉ', 17000),
+
+-- ===== T005: Azithromycin 250mg =====
+(N'BG001', N'T005', N'Viên', 14500),
 (N'BG001', N'T005', N'Hộp', 85000),
 
--- Giảm đau
-(N'BG001', N'T006', N'Hộp', 185000), -- Panadol Extra
+-- ===== T006: Panadol Extra =====
+(N'BG001', N'T006', N'Viên', 1600),
+(N'BG001', N'T006', N'Vỉ', 18000),
+(N'BG001', N'T006', N'Hộp', 175000),
+
+-- ===== T007: Efferalgan 500mg =====
 (N'BG001', N'T007', N'Viên', 5000),
+
+-- ===== T008: Hapacol 250mg =====
 (N'BG001', N'T008', N'Gói', 3500),
-(N'BG001', N'T009', N'Vỉ', 25000),
-(N'BG001', N'T010', N'Vỉ', 15000),
-(N'BG001', N'T011', N'Hộp', 32000),
+(N'BG001', N'T008', N'Hộp', 80000),
 
--- Vitamin (Giá thường)
-(N'BG001', N'T012', N'Lọ', 60000),
-(N'BG001', N'T013', N'Hộp', 150000),
-(N'BG001', N'T014', N'Vỉ', 45000),
+-- ===== T009: Ibuprofen 400mg =====
+(N'BG001', N'T009', N'Viên', 2500),
+(N'BG001', N'T009', N'Vỉ', 24000),
+
+-- ===== T010: Aspirin 81mg =====
+(N'BG001', N'T010', N'Viên', 500),
+(N'BG001', N'T010', N'Vỉ', 14000),
+
+-- ===== T011: Salonpas =====
+(N'BG001', N'T011', N'Miếng', 1700),
+(N'BG001', N'T011', N'Gói', 16000),
+(N'BG001', N'T011', N'Hộp', 31000),
+
+-- ===== T012: Vitamin C 500mg =====
+(N'BG001', N'T012', N'Viên', 600),
+(N'BG001', N'T012', N'Lọ', 58000),
+
+-- ===== T013: Vitamin E 400IU =====
+(N'BG001', N'T013', N'Viên', 5000),
+(N'BG001', N'T013', N'Hộp', 145000),
+
+-- ===== T014: Vitamin 3B =====
+(N'BG001', N'T014', N'Viên', 4500),
+(N'BG001', N'T014', N'Vỉ', 43000),
+
+-- ===== T015: Canxi Corbiere =====
 (N'BG001', N'T015', N'Ống', 5000),
-(N'BG001', N'T016', N'Tuýp', 85000),
+(N'BG001', N'T015', N'Hộp', 145000),
 
--- Tiêu hóa
-(N'BG001', N'T017', N'Lọ', 10000), -- Berberin rẻ
+-- ===== T016: Berocca =====
+(N'BG001', N'T016', N'Viên', 8500),
+(N'BG001', N'T016', N'Tuýp', 82000),
+
+-- ===== T017: Berberin =====
+(N'BG001', N'T017', N'Viên', 100),
+(N'BG001', N'T017', N'Lọ', 9500),
+
+-- ===== T018: Smecta =====
 (N'BG001', N'T018', N'Gói', 4000),
-(N'BG001', N'T019', N'Vỉ', 22000),
+(N'BG001', N'T018', N'Hộp', 115000),
+
+-- ===== T019: Omeprazol 20mg =====
+(N'BG001', N'T019', N'Viên', 1600),
+(N'BG001', N'T019', N'Vỉ', 21000),
+(N'BG001', N'T019', N'Hộp', 40000),
+
+-- ===== T020: Gaviscon =====
 (N'BG001', N'T020', N'Gói', 6500),
+(N'BG001', N'T020', N'Hộp', 150000),
+
+-- ===== T021: Enterogermina =====
 (N'BG001', N'T021', N'Ống', 8000),
+(N'BG001', N'T021', N'Hộp', 155000),
 
--- Hô hấp
-(N'BG001', N'T022', N'Chai', 95000), -- Prospan
-(N'BG001', N'T023', N'Vỉ', 35000),
-(N'BG001', N'T024', N'Hộp', 55000),
-(N'BG001', N'T025', N'Lọ', 40000),
+-- ===== T022: Prospan =====
+(N'BG001', N'T022', N'Chai', 95000),
 
--- Tim mạch
-(N'BG001', N'T026', N'Vỉ', 30000),
-(N'BG001', N'T027', N'Vỉ', 45000),
+-- ===== T023: Viên ngậm Bảo Thanh =====
+(N'BG001', N'T023', N'Viên', 3500),
+(N'BG001', N'T023', N'Vỉ', 33000),
 
--- Dụng cụ
-(N'BG001', N'T028', N'Hộp', 35000), -- Khẩu trang
-(N'BG001', N'T029', N'Chai', 5000),  -- Nước muối
-(N'BG001', N'T030', N'Hộp', 25000),
+-- ===== T024: Eugica đỏ =====
+(N'BG001', N'T024', N'Viên', 550),
+(N'BG001', N'T024', N'Vỉ', 5200),
+(N'BG001', N'T024', N'Hộp', 50000),
+
+-- ===== T025: Methorphan =====
+(N'BG001', N'T025', N'Chai', 40000),
+
+-- ===== T026: Amlodipin 5mg =====
+(N'BG001', N'T026', N'Viên', 1000),
+(N'BG001', N'T026', N'Vỉ', 9500),
+(N'BG001', N'T026', N'Hộp', 28000),
+
+-- ===== T027: Losartan 50mg =====
+(N'BG001', N'T027', N'Viên', 1500),
+(N'BG001', N'T027', N'Vỉ', 14500),
+(N'BG001', N'T027', N'Hộp', 43000),
+
+-- ===== T028: Khẩu trang =====
+(N'BG001', N'T028', N'Cái', 700),
+(N'BG001', N'T028', N'Hộp', 33000),
+
+-- ===== T029: Nước muối =====
+(N'BG001', N'T029', N'Chai', 5000),
+(N'BG001', N'T029', N'Thùng', 115000),
+
+-- ===== T030: Băng cá nhân =====
+(N'BG001', N'T030', N'Miếng', 250),
+(N'BG001', N'T030', N'Hộp', 24000),
+
+-- ===== T031: Cồn 70 độ =====
 (N'BG001', N'T031', N'Chai', 15000);
-
--- =============================================
--- INSERT CHI TIẾT CHO BẢNG GIÁ KHUYẾN MÃI (BG002)
--- Giảm giá một số mặt hàng Vitamin & Khẩu trang
--- =============================================
-INSERT INTO ChiTietBangGia (maBG, maThuoc, donViTinh, giaBan) VALUES
-(N'BG002', N'T012', N'Lọ', 50000),  -- Vitamin C giảm 10k
-(N'BG002', N'T013', N'Hộp', 135000), -- Vitamin E giảm 15k
-(N'BG002', N'T016', N'Tuýp', 75000), -- Berocca giảm 10k
-(N'BG002', N'T028', N'Hộp', 25000);  -- Khẩu trang giảm 10k
+GO
+ALTER TABLE Thuoc ADD TonToiThieu INT DEFAULT 10;
+PRINT N'✅ Đã thêm cột TonToiThieu vào bảng Thuoc';
+GO
+UPDATE Thuoc SET TonToiThieu = 10 WHERE TonToiThieu IS NULL;
 GO
 -- View hiển thị danh sách thuốc với đầy đủ thông tin cần thiết
 CREATE OR ALTER VIEW vw_DanhSachThuocFull AS
@@ -408,24 +523,25 @@ SELECT
     t.tenThuoc, 
     t.hoatChat, 
     t.donViCoBan, 
-    nt.tenNhom, 
+    nt.tenNhom,
+    t.TonToiThieu,
     -- Giá nhập
     ISNULL((SELECT TOP 1 ctpn.donGia FROM ChiTietPhieuNhap ctpn JOIN PhieuNhap pn ON ctpn.maPN = pn.maPN WHERE ctpn.maThuoc = t.maThuoc ORDER BY pn.ngayTao DESC), 0) AS giaNhap, 
     -- Giá bán
-    ISNULL((SELECT TOP 1 ctbg.giaBan FROM ChiTietBangGia ctbg JOIN BangGia bg ON ctbg.maBG = bg.maBG WHERE ctbg.maThuoc = t.maThuoc AND bg.trangThai = 1), 0) AS giaBan, 
+    ISNULL((SELECT TOP 1 ctbg.giaBan FROM ChiTietBangGia ctbg JOIN BangGia bg ON ctbg. maBG = bg.maBG WHERE ctbg.maThuoc = t.maThuoc AND bg.trangThai = 1), 0) AS giaBan, 
     
-    -- 1. TỒN KHO THỰC TẾ (Sửa logic: Phải loại bỏ những lô đã đánh dấu xóa isDeleted=1)
+    -- Tồn kho thực tế
     ISNULL((
         SELECT SUM(soLuongTon) 
         FROM LoThuoc 
         WHERE maThuoc = t.maThuoc AND isDeleted = 0
     ), 0) AS tonKho,
 
-    -- 2. TỒN KHO BÁN ĐƯỢC (Available: Chưa xóa AND Còn hạn AND Trạng thái ok)
+    -- Tồn kho bán được
     ISNULL((
         SELECT SUM(soLuongTon) 
         FROM LoThuoc 
-        WHERE maThuoc = t.maThuoc 
+        WHERE maThuoc = t. maThuoc 
           AND isDeleted = 0 
           AND hanSuDung > GETDATE()
           AND (trangThai = N'Còn hạn' OR trangThai = N'Sắp hết hạn')
@@ -433,7 +549,9 @@ SELECT
 
     t.trangThai
 FROM Thuoc t 
-JOIN NhomThuoc nt ON t.maNhom = nt.maNhom
+JOIN NhomThuoc nt ON t. maNhom = nt.maNhom
+GO
+PRINT N'✅ Đã cập nhật VIEW vw_DanhSachThuocFull';
 GO
 
 CREATE OR ALTER VIEW vw_ThuocBanHang AS
@@ -450,7 +568,7 @@ SELECT
 FROM LoThuoc l 
 JOIN Thuoc t ON l.maThuoc = t.maThuoc 
 LEFT JOIN ChiTietBangGia ctbg ON t.maThuoc = ctbg.maThuoc 
-    AND ctbg.donViTinh = donViTinh
+    AND ctbg.donViTinh = t.donViCoBan
 LEFT JOIN BangGia bg ON ctbg.maBG = bg.maBG 
 WHERE l.isDeleted = 0
   AND l.soLuongTon > 0
@@ -459,90 +577,66 @@ WHERE l.isDeleted = 0
 GO
 
 INSERT INTO PhieuNhap (maPN, ngayTao, tongTien, trangThai, maNV, maNCC) VALUES
-(N'PN001', '2023-01-10', 5000000, N'Đã nhập', N'NV003', N'NCC001'), -- L001
-(N'PN002', '2023-05-20', 15000000, N'Đã nhập', N'NV003', N'NCC001'), -- L002
-(N'PN003', '2023-06-15', 400000, N'Đã nhập', N'NV003', N'NCC001'), -- L003
-(N'PN004', '2023-08-01', 2400000, N'Đã nhập', N'NV003', N'NCC001'), -- L004
-(N'PN005', '2023-09-10', 9000000, N'Đã nhập', N'NV003', N'NCC001'), -- L005
-(N'PN006', '2023-10-01', 140000000, N'Đã nhập', N'NV003', N'NCC002'), -- L006 (Panadol)
-(N'PN007', '2022-12-01', 2800000, N'Đã nhập', N'NV003', N'NCC002'), -- L007
-(N'PN008', '2023-02-15', 1050000, N'Đã nhập', N'NV003', N'NCC002'), -- L008
-(N'PN009', '2023-03-20', 12500, N'Đã nhập', N'NV003', N'NCC002'), -- L009
-(N'PN010', '2023-07-07', 8000000, N'Đã nhập', N'NV003', N'NCC002'), -- L010
-(N'PN011', '2023-01-01', 0, N'Đã nhập', N'NV003', N'NCC002'), -- L011 (Hết hàng)
-(N'PN012', '2023-11-11', 22500000, N'Đã nhập', N'NV003', N'NCC003'), -- L012 (Vitamin C)
-(N'PN013', '2023-05-05', 27500000, N'Đã nhập', N'NV003', N'NCC003'), -- L013
-(N'PN014', '2023-09-09', 5250000, N'Đã nhập', N'NV003', N'NCC003'), -- L014
-(N'PN015', '2023-12-01', 280000, N'Đã nhập', N'NV003', N'NCC003'), -- L015
-(N'PN016', '2023-10-20', 3600000, N'Đã nhập', N'NV003', N'NCC003'), -- L016
-(N'PN017', '2023-04-30', 2100000, N'Đã nhập', N'NV003', N'NCC004'), -- L017
-(N'PN018', '2023-08-15', 3000000, N'Đã nhập', N'NV003', N'NCC004'), -- L018
-(N'PN019', '2023-06-01', 1500000, N'Đã nhập', N'NV003', N'NCC004'), -- L019
-(N'PN020', '2023-02-28', 45000, N'Đã nhập', N'NV003', N'NCC004'), -- L020
-(N'PN021', '2023-09-15', 5600000, N'Đã nhập', N'NV003', N'NCC005'), -- L021 (Prospan)
-(N'PN022', '2023-01-20', 5000000, N'Đã nhập', N'NV003', N'NCC005'), -- L022
-(N'PN023', '2023-11-01', 6000000, N'Đã nhập', N'NV003', N'NCC005'), -- L023
-(N'PN024', '2023-05-10', 50000000, N'Đã nhập', N'NV003', N'NCC007'), -- L024 (Khẩu trang)
-(N'PN025', '2023-07-20', 1500000, N'Đã nhập', N'NV003', N'NCC007'), -- L025
-(N'PN026', '2023-03-15', 5250000, N'Đã nhập', N'NV003', N'NCC007'); -- L026
-
+(N'PN001', '2024-01-10', 5000000, N'Đã nhập', N'NV003', N'NCC001'),
+(N'PN002', '2024-05-20', 17600000, N'Đã nhập', N'NV003', N'NCC001'),
+(N'PN003', '2024-08-01', 2800000, N'Đã nhập', N'NV003', N'NCC001'),
+(N'PN004', '2024-09-10', 10800000, N'Đã nhập', N'NV003', N'NCC001'),
+(N'PN005', '2024-10-01', 14400000, N'Đã nhập', N'NV003', N'NCC002'),
+(N'PN006', '2024-02-15', 1200000, N'Đã nhập', N'NV003', N'NCC002'),
+(N'PN007', '2024-03-20', 140000, N'Đã nhập', N'NV003', N'NCC002'),
+(N'PN008', '2024-07-07', 8000000, N'Đã nhập', N'NV003', N'NCC002'),
+(N'PN009', '2024-06-01', 560000, N'Đã nhập', N'NV003', N'NCC004'),
+(N'PN010', '2024-11-11', 2250000, N'Đã nhập', N'NV003', N'NCC003'),
+(N'PN011', '2024-05-05', 11250000, N'Đã nhập', N'NV003', N'NCC003'),
+(N'PN012', '2024-09-09', 6000000, N'Đã nhập', N'NV003', N'NCC003'),
+(N'PN013', '2024-12-01', 2800000, N'Đã nhập', N'NV003', N'NCC003'),
+(N'PN014', '2024-10-20', 4200000, N'Đã nhập', N'NV003', N'NCC003'),
+(N'PN015', '2024-04-30', 210000, N'Đã nhập', N'NV003', N'NCC004'),
+(N'PN016', '2024-08-15', 3000000, N'Đã nhập', N'NV003', N'NCC004'),
+(N'PN017', '2024-06-01', 1200000, N'Đã nhập', N'NV003', N'NCC004'),
+(N'PN018', '2024-02-28', 500000, N'Đã nhập', N'NV003', N'NCC004'),
+(N'PN019', '2024-07-15', 2800000, N'Đã nhập', N'NV003', N'NCC004'),
+(N'PN020', '2024-09-15', 6080000, N'Đã nhập', N'NV003', N'NCC005'),
+(N'PN021', '2024-01-20', 6000000, N'Đã nhập', N'NV003', N'NCC005'),
+(N'PN022', '2024-11-01', 675000, N'Đã nhập', N'NV003', N'NCC005'),
+(N'PN023', '2024-08-01', 1600000, N'Đã nhập', N'NV003', N'NCC005'),
+(N'PN024', '2024-06-01', 2400000, N'Đã nhập', N'NV003', N'NCC006'),
+(N'PN025', '2024-07-01', 3600000, N'Đã nhập', N'NV003', N'NCC006'),
+(N'PN026', '2024-05-10', 5000000, N'Đã nhập', N'NV003', N'NCC007'),
+(N'PN027', '2024-07-20', 2000000, N'Đã nhập', N'NV003', N'NCC007'),
+(N'PN028', '2024-03-15', 450000, N'Đã nhập', N'NV003', N'NCC007'),
+(N'PN029', '2024-04-01', 1000000, N'Đã nhập', N'NV003', N'NCC007');
+GO
 INSERT INTO ChiTietPhieuNhap (maPN, maThuoc, maLo, hanSuDung, soLuong, donGia, thanhTien) VALUES
-(N'PN001', N'T001', N'L001', '2025-01-10', 500, 10000, 5000000),
-(N'PN002', N'T002', N'L002', '2026-05-20', 100, 150000, 15000000),
-(N'PN003', N'T003', N'L003', '2024-12-01', 50, 8000, 400000),
-(N'PN004', N'T004', N'L004', '2026-08-01', 200, 12000, 2400000),
-(N'PN005', N'T005', N'L005', '2025-09-10', 150, 60000, 9000000),
-(N'PN006', N'T006', N'L006', '2026-10-01', 1000, 140000, 140000000), -- Panadol
-(N'PN007', N'T006', N'L007', '2024-12-30', 20, 140000, 2800000),
-(N'PN008', N'T007', N'L008', '2025-02-15', 300, 3500, 1050000),
-(N'PN009', N'T008', N'L009', '2025-03-20', 5, 2500, 12500),
-(N'PN010', N'T009', N'L010', '2026-07-07', 400, 20000, 8000000),
-(N'PN011', N'T010', N'L011', '2024-01-01', 0, 10000, 0),
-(N'PN012', N'T012', N'L012', '2025-11-11', 500, 45000, 22500000),
-(N'PN013', N'T013', N'L013', '2026-05-05', 250, 110000, 27500000),
-(N'PN014', N'T014', N'L014', '2025-09-09', 150, 35000, 5250000),
-(N'PN015', N'T015', N'L015', '2024-06-01', 80, 3500, 280000),
-(N'PN016', N'T016', N'L016', '2026-10-20', 60, 60000, 3600000),
-(N'PN017', N'T017', N'L017', '2026-04-30', 300, 7000, 2100000),
-(N'PN018', N'T018', N'L018', '2025-08-15', 1200, 2500, 3000000),
-(N'PN019', N'T019', N'L019', '2026-06-01', 100, 15000, 1500000),
-(N'PN020', N'T020', N'L020', '2025-02-28', 10, 4500, 45000),
-(N'PN021', N'T022', N'L021', '2026-09-15', 80, 70000, 5600000),
-(N'PN022', N'T023', N'L022', '2025-01-20', 200, 25000, 5000000),
-(N'PN023', N'T024', N'L023', '2026-11-01', 150, 40000, 6000000),
-(N'PN024', N'T028', N'L024', '2028-05-10', 2000, 25000, 50000000),
-(N'PN025', N'T029', N'L025', '2026-07-20', 500, 3000, 1500000),
-(N'PN026', N'T030', N'L026', '2027-03-15', 300, 17500, 5250000);
-ALTER TABLE ChiTietPhieuNhap
-ADD donViTinh NVARCHAR(50)
-DELETE FROM ChiTietPhieuNhap;
-INSERT INTO ChiTietPhieuNhap (maPN, maThuoc, maLo, hanSuDung, soLuong, donGia, thanhTien, donViTinh) VALUES
-(N'PN001', N'T001', N'L001', '2025-01-10', 500, 10000, 5000000, N'Vỉ'),
-(N'PN002', N'T002', N'L002', '2026-05-20', 100, 150000, 15000000, N'Hộp'),
-(N'PN003', N'T003', N'L003', '2024-12-01', 50, 8000, 400000, N'Vỉ'),
-(N'PN004', N'T004', N'L004', '2026-08-01', 200, 12000, 2400000, N'Vỉ'),
-(N'PN005', N'T005', N'L005', '2025-09-10', 150, 60000, 9000000, N'Hộp'),
-(N'PN006', N'T006', N'L006', '2026-10-01', 1000, 140000, 140000000, N'Hộp'), -- Panadol
-(N'PN007', N'T006', N'L007', '2024-12-30', 20, 140000, 2800000, N'Hộp'),
-(N'PN008', N'T007', N'L008', '2025-02-15', 300, 3500, 1050000, N'Viên'),
-(N'PN009', N'T008', N'L009', '2025-03-20', 5, 2500, 12500, N'Gói'),
-(N'PN010', N'T009', N'L010', '2026-07-07', 400, 20000, 8000000, N'Vỉ'),
-(N'PN011', N'T010', N'L011', '2024-01-01', 0, 10000, 0, N'Vỉ'),
-(N'PN012', N'T012', N'L012', '2025-11-11', 500, 45000, 22500000, N'Lọ'),
-(N'PN013', N'T013', N'L013', '2026-05-05', 250, 110000, 27500000, N'Hộp'),
-(N'PN014', N'T014', N'L014', '2025-09-09', 150, 35000, 5250000, N'Vỉ'),
-(N'PN015', N'T015', N'L015', '2024-06-01', 80, 3500, 280000, N'Ống'),
-(N'PN016', N'T016', N'L016', '2026-10-20', 60, 60000, 3600000, N'Tuýp'),
-(N'PN017', N'T017', N'L017', '2026-04-30', 300, 7000, 2100000, N'Lọ'),
-(N'PN018', N'T018', N'L018', '2025-08-15', 1200, 2500, 3000000, N'Gói'),
-(N'PN019', N'T019', N'L019', '2026-06-01', 100, 15000, 1500000, N'Vỉ'),
-(N'PN020', N'T020', N'L020', '2025-02-28', 10, 4500, 45000, N'Gói'),
-(N'PN021', N'T022', N'L021', '2026-09-15', 80, 70000, 5600000, N'Chai'),
-(N'PN022', N'T023', N'L022', '2025-01-20', 200, 25000, 5000000, N'Vỉ'),
-(N'PN023', N'T024', N'L023', '2026-11-01', 150, 40000, 6000000, N'Hộp'),
-(N'PN024', N'T028', N'L024', '2028-05-10', 2000, 25000, 50000000, N'Hộp'),
-(N'PN025', N'T029', N'L025', '2026-07-20', 500, 3000, 1500000, N'Chai'),
-(N'PN026', N'T030', N'L026', '2027-03-15', 300, 17500, 5250000, N'Hộp');
+(N'PN001', N'T001', N'L001', '2026-01-10', 5000, 1000, 5000000),
+(N'PN002', N'T002', N'L002', '2026-05-20', 1400, 12571, 17600000),
+(N'PN003', N'T004', N'L004', '2026-08-01', 2000, 1400, 2800000),
+(N'PN004', N'T005', N'L005', '2026-09-10', 900, 12000, 10800000),
+(N'PN005', N'T006', N'L006', '2026-10-01', 12000, 1200, 14400000),
+(N'PN006', N'T007', N'L008', '2026-02-15', 300, 4000, 1200000),
+(N'PN007', N'T008', N'L009', '2026-03-20', 50, 2800, 140000),
+(N'PN008', N'T009', N'L010', '2026-07-07', 4000, 2000, 8000000),
+(N'PN009', N'T011', N'L012', '2026-06-01', 400, 1400, 560000),
+(N'PN010', N'T012', N'L013', '2026-11-11', 5000, 450, 2250000),
+(N'PN011', N'T013', N'L014', '2026-05-05', 2500, 4500, 11250000),
+(N'PN012', N'T014', N'L015', '2025-01-20', 1500, 4000, 6000000),
+(N'PN013', N'T015', N'L016', '2026-06-01', 800, 3500, 2800000),
+(N'PN014', N'T016', N'L017', '2026-10-20', 600, 7000, 4200000),
+(N'PN015', N'T017', N'L018', '2026-04-30', 3000, 70, 210000),
+(N'PN016', N'T018', N'L019', '2026-02-26', 1200, 2500, 3000000),
+(N'PN017', N'T019', N'L020', '2026-06-01', 1000, 1200, 1200000),
+(N'PN018', N'T020', N'L021', '2025-02-28', 100, 5000, 500000),
+(N'PN019', N'T021', N'L022', '2026-07-15', 400, 7000, 2800000),
+(N'PN020', N'T022', N'L023', '2026-09-15', 80, 76000, 6080000),
+(N'PN021', N'T023', N'L024', '2025-01-20', 2000, 3000, 6000000),
+(N'PN022', N'T024', N'L025', '2026-11-01', 1500, 450, 675000),
+(N'PN023', N'T025', N'L026', '2026-08-01', 50, 32000, 1600000),
+(N'PN024', N'T026', N'L027', '2026-06-01', 3000, 800, 2400000),
+(N'PN025', N'T027', N'L028', '2026-07-01', 3000, 1200, 3600000),
+(N'PN026', N'T028', N'L029', '2028-05-10', 10000, 500, 5000000),
+(N'PN027', N'T029', N'L030', '2026-07-20', 500, 4000, 2000000),
+(N'PN028', N'T030', N'L031', '2027-03-15', 3000, 150, 450000),
+(N'PN029', N'T031', N'L032', '2026-04-01', 100, 10000, 1000000);
 GO
 CREATE OR ALTER PROCEDURE sp_TaoBangGiaMoi
     @TenBG NVARCHAR(100),
@@ -572,111 +666,32 @@ BEGIN
 END
 GO
 
--- =====================================================
--- SCRIPT CẬP NHẬT DATABASE - HỆ THỐNG QUẢN LÝ HIỆU THUỐC BÌNH AN
--- Ngày tạo: 15/12/2025
--- Mô tả: Bổ sung các cột và stored procedures cho phù hợp với Entity classes
--- LƯU Ý:  Chạy script này SAU KHI đã có database QLTHUOC từ script gốc
--- =====================================================
-
-USE QLTHUOC
+ALTER TABLE NhaCungCap ADD nguoiLienHe NVARCHAR(100) NULL;
+PRINT N'✅ Đã thêm cột nguoiLienHe vào bảng NhaCungCap';
 GO
-
--- =====================================================
--- 1. BỔ SUNG CỘT CHO BẢNG THUỐC
--- =====================================================
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'Thuoc') AND name = 'TonToiThieu')
-BEGIN
-    ALTER TABLE Thuoc ADD TonToiThieu INT DEFAULT 10;
-    PRINT N'✅ Đã thêm cột TonToiThieu vào bảng Thuoc';
-END
+ALTER TABLE NhaCungCap ADD trangThai BIT DEFAULT 1;
+PRINT N'✅ Đã thêm cột trangThai vào bảng NhaCungCap';
 GO
-
--- Cập nhật giá trị mặc định cho các thuốc hiện có
-UPDATE Thuoc SET TonToiThieu = 10 WHERE TonToiThieu IS NULL;
-GO
-
--- =====================================================
--- 2. BỔ SUNG CỘT CHO BẢNG NHÀ CUNG CẤP
--- =====================================================
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'NhaCungCap') AND name = 'nguoiLienHe')
-BEGIN
-    ALTER TABLE NhaCungCap ADD nguoiLienHe NVARCHAR(100) NULL;
-    PRINT N'✅ Đã thêm cột nguoiLienHe vào bảng NhaCungCap';
-END
-GO
-
-IF NOT EXISTS (SELECT * FROM sys. columns WHERE object_id = OBJECT_ID(N'NhaCungCap') AND name = 'trangThai')
-BEGIN
-    ALTER TABLE NhaCungCap ADD trangThai BIT DEFAULT 1;
-    PRINT N'✅ Đã thêm cột trangThai vào bảng NhaCungCap';
-END
-GO
-
--- Cập nhật giá trị mặc định
 UPDATE NhaCungCap SET trangThai = 1 WHERE trangThai IS NULL;
 GO
-
--- =====================================================
--- 3. BỔ SUNG CỘT CHO BẢNG PHIẾU NHẬP
--- =====================================================
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'PhieuNhap') AND name = 'ghiChu')
-BEGIN
-    ALTER TABLE PhieuNhap ADD ghiChu NVARCHAR(500) NULL;
-    PRINT N'✅ Đã thêm cột ghiChu vào bảng PhieuNhap';
-END
+ALTER TABLE PhieuNhap ADD ghiChu NVARCHAR(500) NULL;
+PRINT N'✅ Đã thêm cột ghiChu vào bảng PhieuNhap';
 GO
-
--- =====================================================
--- 4. BỔ SUNG CỘT CHO BẢNG PHIẾU TRẢ HÀNG
--- =====================================================
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'PhieuTraHang') AND name = 'trangThai')
-BEGIN
-    ALTER TABLE PhieuTraHang ADD trangThai NVARCHAR(50) DEFAULT N'Đã trả';
-    PRINT N'✅ Đã thêm cột trangThai vào bảng PhieuTraHang';
-END
+ALTER TABLE PhieuTraHang ADD trangThai NVARCHAR(50) DEFAULT N'Đã trả';
+PRINT N'✅ Đã thêm cột trangThai vào bảng PhieuTraHang';
 GO
-
-IF NOT EXISTS (SELECT * FROM sys. columns WHERE object_id = OBJECT_ID(N'PhieuTraHang') AND name = 'ghiChu')
-BEGIN
-    ALTER TABLE PhieuTraHang ADD ghiChu NVARCHAR(500) NULL;
-    PRINT N'✅ Đã thêm cột ghiChu vào bảng PhieuTraHang';
-END
+ALTER TABLE PhieuTraHang ADD ghiChu NVARCHAR(500) NULL;
+PRINT N'✅ Đã thêm cột ghiChu vào bảng PhieuTraHang';
 GO
-
--- =====================================================
--- 5. BỔ SUNG CỘT ĐƠN VỊ TÍNH CHO CHI TIẾT HÓA ĐƠN
--- =====================================================
-IF NOT EXISTS (SELECT * FROM sys. columns WHERE object_id = OBJECT_ID(N'ChiTietHoaDon') AND name = 'donViTinh')
-BEGIN
-    ALTER TABLE ChiTietHoaDon ADD donViTinh NVARCHAR(50) NULL;
-    PRINT N'✅ Đã thêm cột donViTinh vào bảng ChiTietHoaDon';
-END
+ALTER TABLE ChiTietHoaDon ADD donViTinh NVARCHAR(50) NULL;
+PRINT N'✅ Đã thêm cột donViTinh vào bảng ChiTietHoaDon';
 GO
-
--- =====================================================
--- 6. BỔ SUNG CỘT ĐƠN VỊ TÍNH CHO CHI TIẾT ĐƠN ĐẶT
--- =====================================================
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'ChiTietDonDat') AND name = 'donViTinh')
-BEGIN
-    ALTER TABLE ChiTietDonDat ADD donViTinh NVARCHAR(50) NULL;
-    PRINT N'✅ Đã thêm cột donViTinh vào bảng ChiTietDonDat';
-END
+ALTER TABLE ChiTietDonDat ADD donViTinh NVARCHAR(50) NULL;
+PRINT N'✅ Đã thêm cột donViTinh vào bảng ChiTietDonDat';
 GO
-
--- =====================================================
--- 7. BỔ SUNG CỘT ĐƠN VỊ TÍNH CHO CHI TIẾT PHIẾU TRẢ
--- =====================================================
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'ChiTietPhieuTra') AND name = 'donViTinh')
-BEGIN
-    ALTER TABLE ChiTietPhieuTra ADD donViTinh NVARCHAR(50) NULL;
-    PRINT N'✅ Đã thêm cột donViTinh vào bảng ChiTietPhieuTra';
-END
+ALTER TABLE ChiTietPhieuTra ADD donViTinh NVARCHAR(50) NULL;
+PRINT N'✅ Đã thêm cột donViTinh vào bảng ChiTietPhieuTra';
 GO
-
--- =====================================================
--- 8. STORED PROCEDURES CHO NGHIỆP VỤ
--- =====================================================
 
 -- SP:  Lấy tổng tồn kho theo mã thuốc (cho validate số lượng)
 IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'sp_GetTongTonByMaThuoc')
@@ -1028,233 +1043,7 @@ BEGIN
 END
 GO
 PRINT N'✅ Đã tạo SP sp_GetNewID';
-
--- =====================================================
--- 9. CẬP NHẬT VIEWS
--- =====================================================
 GO
--- View hiển thị danh sách thuốc với đầy đủ thông tin (đã cập nhật thêm TonToiThieu)
-CREATE OR ALTER VIEW vw_DanhSachThuocFull AS
-SELECT 
-    t.maThuoc, 
-    t.tenThuoc, 
-    t.hoatChat, 
-    t.donViCoBan, 
-    nt.tenNhom,
-    t.TonToiThieu,
-    -- Giá nhập
-    ISNULL((SELECT TOP 1 ctpn.donGia FROM ChiTietPhieuNhap ctpn JOIN PhieuNhap pn ON ctpn.maPN = pn.maPN WHERE ctpn.maThuoc = t.maThuoc ORDER BY pn.ngayTao DESC), 0) AS giaNhap, 
-    -- Giá bán
-    ISNULL((SELECT TOP 1 ctbg.giaBan FROM ChiTietBangGia ctbg JOIN BangGia bg ON ctbg. maBG = bg.maBG WHERE ctbg.maThuoc = t.maThuoc AND bg.trangThai = 1), 0) AS giaBan, 
-    
-    -- Tồn kho thực tế
-    ISNULL((
-        SELECT SUM(soLuongTon) 
-        FROM LoThuoc 
-        WHERE maThuoc = t.maThuoc AND isDeleted = 0
-    ), 0) AS tonKho,
-
-    -- Tồn kho bán được
-    ISNULL((
-        SELECT SUM(soLuongTon) 
-        FROM LoThuoc 
-        WHERE maThuoc = t. maThuoc 
-          AND isDeleted = 0 
-          AND hanSuDung > GETDATE()
-          AND (trangThai = N'Còn hạn' OR trangThai = N'Sắp hết hạn')
-    ), 0) AS tonKhoBanDuoc,
-
-    t.trangThai
-FROM Thuoc t 
-JOIN NhomThuoc nt ON t. maNhom = nt.maNhom
-GO
-PRINT N'✅ Đã cập nhật VIEW vw_DanhSachThuocFull';
-
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'DonViQuyDoi')
-BEGIN
-    CREATE TABLE DonViQuyDoi (
-        id INT IDENTITY(1,1) PRIMARY KEY,
-        maThuoc NVARCHAR(50) NOT NULL,
-        tenDonVi NVARCHAR(50) NOT NULL,
-        giaTriQuyDoi INT NOT NULL DEFAULT 1,
-        giaBan DECIMAL(18, 2) DEFAULT 0,
-        laDonViCoBan BIT DEFAULT 0,
-        CONSTRAINT FK_DVQD_Thuoc FOREIGN KEY (maThuoc) REFERENCES Thuoc(maThuoc)
-    );
-    PRINT N'✅ Đã tạo bảng DonViQuyDoi';
-END
-GO
-
--- Xóa dữ liệu cũ nếu có
-DELETE FROM DonViQuyDoi;
-GO
-
--- Insert dữ liệu đơn vị quy đổi cho các thuốc
-INSERT INTO DonViQuyDoi (maThuoc, tenDonVi, giaTriQuyDoi, giaBan, laDonViCoBan) VALUES
--- T001: Amoxicillin 500mg (Vỉ 10 viên, Hộp 10 vỉ)
-(N'T001', N'Viên', 1, 1500, 1),
-(N'T001', N'Vỉ', 10, 15000, 0),
-(N'T001', N'Hộp', 100, 140000, 0),
-
--- T002: Augmentin 625mg
-(N'T002', N'Viên', 1, 22000, 1),
-(N'T002', N'Hộp', 10, 220000, 0),
-
--- T003: Cephalexin 500mg
-(N'T003', N'Viên', 1, 1200, 1),
-(N'T003', N'Vỉ', 10, 12000, 0),
-
--- T004: Ciprofloxacin 500mg
-(N'T004', N'Viên', 1, 1800, 1),
-(N'T004', N'Vỉ', 10, 18000, 0),
-
--- T005: Azithromycin 250mg
-(N'T005', N'Viên', 1, 17000, 1),
-(N'T005', N'Hộp', 5, 85000, 0),
-
--- T006: Panadol Extra
-(N'T006', N'Viên', 1, 1850, 1),
-(N'T006', N'Vỉ', 12, 22000, 0),
-(N'T006', N'Hộp', 120, 185000, 0),
-
--- T007: Efferalgan 500mg
-(N'T007', N'Viên', 1, 5000, 1),
-
--- T008: Hapacol 250mg
-(N'T008', N'Gói', 1, 3500, 1),
-(N'T008', N'Hộp', 20, 65000, 0),
-
--- T009: Ibuprofen 400mg
-(N'T009', N'Viên', 1, 2500, 1),
-(N'T009', N'Vỉ', 10, 25000, 0),
-
--- T010: Aspirin 81mg
-(N'T010', N'Viên', 1, 500, 1),
-(N'T010', N'Vỉ', 30, 15000, 0),
-
--- T011: Salonpas
-(N'T011', N'Miếng', 1, 4000, 1),
-(N'T011', N'Hộp', 8, 32000, 0),
-
--- T012: Vitamin C 500mg
-(N'T012', N'Viên', 1, 600, 1),
-(N'T012', N'Lọ', 100, 60000, 0),
-
--- T013: Vitamin E 400IU
-(N'T013', N'Viên', 1, 3000, 1),
-(N'T013', N'Hộp', 50, 150000, 0),
-
--- T014: Vitamin 3B
-(N'T014', N'Viên', 1, 4500, 1),
-(N'T014', N'Vỉ', 10, 45000, 0),
-
--- T015: Canxi Corbiere
-(N'T015', N'Ống', 1, 5000, 1),
-(N'T015', N'Hộp', 30, 140000, 0),
-
--- T016: Berocca
-(N'T016', N'Viên', 1, 8500, 1),
-(N'T016', N'Tuýp', 10, 85000, 0),
-
--- T017: Berberin
-(N'T017', N'Viên', 1, 200, 1),
-(N'T017', N'Lọ', 50, 10000, 0),
-
--- T018: Smecta
-(N'T018', N'Gói', 1, 4000, 1),
-(N'T018', N'Hộp', 30, 110000, 0),
-
--- T019: Omeprazol 20mg
-(N'T019', N'Viên', 1, 2200, 1),
-(N'T019', N'Vỉ', 10, 22000, 0),
-
--- T020: Gaviscon
-(N'T020', N'Gói', 1, 6500, 1),
-(N'T020', N'Hộp', 24, 150000, 0),
-
--- T021: Enterogermina
-(N'T021', N'Ống', 1, 8000, 1),
-(N'T021', N'Hộp', 20, 150000, 0),
-
--- T022: Prospan
-(N'T022', N'Chai', 1, 95000, 1),
-
--- T023: Viên ngậm Bảo Thanh
-(N'T023', N'Viên', 1, 3500, 1),
-(N'T023', N'Vỉ', 10, 35000, 0),
-
--- T024: Eugica đỏ
-(N'T024', N'Viên', 1, 2750, 1),
-(N'T024', N'Hộp', 20, 55000, 0),
-
--- T025: Methorphan
-(N'T025', N'Lọ', 1, 40000, 1),
-
--- T026: Amlodipin 5mg
-(N'T026', N'Viên', 1, 1000, 1),
-(N'T026', N'Vỉ', 30, 30000, 0),
-
--- T027: Losartan 50mg
-(N'T027', N'Viên', 1, 1500, 1),
-(N'T027', N'Vỉ', 30, 45000, 0),
-
--- T028: Khẩu trang
-(N'T028', N'Cái', 1, 700, 1),
-(N'T028', N'Hộp', 50, 35000, 0),
-
--- T029: Nước muối sinh lý
-(N'T029', N'Chai', 1, 5000, 1),
-(N'T029', N'Thùng', 24, 110000, 0),
-
--- T030: Băng cá nhân Urgo
-(N'T030', N'Miếng', 1, 500, 1),
-(N'T030', N'Hộp', 50, 25000, 0),
-
--- T031: Cồn 70 độ
-(N'T031', N'Chai', 1, 15000, 1);
-GO
-PRINT N'✅ Đã insert dữ liệu DonViQuyDoi';
-
-IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'sp_GetDonViQuyDoiByMaThuoc')
-    DROP PROCEDURE sp_GetDonViQuyDoiByMaThuoc;
-GO
-
-CREATE PROCEDURE sp_GetDonViQuyDoiByMaThuoc
-    @MaThuoc NVARCHAR(50)
-AS
-BEGIN
-    SELECT id, maThuoc, tenDonVi, giaTriQuyDoi, giaBan, laDonViCoBan
-    FROM DonViQuyDoi
-    WHERE maThuoc = @MaThuoc
-    ORDER BY giaTriQuyDoi ASC;
-END
-GO
-PRINT N'✅ Đã tạo SP sp_GetDonViQuyDoiByMaThuoc';
-
-UPDATE LoThuoc
-SET trangThai = CASE 
-    WHEN hanSuDung <= GETDATE() THEN N'Đã hết hạn'
-    WHEN hanSuDung <= DATEADD(DAY, 30, GETDATE()) THEN N'Sắp hết hạn'
-    ELSE N'Còn hạn'
-END
-WHERE isDeleted = 0;
-
-PRINT N'✅ Đã cập nhật trạng thái lô thuốc';
-GO
-
-UPDATE Thuoc SET donViCoBan = N'Viên' WHERE maThuoc IN ('T001', 'T002', 'T003', 'T004', 'T005', 'T006', 'T007', 'T009', 'T010', 'T012', 'T013', 'T014', 'T016', 'T017', 'T019', 'T023', 'T024', 'T026', 'T027');
-UPDATE Thuoc SET donViCoBan = N'Gói' WHERE maThuoc IN ('T008', 'T018', 'T020');
-UPDATE Thuoc SET donViCoBan = N'Ống' WHERE maThuoc IN ('T015', 'T021');
-UPDATE Thuoc SET donViCoBan = N'Miếng' WHERE maThuoc IN ('T011', 'T030');
-UPDATE Thuoc SET donViCoBan = N'Chai' WHERE maThuoc IN ('T022', 'T025', 'T029', 'T031');
-UPDATE Thuoc SET donViCoBan = N'Cái' WHERE maThuoc = 'T028';
-
-PRINT N'✅ Đã cập nhật đơn vị cơ bản cho Thuốc';
-GO
-
-DELETE FROM DonViQuyDoi;
-GO
-
 -- Insert dữ liệu đơn vị quy đổi (đơn vị cơ bản có giaTriQuyDoi = 1)
 INSERT INTO DonViQuyDoi (maThuoc, tenDonVi, giaTriQuyDoi, giaBan, laDonViCoBan) VALUES
 -- ===== NHÓM KHÁNG SINH =====
@@ -1391,267 +1180,40 @@ INSERT INTO DonViQuyDoi (maThuoc, tenDonVi, giaTriQuyDoi, giaBan, laDonViCoBan) 
 -- T031: Cồn 70 độ (bán theo Chai)
 (N'T031', N'Chai', 1, 15000, 1);
 GO
+PRINT N'✅ Đã insert dữ liệu DonViQuyDoi';
+GO
+CREATE PROCEDURE sp_GetDonViQuyDoiByMaThuoc
+    @MaThuoc NVARCHAR(50)
+AS
+BEGIN
+    SELECT id, maThuoc, tenDonVi, giaTriQuyDoi, giaBan, laDonViCoBan
+    FROM DonViQuyDoi
+    WHERE maThuoc = @MaThuoc
+    ORDER BY giaTriQuyDoi ASC;
+END
+GO
+PRINT N'✅ Đã tạo SP sp_GetDonViQuyDoiByMaThuoc';
 
-DELETE FROM ChiTietBangGia;
+UPDATE LoThuoc
+SET trangThai = CASE 
+    WHEN hanSuDung <= GETDATE() THEN N'Đã hết hạn'
+    WHEN hanSuDung <= DATEADD(DAY, 30, GETDATE()) THEN N'Sắp hết hạn'
+    ELSE N'Còn hạn'
+END
+WHERE isDeleted = 0;
+
+PRINT N'✅ Đã cập nhật trạng thái lô thuốc';
 GO
 
--- Insert giá cho BG001 (Bảng giá bán lẻ 2024) - TẤT CẢ đơn vị tính
-INSERT INTO ChiTietBangGia (maBG, maThuoc, donViTinh, giaBan) VALUES
--- ===== T001: Amoxicillin 500mg =====
-(N'BG001', N'T001', N'Viên', 1500),
-(N'BG001', N'T001', N'Vỉ', 14000),
-(N'BG001', N'T001', N'Hộp', 135000),
+UPDATE Thuoc SET donViCoBan = N'Viên' WHERE maThuoc IN ('T001', 'T002', 'T003', 'T004', 'T005', 'T006', 'T007', 'T009', 'T010', 'T012', 'T013', 'T014', 'T016', 'T017', 'T019', 'T023', 'T024', 'T026', 'T027');
+UPDATE Thuoc SET donViCoBan = N'Gói' WHERE maThuoc IN ('T008', 'T018', 'T020');
+UPDATE Thuoc SET donViCoBan = N'Ống' WHERE maThuoc IN ('T015', 'T021');
+UPDATE Thuoc SET donViCoBan = N'Miếng' WHERE maThuoc IN ('T011', 'T030');
+UPDATE Thuoc SET donViCoBan = N'Chai' WHERE maThuoc IN ('T022', 'T025', 'T029', 'T031');
+UPDATE Thuoc SET donViCoBan = N'Cái' WHERE maThuoc = 'T028';
 
--- ===== T002: Augmentin 625mg =====
-(N'BG001', N'T002', N'Viên', 16000),
-(N'BG001', N'T002', N'Hộp', 220000),
-
--- ===== T003: Cephalexin 500mg =====
-(N'BG001', N'T003', N'Viên', 1200),
-(N'BG001', N'T003', N'Vỉ', 11000),
-
--- ===== T004: Ciprofloxacin 500mg =====
-(N'BG001', N'T004', N'Viên', 1800),
-(N'BG001', N'T004', N'Vỉ', 17000),
-
--- ===== T005: Azithromycin 250mg =====
-(N'BG001', N'T005', N'Viên', 14500),
-(N'BG001', N'T005', N'Hộp', 85000),
-
--- ===== T006: Panadol Extra =====
-(N'BG001', N'T006', N'Viên', 1600),
-(N'BG001', N'T006', N'Vỉ', 18000),
-(N'BG001', N'T006', N'Hộp', 175000),
-
--- ===== T007: Efferalgan 500mg =====
-(N'BG001', N'T007', N'Viên', 5000),
-
--- ===== T008: Hapacol 250mg =====
-(N'BG001', N'T008', N'Gói', 3500),
-(N'BG001', N'T008', N'Hộp', 80000),
-
--- ===== T009: Ibuprofen 400mg =====
-(N'BG001', N'T009', N'Viên', 2500),
-(N'BG001', N'T009', N'Vỉ', 24000),
-
--- ===== T010: Aspirin 81mg =====
-(N'BG001', N'T010', N'Viên', 500),
-(N'BG001', N'T010', N'Vỉ', 14000),
-
--- ===== T011: Salonpas =====
-(N'BG001', N'T011', N'Miếng', 1700),
-(N'BG001', N'T011', N'Gói', 16000),
-(N'BG001', N'T011', N'Hộp', 31000),
-
--- ===== T012: Vitamin C 500mg =====
-(N'BG001', N'T012', N'Viên', 600),
-(N'BG001', N'T012', N'Lọ', 58000),
-
--- ===== T013: Vitamin E 400IU =====
-(N'BG001', N'T013', N'Viên', 5000),
-(N'BG001', N'T013', N'Hộp', 145000),
-
--- ===== T014: Vitamin 3B =====
-(N'BG001', N'T014', N'Viên', 4500),
-(N'BG001', N'T014', N'Vỉ', 43000),
-
--- ===== T015: Canxi Corbiere =====
-(N'BG001', N'T015', N'Ống', 5000),
-(N'BG001', N'T015', N'Hộp', 145000),
-
--- ===== T016: Berocca =====
-(N'BG001', N'T016', N'Viên', 8500),
-(N'BG001', N'T016', N'Tuýp', 82000),
-
--- ===== T017: Berberin =====
-(N'BG001', N'T017', N'Viên', 100),
-(N'BG001', N'T017', N'Lọ', 9500),
-
--- ===== T018: Smecta =====
-(N'BG001', N'T018', N'Gói', 4000),
-(N'BG001', N'T018', N'Hộp', 115000),
-
--- ===== T019: Omeprazol 20mg =====
-(N'BG001', N'T019', N'Viên', 1600),
-(N'BG001', N'T019', N'Vỉ', 21000),
-(N'BG001', N'T019', N'Hộp', 40000),
-
--- ===== T020: Gaviscon =====
-(N'BG001', N'T020', N'Gói', 6500),
-(N'BG001', N'T020', N'Hộp', 150000),
-
--- ===== T021: Enterogermina =====
-(N'BG001', N'T021', N'Ống', 8000),
-(N'BG001', N'T021', N'Hộp', 155000),
-
--- ===== T022: Prospan =====
-(N'BG001', N'T022', N'Chai', 95000),
-
--- ===== T023: Viên ngậm Bảo Thanh =====
-(N'BG001', N'T023', N'Viên', 3500),
-(N'BG001', N'T023', N'Vỉ', 33000),
-
--- ===== T024: Eugica đỏ =====
-(N'BG001', N'T024', N'Viên', 550),
-(N'BG001', N'T024', N'Vỉ', 5200),
-(N'BG001', N'T024', N'Hộp', 50000),
-
--- ===== T025: Methorphan =====
-(N'BG001', N'T025', N'Chai', 40000),
-
--- ===== T026: Amlodipin 5mg =====
-(N'BG001', N'T026', N'Viên', 1000),
-(N'BG001', N'T026', N'Vỉ', 9500),
-(N'BG001', N'T026', N'Hộp', 28000),
-
--- ===== T027: Losartan 50mg =====
-(N'BG001', N'T027', N'Viên', 1500),
-(N'BG001', N'T027', N'Vỉ', 14500),
-(N'BG001', N'T027', N'Hộp', 43000),
-
--- ===== T028: Khẩu trang =====
-(N'BG001', N'T028', N'Cái', 700),
-(N'BG001', N'T028', N'Hộp', 33000),
-
--- ===== T029: Nước muối =====
-(N'BG001', N'T029', N'Chai', 5000),
-(N'BG001', N'T029', N'Thùng', 115000),
-
--- ===== T030: Băng cá nhân =====
-(N'BG001', N'T030', N'Miếng', 250),
-(N'BG001', N'T030', N'Hộp', 24000),
-
--- ===== T031: Cồn 70 độ =====
-(N'BG001', N'T031', N'Chai', 15000);
+PRINT N'✅ Đã cập nhật đơn vị cơ bản cho Thuốc';
 GO
-
-DELETE FROM ChiTietPhieuNhap;
-DELETE FROM PhieuNhap;
-DELETE FROM LoThuoc;
-GO
-
--- Insert lại lô thuốc (số lượng tính theo đơn vị cơ bản - viên/gói/ống...)
-INSERT INTO LoThuoc (maLo, maThuoc, ngayNhap, hanSuDung, soLuongTon, trangThai, isDeleted) VALUES
--- Nhóm Kháng sinh (tồn theo VIÊN)
-(N'L001', N'T001', '2024-01-10', '2026-01-10', 5000, N'Còn hạn', 0),      -- 5000 viên = 50 vỉ = 5 hộp
-(N'L002', N'T002', '2024-05-20', '2026-05-20', 1400, N'Còn hạn', 0),      -- 1400 viên = 100 hộp
-(N'L003', N'T003', '2023-06-15', '2024-12-01', 500, N'Đã hết hạn', 0),    -- Đã hết hạn
-(N'L004', N'T004', '2024-08-01', '2026-08-01', 2000, N'Còn hạn', 0),      -- 2000 viên
-(N'L005', N'T005', '2024-09-10', '2026-09-10', 900, N'Còn hạn', 0),       -- 900 viên = 150 hộp
-
--- Nhóm Giảm đau (Panadol bán chạy)
-(N'L006', N'T006', '2024-10-01', '2026-10-01', 12000, N'Còn hạn', 0),     -- 12000 viên = 100 hộp
-(N'L007', N'T006', '2023-12-01', '2025-01-15', 240, N'Sắp hết hạn', 0),   -- 240 viên = 2 hộp (ưu tiên bán trước)
-(N'L008', N'T007', '2024-02-15', '2026-02-15', 300, N'Còn hạn', 0),       -- 300 viên
-(N'L009', N'T008', '2024-03-20', '2026-03-20', 50, N'Còn hạn', 0),        -- 50 gói (tồn thấp)
-(N'L010', N'T009', '2024-07-07', '2026-07-07', 4000, N'Còn hạn', 0),      -- 4000 viên
-(N'L011', N'T010', '2023-01-01', '2024-01-01', 0, N'Đã hết hạn', 0),      -- Hết hàng
-(N'L012', N'T011', '2024-06-01', '2026-06-01', 400, N'Còn hạn', 0),       -- 400 miếng = 20 hộp
-
--- Nhóm Vitamin
-(N'L013', N'T012', '2024-11-11', '2026-11-11', 5000, N'Còn hạn', 0),      -- 5000 viên = 50 lọ
-(N'L014', N'T013', '2024-05-05', '2026-05-05', 2500, N'Còn hạn', 0),      -- 2500 viên
-(N'L015', N'T014', '2024-09-09', '2025-01-20', 1500, N'Sắp hết hạn', 0),  -- 1500 viên (sắp hết hạn)
-(N'L016', N'T015', '2024-12-01', '2026-06-01', 800, N'Còn hạn', 0),       -- 800 ống
-(N'L017', N'T016', '2024-10-20', '2026-10-20', 600, N'Còn hạn', 0),       -- 600 viên = 60 tuýp
-
--- Nhóm Tiêu hóa
-(N'L018', N'T017', '2024-04-30', '2026-04-30', 3000, N'Còn hạn', 0),      -- 3000 viên = 30 lọ
-(N'L019', N'T018', '2024-08-15', '2026-02-26', 1200, N'Sắp hết hạn', 0),  -- 1200 gói = 40 hộp
-(N'L020', N'T019', '2024-06-01', '2026-06-01', 1000, N'Còn hạn', 0),      -- 1000 viên
-(N'L021', N'T020', '2024-02-28', '2025-02-28', 100, N'Sắp hết hạn', 0),   -- 100 gói (tồn thấp)
-(N'L022', N'T021', '2024-07-15', '2026-07-15', 400, N'Còn hạn', 0),       -- 400 ống = 20 hộp
-
--- Nhóm Hô hấp
-(N'L023', N'T022', '2024-09-15', '2026-09-15', 80, N'Còn hạn', 0),        -- 80 chai
-(N'L024', N'T023', '2024-01-20', '2025-01-20', 2000, N'Sắp hết hạn', 0),  -- 2000 viên
-(N'L025', N'T024', '2024-11-01', '2026-11-01', 1500, N'Còn hạn', 0),      -- 1500 viên
-(N'L026', N'T025', '2024-08-01', '2026-08-01', 50, N'Còn hạn', 0),        -- 50 chai
-
--- Nhóm Tim mạch
-(N'L027', N'T026', '2024-06-01', '2026-06-01', 3000, N'Còn hạn', 0),      -- 3000 viên = 100 hộp
-(N'L028', N'T027', '2024-07-01', '2026-07-01', 3000, N'Còn hạn', 0),      -- 3000 viên = 100 hộp
-
--- Nhóm Dụng cụ
-(N'L029', N'T028', '2024-05-10', '2028-05-10', 10000, N'Còn hạn', 0),     -- 10000 cái = 200 hộp
-(N'L030', N'T029', '2024-07-20', '2026-07-20', 500, N'Còn hạn', 0),       -- 500 chai
-(N'L031', N'T030', '2024-03-15', '2027-03-15', 3000, N'Còn hạn', 0),      -- 3000 miếng = 30 hộp
-(N'L032', N'T031', '2024-04-01', '2026-04-01', 100, N'Còn hạn', 0);       -- 100 chai
-GO
-
-PRINT N'✅ Đã cập nhật bảng LoThuoc';
-
--- =====================================================
--- 5. INSERT LẠI PHIẾU NHẬP VÀ CHI TIẾT
--- =====================================================
-PRINT N'🔄 Đang cập nhật PhieuNhap và ChiTietPhieuNhap...';
-
-INSERT INTO PhieuNhap (maPN, ngayTao, tongTien, trangThai, maNV, maNCC) VALUES
-(N'PN001', '2024-01-10', 5000000, N'Đã nhập', N'NV003', N'NCC001'),
-(N'PN002', '2024-05-20', 17600000, N'Đã nhập', N'NV003', N'NCC001'),
-(N'PN003', '2024-08-01', 2800000, N'Đã nhập', N'NV003', N'NCC001'),
-(N'PN004', '2024-09-10', 10800000, N'Đã nhập', N'NV003', N'NCC001'),
-(N'PN005', '2024-10-01', 14400000, N'Đã nhập', N'NV003', N'NCC002'),
-(N'PN006', '2024-02-15', 1200000, N'Đã nhập', N'NV003', N'NCC002'),
-(N'PN007', '2024-03-20', 140000, N'Đã nhập', N'NV003', N'NCC002'),
-(N'PN008', '2024-07-07', 8000000, N'Đã nhập', N'NV003', N'NCC002'),
-(N'PN009', '2024-06-01', 560000, N'Đã nhập', N'NV003', N'NCC004'),
-(N'PN010', '2024-11-11', 2250000, N'Đã nhập', N'NV003', N'NCC003'),
-(N'PN011', '2024-05-05', 11250000, N'Đã nhập', N'NV003', N'NCC003'),
-(N'PN012', '2024-09-09', 6000000, N'Đã nhập', N'NV003', N'NCC003'),
-(N'PN013', '2024-12-01', 2800000, N'Đã nhập', N'NV003', N'NCC003'),
-(N'PN014', '2024-10-20', 4200000, N'Đã nhập', N'NV003', N'NCC003'),
-(N'PN015', '2024-04-30', 210000, N'Đã nhập', N'NV003', N'NCC004'),
-(N'PN016', '2024-08-15', 3000000, N'Đã nhập', N'NV003', N'NCC004'),
-(N'PN017', '2024-06-01', 1200000, N'Đã nhập', N'NV003', N'NCC004'),
-(N'PN018', '2024-02-28', 500000, N'Đã nhập', N'NV003', N'NCC004'),
-(N'PN019', '2024-07-15', 2800000, N'Đã nhập', N'NV003', N'NCC004'),
-(N'PN020', '2024-09-15', 6080000, N'Đã nhập', N'NV003', N'NCC005'),
-(N'PN021', '2024-01-20', 6000000, N'Đã nhập', N'NV003', N'NCC005'),
-(N'PN022', '2024-11-01', 675000, N'Đã nhập', N'NV003', N'NCC005'),
-(N'PN023', '2024-08-01', 1600000, N'Đã nhập', N'NV003', N'NCC005'),
-(N'PN024', '2024-06-01', 2400000, N'Đã nhập', N'NV003', N'NCC006'),
-(N'PN025', '2024-07-01', 3600000, N'Đã nhập', N'NV003', N'NCC006'),
-(N'PN026', '2024-05-10', 5000000, N'Đã nhập', N'NV003', N'NCC007'),
-(N'PN027', '2024-07-20', 2000000, N'Đã nhập', N'NV003', N'NCC007'),
-(N'PN028', '2024-03-15', 450000, N'Đã nhập', N'NV003', N'NCC007'),
-(N'PN029', '2024-04-01', 1000000, N'Đã nhập', N'NV003', N'NCC007');
-GO
-
-INSERT INTO ChiTietPhieuNhap (maPN, maThuoc, maLo, hanSuDung, soLuong, donGia, thanhTien) VALUES
-(N'PN001', N'T001', N'L001', '2026-01-10', 5000, 1000, 5000000),
-(N'PN002', N'T002', N'L002', '2026-05-20', 1400, 12571, 17600000),
-(N'PN003', N'T004', N'L004', '2026-08-01', 2000, 1400, 2800000),
-(N'PN004', N'T005', N'L005', '2026-09-10', 900, 12000, 10800000),
-(N'PN005', N'T006', N'L006', '2026-10-01', 12000, 1200, 14400000),
-(N'PN006', N'T007', N'L008', '2026-02-15', 300, 4000, 1200000),
-(N'PN007', N'T008', N'L009', '2026-03-20', 50, 2800, 140000),
-(N'PN008', N'T009', N'L010', '2026-07-07', 4000, 2000, 8000000),
-(N'PN009', N'T011', N'L012', '2026-06-01', 400, 1400, 560000),
-(N'PN010', N'T012', N'L013', '2026-11-11', 5000, 450, 2250000),
-(N'PN011', N'T013', N'L014', '2026-05-05', 2500, 4500, 11250000),
-(N'PN012', N'T014', N'L015', '2025-01-20', 1500, 4000, 6000000),
-(N'PN013', N'T015', N'L016', '2026-06-01', 800, 3500, 2800000),
-(N'PN014', N'T016', N'L017', '2026-10-20', 600, 7000, 4200000),
-(N'PN015', N'T017', N'L018', '2026-04-30', 3000, 70, 210000),
-(N'PN016', N'T018', N'L019', '2026-02-26', 1200, 2500, 3000000),
-(N'PN017', N'T019', N'L020', '2026-06-01', 1000, 1200, 1200000),
-(N'PN018', N'T020', N'L021', '2025-02-28', 100, 5000, 500000),
-(N'PN019', N'T021', N'L022', '2026-07-15', 400, 7000, 2800000),
-(N'PN020', N'T022', N'L023', '2026-09-15', 80, 76000, 6080000),
-(N'PN021', N'T023', N'L024', '2025-01-20', 2000, 3000, 6000000),
-(N'PN022', N'T024', N'L025', '2026-11-01', 1500, 450, 675000),
-(N'PN023', N'T025', N'L026', '2026-08-01', 50, 32000, 1600000),
-(N'PN024', N'T026', N'L027', '2026-06-01', 3000, 800, 2400000),
-(N'PN025', N'T027', N'L028', '2026-07-01', 3000, 1200, 3600000),
-(N'PN026', N'T028', N'L029', '2028-05-10', 10000, 500, 5000000),
-(N'PN027', N'T029', N'L030', '2026-07-20', 500, 4000, 2000000),
-(N'PN028', N'T030', N'L031', '2027-03-15', 3000, 150, 450000),
-(N'PN029', N'T031', N'L032', '2026-04-01', 100, 10000, 1000000);
-GO
-
-PRINT N'✅ Đã cập nhật PhieuNhap và ChiTietPhieuNhap';
-
 -- =====================================================
 -- 6. CẬP NHẬT TRẠNG THÁI LÔ THUỐC
 -- =====================================================

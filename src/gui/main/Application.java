@@ -27,7 +27,7 @@ public class Application extends javax.swing.JFrame {
         setLocationRelativeTo(null);
         mainForm = new MainForm();
         loginForm = new LoginForm();
-        setContentPane(loginForm);
+        setContentPane(mainForm);
         getRootPane().putClientProperty(FlatClientProperties.FULL_WINDOW_CONTENT, true);
         Notifications.getInstance().setJFrame(this);
     }
@@ -82,7 +82,7 @@ public class Application extends javax.swing.JFrame {
 
     public static void main(String args[]) {
         FlatRobotoFont.install();
-        FlatLaf.registerCustomDefaultsSource("gui.theme");
+        FlatLaf.registerCustomDefaultsSource("resources.theme");
         UIManager.put("defaultFont", new Font(FlatRobotoFont.FAMILY, Font.PLAIN, 13));
         FlatMacLightLaf.setup();
         java.awt.EventQueue.invokeLater(() -> {

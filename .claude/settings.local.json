@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(dir:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(ant compile:*)",
+      "Bash(where:*)",
+      "Bash(javac:*)"
     ]
   }
 }

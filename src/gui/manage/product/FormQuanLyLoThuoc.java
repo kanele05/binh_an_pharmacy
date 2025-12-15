@@ -194,7 +194,7 @@ public class FormQuanLyLoThuoc extends javax.swing.JPanel {
                         com.setForeground(new Color(211, 47, 47));
                         com.setFont(com.getFont().deriveFont(java.awt.Font.BOLD));
                     }
-                } else if (daysBetween <= 90) {
+                } else if (daysBetween <= 30) {
 
                     if (!isSelected) {
                         com.setForeground(new Color(230, 81, 0));
@@ -309,7 +309,7 @@ public class FormQuanLyLoThuoc extends javax.swing.JPanel {
                 String newStatus = "Còn hạn";
                 if (newHSD.isBefore(LocalDate.now())) {
                     newStatus = "Đã hết hạn";
-                } else if (newHSD.minusDays(90).isBefore(LocalDate.now())) {
+                } else if (newHSD.minusDays(30).isBefore(LocalDate.now())) {
                     newStatus = "Sắp hết hạn";
                 }
 
