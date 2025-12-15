@@ -282,18 +282,118 @@ public class LoThuocDAO {
         return list;
     }
 
-    public List<dto.ThuocTonThap> getThuocTonThap() {
-        List<dto.ThuocTonThap> list = new ArrayList<>();
-        // NOTE: This query requires tonToiThieu column in Thuoc table
-        // If column doesn't exist yet, this method will throw SQLException
-        String sql = "SELECT t.maThuoc, t.tenThuoc, "
-                + "ISNULL(t.tonToiThieu, " + DEFAULT_TON_TOI_THIEU + ") as tonToiThieu, "
-                + "COALESCE(SUM(l.soLuongTon), 0) as tonKho "
+    public List<dto.ThuocSapHetHan> getThuocDaHetHan() {
+        List<dto.ThuocSapHetHan> list = new ArrayList<>();
+        String sql = "SELECT l.maLo, l.maThuoc, t.tenThuoc, l.hanSuDung, l.soLuongTon, "
+                + "DATEDIFF(DAY, GETDATE(), l.hanSuDung) as soNgayConLai "
+                + "FROM LoThuoc l "
+                + "JOIN Thuoc t ON l.maThuoc = t.maThuoc "
+                + "WHERE l.hanSuDung <= GETDATE() "
+                + "AND l.soLuongTon > 0 "
+                + "AND l.isDeleted = 0 "
+                + "ORDER BY l.hanSuDung ASC";
+        try {
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                dto.ThuocSapHetHan thuoc = new dto.ThuocSapHetHan(
+                        rs.getString("maThuoc"),
+                        rs.getString("tenThuoc"),
+                        rs.getString("maLo"),
+                        rs.getDate("hanSuDung").toLocalDate(),
+                        rs.getInt("soLuongTon"),
+                        rs.getInt("soNgayConLai")
+                );
+                list.add(thuoc);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public int getSoLoSapHetHan(int soNgay) {
+        String sql = "SELECT COUNT(*) as count FROM LoThuoc l "
+                + "WHERE l.hanSuDung > GETDATE() "
+                + "AND DATEDIFF(DAY, GETDATE(), l.hanSuDung) <= ? "
+                + "AND l.soLuongTon > 0 "
+                + "AND l.isDeleted = 0";
+        try {
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setInt(1, soNgay);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("count");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public int getSoThuocTonThap() {
+        String sql = "SELECT COUNT(*) as count FROM ("
+                + "SELECT t.maThuoc "
                 + "FROM Thuoc t "
                 + "LEFT JOIN LoThuoc l ON t.maThuoc = l.maThuoc "
                 + "AND l.isDeleted = 0 AND l.trangThai != N'Đã hết hạn' "
                 + "WHERE t.trangThai = 1 "
-                + "GROUP BY t.maThuoc, t.tenThuoc, t.tonToiThieu "
+                + "GROUP BY t.maThuoc, t.tonToiThieu "
+                + "HAVING COALESCE(SUM(l.soLuongTon), 0) < ISNULL(t.tonToiThieu, " + DEFAULT_TON_TOI_THIEU + ")"
+                + ") as subquery";
+        try {
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("count");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public List<String> getAllNhomThuoc() {
+        List<String> list = new ArrayList<>();
+        String sql = "SELECT tenNhom FROM NhomThuoc ORDER BY tenNhom";
+        try {
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(rs.getString("tenNhom"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public List<dto.ThuocTonThap> getThuocTonThapByNhom(String tenNhom) {
+        List<dto.ThuocTonThap> list = new ArrayList<>();
+        String sql = "SELECT t.maThuoc, t.tenThuoc, t.donViCoBan, "
+                + "ISNULL(t.tonToiThieu, " + DEFAULT_TON_TOI_THIEU + ") as tonToiThieu, "
+                + "COALESCE(SUM(l.soLuongTon), 0) as tonKho, "
+                + "nt.tenNhom, "
+                + "(SELECT TOP 1 ncc.tenNCC FROM PhieuNhap pn "
+                + " JOIN NhaCungCap ncc ON pn.maNCC = ncc.maNCC "
+                + " JOIN ChiTietPhieuNhap ct ON pn.maPN = ct.maPN "
+                + " WHERE ct.maThuoc = t.maThuoc "
+                + " ORDER BY pn.ngayTao DESC) as nhaCungCap "
+                + "FROM Thuoc t "
+                + "LEFT JOIN LoThuoc l ON t.maThuoc = l.maThuoc "
+                + "AND l.isDeleted = 0 AND l.trangThai != N'Đã hết hạn' "
+                + "LEFT JOIN NhomThuoc nt ON t.maNhom = nt.maNhom "
+                + "WHERE t.trangThai = 1 ";
+
+        if (tenNhom != null && !tenNhom.isEmpty() && !tenNhom.equals("Tất cả nhóm")) {
+            sql += "AND nt.tenNhom = N'" + tenNhom + "' ";
+        }
+
+        sql += "GROUP BY t.maThuoc, t.tenThuoc, t.donViCoBan, t.tonToiThieu, nt.tenNhom "
                 + "HAVING COALESCE(SUM(l.soLuongTon), 0) < ISNULL(t.tonToiThieu, " + DEFAULT_TON_TOI_THIEU + ") "
                 + "ORDER BY tonKho ASC";
         try {
@@ -307,9 +407,57 @@ public class LoThuocDAO {
                 dto.ThuocTonThap thuoc = new dto.ThuocTonThap(
                         rs.getString("maThuoc"),
                         rs.getString("tenThuoc"),
+                        rs.getString("donViCoBan"),
                         tonKho,
                         tonToiThieu,
-                        soLuongCanNhap
+                        soLuongCanNhap,
+                        rs.getString("nhaCungCap") != null ? rs.getString("nhaCungCap") : "Chưa có",
+                        rs.getString("tenNhom")
+                );
+                list.add(thuoc);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public List<dto.ThuocTonThap> getThuocTonThap() {
+        List<dto.ThuocTonThap> list = new ArrayList<>();
+        String sql = "SELECT t.maThuoc, t.tenThuoc, t.donViCoBan, "
+                + "ISNULL(t.tonToiThieu, " + DEFAULT_TON_TOI_THIEU + ") as tonToiThieu, "
+                + "COALESCE(SUM(l.soLuongTon), 0) as tonKho, "
+                + "nt.tenNhom, "
+                + "(SELECT TOP 1 ncc.tenNCC FROM PhieuNhap pn "
+                + " JOIN NhaCungCap ncc ON pn.maNCC = ncc.maNCC "
+                + " JOIN ChiTietPhieuNhap ct ON pn.maPN = ct.maPN "
+                + " WHERE ct.maThuoc = t.maThuoc "
+                + " ORDER BY pn.ngayTao DESC) as nhaCungCap "
+                + "FROM Thuoc t "
+                + "LEFT JOIN LoThuoc l ON t.maThuoc = l.maThuoc "
+                + "AND l.isDeleted = 0 AND l.trangThai != N'Đã hết hạn' "
+                + "LEFT JOIN NhomThuoc nt ON t.maNhom = nt.maNhom "
+                + "WHERE t.trangThai = 1 "
+                + "GROUP BY t.maThuoc, t.tenThuoc, t.donViCoBan, t.tonToiThieu, nt.tenNhom "
+                + "HAVING COALESCE(SUM(l.soLuongTon), 0) < ISNULL(t.tonToiThieu, " + DEFAULT_TON_TOI_THIEU + ") "
+                + "ORDER BY tonKho ASC";
+        try {
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                int tonKho = rs.getInt("tonKho");
+                int tonToiThieu = rs.getInt("tonToiThieu");
+                int soLuongCanNhap = tonToiThieu - tonKho;
+                dto.ThuocTonThap thuoc = new dto.ThuocTonThap(
+                        rs.getString("maThuoc"),
+                        rs.getString("tenThuoc"),
+                        rs.getString("donViCoBan"),
+                        tonKho,
+                        tonToiThieu,
+                        soLuongCanNhap,
+                        rs.getString("nhaCungCap") != null ? rs.getString("nhaCungCap") : "Chưa có",
+                        rs.getString("tenNhom")
                 );
                 list.add(thuoc);
             }
@@ -350,7 +498,7 @@ public class LoThuocDAO {
         if (trangThai != null) {
             switch (trangThai) {
                 case "sapHetHan":
-                    sql.append("AND DATEDIFF(DAY, GETDATE(), l.hanSuDung) BETWEEN 0 AND 90 ");
+                    sql.append("AND DATEDIFF(DAY, GETDATE(), l.hanSuDung) BETWEEN 0 AND 30 ");
                     break;
                 case "daHetHan":
                     sql.append("AND l.hanSuDung < GETDATE() ");
@@ -387,7 +535,7 @@ public class LoThuocDAO {
                 String ghiChu = "";
                 if (soNgay < 0) {
                     ghiChu = "Đã hết hạn";
-                } else if (soNgay <= 90) {
+                } else if (soNgay <= 30) {
                     ghiChu = "Sắp hết hạn";
                 } else if (soLuong < 10) {
                     ghiChu = "Tồn kho thấp";
@@ -404,17 +552,13 @@ public class LoThuocDAO {
         return result;
     }
 
-    /**
-     * Lấy tổng hợp thông tin tồn kho
-     * @return Map chứa: tongGiaTri, tongSoLuong, soLoHetHan
-     */
     public Map<String, Object> getTongHopTonKho() {
         Map<String, Object> result = new HashMap<>();
         String sql = "SELECT " +
                      "COALESCE(SUM(l.soLuongTon * COALESCE(ctn.donGia, 0)), 0) as tongGiaTri, " +
                      "COALESCE(SUM(l.soLuongTon), 0) as tongSoLuong, " +
                      "(SELECT COUNT(*) FROM LoThuoc WHERE isDeleted = 0 AND " +
-                     "(hanSuDung < GETDATE() OR DATEDIFF(DAY, GETDATE(), hanSuDung) <= 90)) as soLoHetHan " +
+                     "(hanSuDung < GETDATE() OR DATEDIFF(DAY, GETDATE(), hanSuDung) <= 30)) as soLoHetHan " +
                      "FROM LoThuoc l " +
                      "LEFT JOIN (SELECT maThuoc, maLo, donGia FROM ChiTietPhieuNhap WHERE maLo IS NOT NULL) ctn " +
                      "ON l.maLo = ctn.maLo " +

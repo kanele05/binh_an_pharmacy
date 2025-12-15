@@ -192,7 +192,7 @@ public class ThongKeDAO {
                      "COALESCE(SUM(tongTienHoanTra), 0) as tienHoanTra " +
                      "FROM PhieuTraHang " +
                      "WHERE CAST(ngayTra AS DATE) BETWEEN ? AND ? " +
-                     "AND trangThai = N'Hoàn thành' " +
+                     "AND trangThai = N'Đã xử lý' OR trangThai = N'Đổi hàng' " +
                      "GROUP BY CAST(ngayTra AS DATE)";
 
         try {
@@ -300,7 +300,7 @@ public class ThongKeDAO {
         String sqlHoanTra = "SELECT COALESCE(SUM(tongTienHoanTra), 0) as tongTienHoanTra " +
                      "FROM PhieuTraHang " +
                      "WHERE CAST(ngayTra AS DATE) BETWEEN ? AND ? " +
-                     "AND trangThai = N'Hoàn thành'";
+                     "AND trangThai = N'Đã xử lý' OR trangThai = N'Đổi hàng'";
 
         try {
             ConnectDB.getInstance();
@@ -344,6 +344,58 @@ public class ThongKeDAO {
             result.put("tongGiaVon", tongGiaVon);
             result.put("tongLoiNhuan", tongLoiNhuan);
 
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    public List<Map<String, Object>> getDoanhThu7NgayGanNhat() {
+        List<Map<String, Object>> result = new ArrayList<>();
+        String sql = "SELECT CAST(ngayTao AS DATE) as ngay, "
+                + "COALESCE(SUM(tongTien - giamGia), 0) as doanhThu "
+                + "FROM HoaDon "
+                + "WHERE CAST(ngayTao AS DATE) >= DATEADD(DAY, -6, CAST(GETDATE() AS DATE)) "
+                + "GROUP BY CAST(ngayTao AS DATE) "
+                + "ORDER BY ngay ASC";
+        try {
+            ConnectDB.getInstance();
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> row = new HashMap<>();
+                row.put("ngay", rs.getDate("ngay").toLocalDate());
+                row.put("doanhThu", rs.getDouble("doanhThu"));
+                result.add(row);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    public List<Map<String, Object>> getTopThuocBanChayThang(int topN) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        String sql = "SELECT TOP " + topN + " t.tenThuoc, SUM(ct.soLuong) as tongSL "
+                + "FROM ChiTietHoaDon ct "
+                + "JOIN Thuoc t ON ct.maThuoc = t.maThuoc "
+                + "JOIN HoaDon h ON ct.maHD = h.maHD "
+                + "WHERE MONTH(h.ngayTao) = MONTH(GETDATE()) "
+                + "AND YEAR(h.ngayTao) = YEAR(GETDATE()) "
+                + "GROUP BY t.tenThuoc "
+                + "ORDER BY tongSL DESC";
+        try {
+            ConnectDB.getInstance();
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> row = new HashMap<>();
+                row.put("tenThuoc", rs.getString("tenThuoc"));
+                row.put("soLuong", rs.getInt("tongSL"));
+                result.add(row);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
