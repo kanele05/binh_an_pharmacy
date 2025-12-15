@@ -118,6 +118,7 @@ public class ExcelHelper {
 
     /**
      * Xuất báo cáo doanh thu ra file Excel
+     * Bao gồm thông tin hoàn trả và doanh thu thực tế
      * @param file File đích
      * @param chiTietList Danh sách dữ liệu chi tiết theo ngày
      * @param tongHop Map chứa thông tin tổng hợp
@@ -139,6 +140,7 @@ public class ExcelHelper {
         CellStyle percentStyle = createPercentStyle(workbook);
         CellStyle normalStyle = createNormalStyle(workbook);
         CellStyle dateStyle = createDateStyle(workbook);
+        CellStyle refundStyle = createRefundStyle(workbook);
 
         int rowNum = 0;
 
@@ -147,43 +149,61 @@ public class ExcelHelper {
         Cell titleCell = titleRow.createCell(0);
         titleCell.setCellValue("BÁO CÁO DOANH THU & LỢI NHUẬN");
         titleCell.setCellStyle(titleStyle);
-        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 5));
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 6));
 
         // Thời gian báo cáo
         Row periodRow = sheet.createRow(rowNum++);
         Cell periodCell = periodRow.createCell(0);
         periodCell.setCellValue("Từ ngày: " + tuNgay.format(dtf) + " - Đến ngày: " + denNgay.format(dtf));
-        sheet.addMergedRegion(new CellRangeAddress(1, 1, 0, 5));
+        sheet.addMergedRegion(new CellRangeAddress(1, 1, 0, 6));
 
         // Dòng trống
         rowNum++;
 
         // Thông tin tổng hợp
         Row summaryTitleRow = sheet.createRow(rowNum++);
-        summaryTitleRow.createCell(0).setCellValue("TỔNG HỢP");
+        Cell summaryTitleCell = summaryTitleRow.createCell(0);
+        summaryTitleCell.setCellValue("TỔNG HỢP");
+        Font boldFont = workbook.createFont();
+        boldFont.setBold(true);
+        CellStyle boldStyle = workbook.createCellStyle();
+        boldStyle.setFont(boldFont);
+        summaryTitleCell.setCellStyle(boldStyle);
 
         Row summaryRow1 = sheet.createRow(rowNum++);
-        summaryRow1.createCell(0).setCellValue("Tổng doanh thu:");
+        summaryRow1.createCell(0).setCellValue("Tổng doanh thu gốc:");
         Cell totalRevenue = summaryRow1.createCell(1);
         totalRevenue.setCellValue(tongHop.get("tongDoanhThu") != null ? (double) tongHop.get("tongDoanhThu") : 0);
         totalRevenue.setCellStyle(currencyStyle);
 
         Row summaryRow2 = sheet.createRow(rowNum++);
-        summaryRow2.createCell(0).setCellValue("Lợi nhuận ước tính:");
-        Cell totalProfit = summaryRow2.createCell(1);
+        summaryRow2.createCell(0).setCellValue("Tiền hoàn trả:");
+        Cell totalRefund = summaryRow2.createCell(1);
+        totalRefund.setCellValue(tongHop.get("tongTienHoanTra") != null ? (double) tongHop.get("tongTienHoanTra") : 0);
+        totalRefund.setCellStyle(refundStyle);
+
+        Row summaryRow3 = sheet.createRow(rowNum++);
+        summaryRow3.createCell(0).setCellValue("Doanh thu thực tế:");
+        Cell totalActualRevenue = summaryRow3.createCell(1);
+        totalActualRevenue.setCellValue(tongHop.get("tongDoanhThuThuc") != null ? (double) tongHop.get("tongDoanhThuThuc") : 0);
+        totalActualRevenue.setCellStyle(currencyStyle);
+
+        Row summaryRow4 = sheet.createRow(rowNum++);
+        summaryRow4.createCell(0).setCellValue("Lợi nhuận thực tế:");
+        Cell totalProfit = summaryRow4.createCell(1);
         totalProfit.setCellValue(tongHop.get("tongLoiNhuan") != null ? (double) tongHop.get("tongLoiNhuan") : 0);
         totalProfit.setCellStyle(currencyStyle);
 
-        Row summaryRow3 = sheet.createRow(rowNum++);
-        summaryRow3.createCell(0).setCellValue("Tổng số đơn hàng:");
-        summaryRow3.createCell(1).setCellValue(tongHop.get("tongDonHang") != null ? (int) tongHop.get("tongDonHang") : 0);
+        Row summaryRow5 = sheet.createRow(rowNum++);
+        summaryRow5.createCell(0).setCellValue("Tổng số đơn hàng:");
+        summaryRow5.createCell(1).setCellValue(tongHop.get("tongDonHang") != null ? (int) tongHop.get("tongDonHang") : 0);
 
         // Dòng trống
         rowNum++;
 
         // Header bảng chi tiết
         Row headerRow = sheet.createRow(rowNum++);
-        String[] headers = {"Ngày", "Số Đơn", "Doanh Thu", "Giá Vốn", "Lợi Nhuận", "Tăng Trưởng"};
+        String[] headers = {"Ngày", "Số Đơn", "Doanh Thu", "Hoàn Trả", "Doanh Thu Thực", "Lợi Nhuận", "Tăng Trưởng"};
         for (int i = 0; i < headers.length; i++) {
             Cell cell = headerRow.createCell(i);
             cell.setCellValue(headers[i]);
@@ -207,23 +227,30 @@ public class ExcelHelper {
             soDonCell.setCellValue((int) row.get("soDon"));
             soDonCell.setCellStyle(normalStyle);
 
-            // Doanh thu
+            // Doanh thu gốc
             Cell doanhThuCell = dataRow.createCell(2);
             doanhThuCell.setCellValue((double) row.get("doanhThu"));
             doanhThuCell.setCellStyle(currencyStyle);
 
-            // Giá vốn
-            Cell giaVonCell = dataRow.createCell(3);
-            giaVonCell.setCellValue((double) row.get("giaVon"));
-            giaVonCell.setCellStyle(currencyStyle);
+            // Tiền hoàn trả
+            Cell hoanTraCell = dataRow.createCell(3);
+            double tienHoanTra = row.get("tienHoanTra") != null ? (double) row.get("tienHoanTra") : 0;
+            hoanTraCell.setCellValue(tienHoanTra);
+            hoanTraCell.setCellStyle(tienHoanTra > 0 ? refundStyle : currencyStyle);
+
+            // Doanh thu thực
+            Cell doanhThuThucCell = dataRow.createCell(4);
+            double doanhThuThuc = row.get("doanhThuThuc") != null ? (double) row.get("doanhThuThuc") : (double) row.get("doanhThu");
+            doanhThuThucCell.setCellValue(doanhThuThuc);
+            doanhThuThucCell.setCellStyle(currencyStyle);
 
             // Lợi nhuận
-            Cell loiNhuanCell = dataRow.createCell(4);
+            Cell loiNhuanCell = dataRow.createCell(5);
             loiNhuanCell.setCellValue((double) row.get("loiNhuan"));
             loiNhuanCell.setCellStyle(currencyStyle);
 
             // Tăng trưởng
-            Cell tangTruongCell = dataRow.createCell(5);
+            Cell tangTruongCell = dataRow.createCell(6);
             double tangTruong = (double) row.get("tangTruong");
             tangTruongCell.setCellValue(String.format("%+.1f%%", tangTruong));
             tangTruongCell.setCellStyle(percentStyle);
@@ -470,6 +497,21 @@ public class ExcelHelper {
         style.setFont(font);
         style.setFillForegroundColor(IndexedColors.ROSE.getIndex());
         style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        return style;
+    }
+
+    private static CellStyle createRefundStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        Font font = workbook.createFont();
+        font.setColor(IndexedColors.RED.getIndex());
+        style.setFont(font);
+        DataFormat format = workbook.createDataFormat();
+        style.setDataFormat(format.getFormat("#,##0\" ₫\""));
+        style.setAlignment(HorizontalAlignment.RIGHT);
         style.setBorderBottom(BorderStyle.THIN);
         style.setBorderTop(BorderStyle.THIN);
         style.setBorderLeft(BorderStyle.THIN);

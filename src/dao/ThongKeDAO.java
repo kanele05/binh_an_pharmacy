@@ -168,54 +168,106 @@ public class ThongKeDAO {
 
     /**
      * Lấy báo cáo doanh thu chi tiết theo từng ngày trong khoảng thời gian
+     * Đã trừ tiền hoàn trả từ phiếu trả hàng và phiếu đổi hàng
      * @param tuNgay Ngày bắt đầu
      * @param denNgay Ngày kết thúc
-     * @return List các Map chứa thông tin: ngay, soDon, doanhThu, giaVon, loiNhuan
+     * @return List các Map chứa thông tin: ngay, soDon, doanhThu, tienHoanTra, giaVon, loiNhuan
      */
     public List<Map<String, Object>> getBaoCaoDoanhThuChiTiet(LocalDate tuNgay, LocalDate denNgay) {
         List<Map<String, Object>> result = new ArrayList<>();
-        String sql = "SELECT CAST(h.ngayTao AS DATE) as ngay, " +
+
+        // Query lấy doanh thu theo ngày
+        String sqlDoanhThu = "SELECT CAST(h.ngayTao AS DATE) as ngay, " +
                      "COUNT(DISTINCT h.maHD) as soDon, " +
                      "COALESCE(SUM(h.tongTien - h.giamGia), 0) as doanhThu, " +
-                     "COALESCE(SUM(ct.soLuong * ct.donGia * 0.7), 0) as giaVon " +  // Ước tính giá vốn ~ 70% giá bán
+                     "COALESCE(SUM(ct.soLuong * ct.donGia * 0.7), 0) as giaVon " +
                      "FROM HoaDon h " +
                      "LEFT JOIN ChiTietHoaDon ct ON h.maHD = ct.maHD " +
                      "WHERE CAST(h.ngayTao AS DATE) BETWEEN ? AND ? " +
                      "GROUP BY CAST(h.ngayTao AS DATE) " +
                      "ORDER BY ngay DESC";
+
+        // Query lấy tiền hoàn trả từ phiếu trả hàng theo ngày
+        String sqlHoanTra = "SELECT CAST(ngayTra AS DATE) as ngay, " +
+                     "COALESCE(SUM(tongTienHoanTra), 0) as tienHoanTra " +
+                     "FROM PhieuTraHang " +
+                     "WHERE CAST(ngayTra AS DATE) BETWEEN ? AND ? " +
+                     "AND trangThai = N'Hoàn thành' " +
+                     "GROUP BY CAST(ngayTra AS DATE)";
+
         try {
             ConnectDB.getInstance();
             Connection con = ConnectDB.getConnection();
-            PreparedStatement stmt = con.prepareStatement(sql);
-            stmt.setDate(1, Date.valueOf(tuNgay));
-            stmt.setDate(2, Date.valueOf(denNgay));
-            ResultSet rs = stmt.executeQuery();
 
-            double doanhThuTruoc = 0;
-            List<Map<String, Object>> tempList = new ArrayList<>();
+            // Lấy doanh thu theo ngày
+            Map<LocalDate, Map<String, Object>> dataMap = new HashMap<>();
+            PreparedStatement stmt1 = con.prepareStatement(sqlDoanhThu);
+            stmt1.setDate(1, Date.valueOf(tuNgay));
+            stmt1.setDate(2, Date.valueOf(denNgay));
+            ResultSet rs1 = stmt1.executeQuery();
 
-            while (rs.next()) {
+            while (rs1.next()) {
                 Map<String, Object> row = new HashMap<>();
-                row.put("ngay", rs.getDate("ngay").toLocalDate());
-                row.put("soDon", rs.getInt("soDon"));
-                row.put("doanhThu", rs.getDouble("doanhThu"));
-                row.put("giaVon", rs.getDouble("giaVon"));
-                row.put("loiNhuan", rs.getDouble("doanhThu") - rs.getDouble("giaVon"));
-                tempList.add(row);
+                LocalDate ngay = rs1.getDate("ngay").toLocalDate();
+                row.put("ngay", ngay);
+                row.put("soDon", rs1.getInt("soDon"));
+                row.put("doanhThu", rs1.getDouble("doanhThu"));
+                row.put("giaVon", rs1.getDouble("giaVon"));
+                row.put("tienHoanTra", 0.0);
+                dataMap.put(ngay, row);
+            }
+
+            // Lấy tiền hoàn trả theo ngày và trừ vào doanh thu
+            PreparedStatement stmt2 = con.prepareStatement(sqlHoanTra);
+            stmt2.setDate(1, Date.valueOf(tuNgay));
+            stmt2.setDate(2, Date.valueOf(denNgay));
+            ResultSet rs2 = stmt2.executeQuery();
+
+            while (rs2.next()) {
+                LocalDate ngay = rs2.getDate("ngay").toLocalDate();
+                double tienHoanTra = rs2.getDouble("tienHoanTra");
+
+                if (dataMap.containsKey(ngay)) {
+                    dataMap.get(ngay).put("tienHoanTra", tienHoanTra);
+                } else {
+                    // Ngày chỉ có hoàn trả mà không có bán hàng
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("ngay", ngay);
+                    row.put("soDon", 0);
+                    row.put("doanhThu", 0.0);
+                    row.put("giaVon", 0.0);
+                    row.put("tienHoanTra", tienHoanTra);
+                    dataMap.put(ngay, row);
+                }
+            }
+
+            // Sắp xếp theo ngày giảm dần và tính lợi nhuận
+            List<Map<String, Object>> tempList = new ArrayList<>(dataMap.values());
+            tempList.sort((a, b) -> ((LocalDate) b.get("ngay")).compareTo((LocalDate) a.get("ngay")));
+
+            // Tính lợi nhuận = doanhThu - tienHoanTra - giaVon
+            for (Map<String, Object> row : tempList) {
+                double doanhThu = (double) row.get("doanhThu");
+                double tienHoanTra = (double) row.get("tienHoanTra");
+                double giaVon = (double) row.get("giaVon");
+                double doanhThuThuc = doanhThu - tienHoanTra;
+                double loiNhuan = doanhThuThuc - giaVon;
+                row.put("doanhThuThuc", doanhThuThuc);
+                row.put("loiNhuan", loiNhuan);
             }
 
             // Tính tăng trưởng so với ngày trước
             for (int i = 0; i < tempList.size(); i++) {
                 Map<String, Object> row = tempList.get(i);
-                double doanhThu = (double) row.get("doanhThu");
+                double doanhThuThuc = (double) row.get("doanhThuThuc");
 
                 if (i < tempList.size() - 1) {
-                    double doanhThuNgayTruoc = (double) tempList.get(i + 1).get("doanhThu");
+                    double doanhThuNgayTruoc = (double) tempList.get(i + 1).get("doanhThuThuc");
                     if (doanhThuNgayTruoc > 0) {
-                        double tangTruong = ((doanhThu - doanhThuNgayTruoc) / doanhThuNgayTruoc) * 100;
+                        double tangTruong = ((doanhThuThuc - doanhThuNgayTruoc) / doanhThuNgayTruoc) * 100;
                         row.put("tangTruong", tangTruong);
                     } else {
-                        row.put("tangTruong", doanhThu > 0 ? 100.0 : 0.0);
+                        row.put("tangTruong", doanhThuThuc > 0 ? 100.0 : 0.0);
                     }
                 } else {
                     row.put("tangTruong", 0.0);
@@ -230,32 +282,68 @@ public class ThongKeDAO {
 
     /**
      * Lấy tổng hợp báo cáo doanh thu trong khoảng thời gian
+     * Đã trừ tiền hoàn trả từ phiếu trả hàng
      * @param tuNgay Ngày bắt đầu
      * @param denNgay Ngày kết thúc
-     * @return Map chứa: tongDoanhThu, tongLoiNhuan, tongDonHang
+     * @return Map chứa: tongDoanhThu, tongTienHoanTra, tongDoanhThuThuc, tongLoiNhuan, tongDonHang
      */
     public Map<String, Object> getTongHopDoanhThu(LocalDate tuNgay, LocalDate denNgay) {
         Map<String, Object> result = new HashMap<>();
-        String sql = "SELECT COUNT(DISTINCT h.maHD) as tongDon, " +
+
+        String sqlDoanhThu = "SELECT COUNT(DISTINCT h.maHD) as tongDon, " +
                      "COALESCE(SUM(h.tongTien - h.giamGia), 0) as tongDoanhThu, " +
                      "COALESCE(SUM(ct.soLuong * ct.donGia * 0.7), 0) as tongGiaVon " +
                      "FROM HoaDon h " +
                      "LEFT JOIN ChiTietHoaDon ct ON h.maHD = ct.maHD " +
                      "WHERE CAST(h.ngayTao AS DATE) BETWEEN ? AND ?";
+
+        String sqlHoanTra = "SELECT COALESCE(SUM(tongTienHoanTra), 0) as tongTienHoanTra " +
+                     "FROM PhieuTraHang " +
+                     "WHERE CAST(ngayTra AS DATE) BETWEEN ? AND ? " +
+                     "AND trangThai = N'Hoàn thành'";
+
         try {
             ConnectDB.getInstance();
             Connection con = ConnectDB.getConnection();
-            PreparedStatement stmt = con.prepareStatement(sql);
-            stmt.setDate(1, Date.valueOf(tuNgay));
-            stmt.setDate(2, Date.valueOf(denNgay));
-            ResultSet rs = stmt.executeQuery();
 
-            if (rs.next()) {
-                result.put("tongDonHang", rs.getInt("tongDon"));
-                result.put("tongDoanhThu", rs.getDouble("tongDoanhThu"));
-                result.put("tongGiaVon", rs.getDouble("tongGiaVon"));
-                result.put("tongLoiNhuan", rs.getDouble("tongDoanhThu") - rs.getDouble("tongGiaVon"));
+            // Lấy tổng doanh thu
+            PreparedStatement stmt1 = con.prepareStatement(sqlDoanhThu);
+            stmt1.setDate(1, Date.valueOf(tuNgay));
+            stmt1.setDate(2, Date.valueOf(denNgay));
+            ResultSet rs1 = stmt1.executeQuery();
+
+            double tongDoanhThu = 0;
+            double tongGiaVon = 0;
+            int tongDonHang = 0;
+
+            if (rs1.next()) {
+                tongDonHang = rs1.getInt("tongDon");
+                tongDoanhThu = rs1.getDouble("tongDoanhThu");
+                tongGiaVon = rs1.getDouble("tongGiaVon");
             }
+
+            // Lấy tổng tiền hoàn trả
+            PreparedStatement stmt2 = con.prepareStatement(sqlHoanTra);
+            stmt2.setDate(1, Date.valueOf(tuNgay));
+            stmt2.setDate(2, Date.valueOf(denNgay));
+            ResultSet rs2 = stmt2.executeQuery();
+
+            double tongTienHoanTra = 0;
+            if (rs2.next()) {
+                tongTienHoanTra = rs2.getDouble("tongTienHoanTra");
+            }
+
+            // Tính doanh thu thực và lợi nhuận
+            double tongDoanhThuThuc = tongDoanhThu - tongTienHoanTra;
+            double tongLoiNhuan = tongDoanhThuThuc - tongGiaVon;
+
+            result.put("tongDonHang", tongDonHang);
+            result.put("tongDoanhThu", tongDoanhThu);
+            result.put("tongTienHoanTra", tongTienHoanTra);
+            result.put("tongDoanhThuThuc", tongDoanhThuThuc);
+            result.put("tongGiaVon", tongGiaVon);
+            result.put("tongLoiNhuan", tongLoiNhuan);
+
         } catch (SQLException e) {
             e.printStackTrace();
         }
