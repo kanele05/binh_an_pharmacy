@@ -42,6 +42,7 @@ import javax.swing.table.TableColumn;
 import net.miginfocom.swing.MigLayout;
 import raven.toast.Notifications;
 import utils.Auth;
+import utils.InvoicePDFGenerator;
 
 public class FormBanHang extends JPanel {
 
@@ -960,6 +961,18 @@ public class FormBanHang extends JPanel {
                         }
                     }
                     Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Thanh toán thành công!");
+
+                    // Ask if user wants to print PDF invoice
+                    int printOption = JOptionPane.showConfirmDialog(this,
+                        "Bạn có muốn in hóa đơn PDF không?",
+                        "In hóa đơn",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE);
+
+                    if (printOption == JOptionPane.YES_OPTION) {
+                        InvoicePDFGenerator.generateAndOpenInvoice(hd);
+                    }
+
                     resetForm();
                 } else {
                     Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi khi lưu hóa đơn!");
