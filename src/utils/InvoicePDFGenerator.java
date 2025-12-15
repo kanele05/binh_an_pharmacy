@@ -127,17 +127,17 @@ public class InvoicePDFGenerator {
             String jarPath = System.getProperty("user.dir") + "/lib/flatlaf-fonts-roboto-2.137.jar";
             File jarFile = new File(jarPath);
             if (jarFile.exists()) {
-                java.util.jar.JarFile jar = new java.util.jar.JarFile(jarFile);
-                String fontName = resourcePath.contains("Bold") ?
-                    "com/formdev/flatlaf/fonts/roboto/Roboto-Bold.ttf" :
-                    "com/formdev/flatlaf/fonts/roboto/Roboto-Regular.ttf";
-                java.util.zip.ZipEntry entry = jar.getEntry(fontName);
-                if (entry != null) {
-                    try (InputStream is = jar.getInputStream(entry)) {
-                        return PDType0Font.load(document, is);
+                try (java.util.jar.JarFile jar = new java.util.jar.JarFile(jarFile)) {
+                    String fontName = resourcePath.contains("Bold") ?
+                        "com/formdev/flatlaf/fonts/roboto/Roboto-Bold.ttf" :
+                        "com/formdev/flatlaf/fonts/roboto/Roboto-Regular.ttf";
+                    java.util.zip.ZipEntry entry = jar.getEntry(fontName);
+                    if (entry != null) {
+                        try (InputStream is = jar.getInputStream(entry)) {
+                            return PDType0Font.load(document, is);
+                        }
                     }
                 }
-                jar.close();
             }
         } catch (Exception e) {
             // Ignore and try system font
@@ -220,13 +220,16 @@ public class InvoicePDFGenerator {
         float leftCol = MARGIN;
         float rightCol = PAGE_WIDTH / 2 + 20;
 
-        // Row 1: Invoice ID and Date
+        // Row 1: Invoice ID and Date - handle null safely
+        String maHD = (hoaDon.getMaHD() != null) ? hoaDon.getMaHD() : "";
+        String ngayTao = (hoaDon.getNgayTao() != null) ? hoaDon.getNgayTao().format(DATE_FORMAT) : "";
+
         cs.beginText();
         cs.setFont(fontBold, FONT_SIZE_NORMAL);
         cs.newLineAtOffset(leftCol, yPos);
         cs.showText("Mã hóa đơn: ");
         cs.setFont(fontRegular, FONT_SIZE_NORMAL);
-        cs.showText(hoaDon.getMaHD());
+        cs.showText(maHD);
         cs.endText();
 
         cs.beginText();
@@ -234,13 +237,13 @@ public class InvoicePDFGenerator {
         cs.newLineAtOffset(rightCol, yPos);
         cs.showText("Ngày lập: ");
         cs.setFont(fontRegular, FONT_SIZE_NORMAL);
-        cs.showText(hoaDon.getNgayTao().format(DATE_FORMAT));
+        cs.showText(ngayTao);
         cs.endText();
         yPos -= 18;
 
         // Row 2: Customer and Staff
         KhachHang kh = hoaDon.getKhachHang();
-        String customerName = (kh != null) ? kh.getTenKH() : "Khách lẻ";
+        String customerName = (kh != null && kh.getTenKH() != null) ? kh.getTenKH() : "Khách lẻ";
         String customerPhone = (kh != null && kh.getSdt() != null) ? kh.getSdt() : "";
 
         cs.beginText();
@@ -252,12 +255,13 @@ public class InvoicePDFGenerator {
         cs.endText();
 
         NhanVien nv = hoaDon.getNhanVien();
+        String staffName = (nv != null && nv.getHoTen() != null) ? nv.getHoTen() : "";
         cs.beginText();
         cs.setFont(fontBold, FONT_SIZE_NORMAL);
         cs.newLineAtOffset(rightCol, yPos);
         cs.showText("Nhân viên: ");
         cs.setFont(fontRegular, FONT_SIZE_NORMAL);
-        cs.showText(nv != null ? nv.getHoTen() : "");
+        cs.showText(staffName);
         cs.endText();
         yPos -= 18;
 
@@ -272,12 +276,14 @@ public class InvoicePDFGenerator {
             cs.endText();
         }
 
+        String paymentMethod = (hoaDon.getHinhThucTT() != null && !hoaDon.getHinhThucTT().isEmpty())
+            ? hoaDon.getHinhThucTT() : "Tiền mặt";
         cs.beginText();
         cs.setFont(fontBold, FONT_SIZE_NORMAL);
         cs.newLineAtOffset(rightCol, yPos);
         cs.showText("Thanh toán: ");
         cs.setFont(fontRegular, FONT_SIZE_NORMAL);
-        cs.showText(hoaDon.getHinhThucTT() != null ? hoaDon.getHinhThucTT() : "Tiền mặt");
+        cs.showText(paymentMethod);
         cs.endText();
 
         return yPos - 25;
@@ -334,20 +340,26 @@ public class InvoicePDFGenerator {
             drawCellText(cs, fontRegular, String.valueOf(stt++), xPos, yPos, COL_WIDTHS[0], true);
             xPos += COL_WIDTHS[0];
 
-            // Tên thuốc
-            String tenThuoc = ct.getThuoc().getTenThuoc();
-            if (tenThuoc.length() > 28) {
-                tenThuoc = tenThuoc.substring(0, 25) + "...";
+            // Tên thuốc - handle null safely
+            String tenThuoc = "";
+            if (ct.getThuoc() != null && ct.getThuoc().getTenThuoc() != null) {
+                tenThuoc = ct.getThuoc().getTenThuoc();
+                if (tenThuoc.length() > 28) {
+                    tenThuoc = tenThuoc.substring(0, 25) + "...";
+                }
             }
             drawCellText(cs, fontRegular, tenThuoc, xPos, yPos, COL_WIDTHS[1], false);
             xPos += COL_WIDTHS[1];
 
-            // Lô
-            drawCellText(cs, fontRegular, ct.getLoThuoc().getMaLo(), xPos, yPos, COL_WIDTHS[2], true);
+            // Lô - handle null safely
+            String maLo = (ct.getLoThuoc() != null && ct.getLoThuoc().getMaLo() != null)
+                ? ct.getLoThuoc().getMaLo() : "";
+            drawCellText(cs, fontRegular, maLo, xPos, yPos, COL_WIDTHS[2], true);
             xPos += COL_WIDTHS[2];
 
-            // ĐVT
-            drawCellText(cs, fontRegular, ct.getDonViTinh(), xPos, yPos, COL_WIDTHS[3], true);
+            // ĐVT - handle null safely
+            String donViTinh = (ct.getDonViTinh() != null) ? ct.getDonViTinh() : "";
+            drawCellText(cs, fontRegular, donViTinh, xPos, yPos, COL_WIDTHS[3], true);
             xPos += COL_WIDTHS[3];
 
             // Đơn giá
