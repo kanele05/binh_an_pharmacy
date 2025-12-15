@@ -231,17 +231,32 @@ public class FormTraHang extends JPanel {
 
             content.add(new JScrollPane(tableCT), "grow, wrap 10");
 
-            // Footer - total
-            JPanel footerPanel = new JPanel(new MigLayout("insets 10", "push[][]"));
+            // Footer - total với thuế
+            JPanel footerPanel = new JPanel(new MigLayout("insets 10", "push[][]", "[]5[]5[]10[]"));
             footerPanel.putClientProperty(FlatClientProperties.STYLE, "arc:15; background:lighten(#E8F5E9,5%)");
 
-            JLabel lbTotal = new JLabel("TỔNG TIỀN HOÀN: " + formatMoney(pt.getTongTienHoanTra()));
+            // Tính tiền hàng (không thuế) từ tổng tiền hoàn
+            double tongTienHoan = pt.getTongTienHoanTra();
+            // Giả sử tổng tiền hoàn đã bao gồm thuế 5%, tính ngược lại
+            // tongTienHoan = tienHang + tienHang * 0.05 = tienHang * 1.05
+            double tienHang = tongTienHoan / 1.05;
+            double thue = tongTienHoan - tienHang;
+
+            JLabel lbTienHang = new JLabel("Tiền hàng hoàn: " + formatMoney(tienHang));
+            lbTienHang.putClientProperty(FlatClientProperties.STYLE, "font:bold +2");
+            footerPanel.add(lbTienHang, "span 2, wrap");
+
+            JLabel lbThue = new JLabel("Thuế VAT (5%): " + formatMoney(thue));
+            lbThue.putClientProperty(FlatClientProperties.STYLE, "font:bold +2; foreground:#1976D2");
+            footerPanel.add(lbThue, "span 2, wrap");
+
+            JLabel lbTotal = new JLabel("TỔNG TIỀN HOÀN: " + formatMoney(tongTienHoan));
             lbTotal.putClientProperty(FlatClientProperties.STYLE, "font:bold +4; foreground:#D32F2F");
-            footerPanel.add(lbTotal);
+            footerPanel.add(lbTotal, "span 2, wrap");
 
             JButton btnClose = new JButton("Đóng");
             btnClose.addActionListener(e -> dialog.dispose());
-            footerPanel.add(btnClose);
+            footerPanel.add(btnClose, "span 2, right");
 
             content.add(footerPanel, "growx");
 
@@ -252,13 +267,16 @@ public class FormTraHang extends JPanel {
 
     private class PanelTaoPhieuTra extends JPanel {
 
+        private static final double VAT_RATE = 5.0; // Thuế VAT 5%
+
         private JTextField txtSearch;
         private JLabel lbKhachHang, lbNgayMua, lbTongHoaDon, lbMaHD;
         private JTable tableHoaDon, tableTraHang;
         private DefaultTableModel modelHoaDon, modelTraHang;
-        private JLabel lbTienHoan;
+        private JLabel lbTienHoan, lbThue, lbTongCong;
         private JTextArea txtLyDo;
         private double tongTienHoan = 0;
+        private double thueVAT = 0;
 
         private HoaDon currentHoaDon;
         private ArrayList<ChiTietHoaDon> dsChiTietHoaDon;
@@ -300,7 +318,10 @@ public class FormTraHang extends JPanel {
             modelTraHang.setRowCount(0);
             txtLyDo.setText("");
             lbTienHoan.setText("0 ₫");
+            lbThue.setText("0 ₫");
+            lbTongCong.setText("0 ₫");
             tongTienHoan = 0;
+            thueVAT = 0;
             currentHoaDon = null;
             dsChiTietHoaDon = null;
             dsTraHang.clear();
@@ -395,15 +416,29 @@ public class FormTraHang extends JPanel {
 
             JPanel pTotal = new JPanel(new MigLayout("insets 0", "[]10[]"));
             pTotal.setOpaque(false);
+
+            // Tiền hoàn hàng
             lbTienHoan = new JLabel("0 ₫");
-            lbTienHoan.putClientProperty(FlatClientProperties.STYLE, "font:bold +10; foreground:#D32F2F");
+            lbTienHoan.putClientProperty(FlatClientProperties.STYLE, "font:bold +2");
+
+            // Thuế VAT 5%
+            lbThue = new JLabel("0 ₫");
+            lbThue.putClientProperty(FlatClientProperties.STYLE, "font:bold +2; foreground:#1976D2");
+
+            // Tổng cộng (tiền hoàn + thuế)
+            lbTongCong = new JLabel("0 ₫");
+            lbTongCong.putClientProperty(FlatClientProperties.STYLE, "font:bold +10; foreground:#D32F2F");
 
             JButton btnHoanTat = new JButton("✓ HOÀN TẤT TRẢ HÀNG");
             btnHoanTat.putClientProperty(FlatClientProperties.STYLE, "background:#4CAF50; foreground:#fff; font:bold +2; margin:10,20,10,20");
             btnHoanTat.addActionListener(e -> actionHoanTatTraHang());
 
-            pTotal.add(new JLabel("TỔNG TIỀN HOÀN KHÁCH:"));
+            pTotal.add(new JLabel("Tiền hàng hoàn:"));
             pTotal.add(lbTienHoan, "wrap");
+            pTotal.add(new JLabel("Thuế VAT (5%):"));
+            pTotal.add(lbThue, "wrap");
+            pTotal.add(new JLabel("TỔNG TIỀN HOÀN KHÁCH:"));
+            pTotal.add(lbTongCong, "wrap");
             pTotal.add(btnHoanTat, "span 2, right");
 
             panel.add(new JLabel("Ghi chú / Lý do trả hàng:"), "wrap");
@@ -647,7 +682,13 @@ public class FormTraHang extends JPanel {
             for (ChiTietTraHangTemp temp : dsTraHang) {
                 tongTienHoan += temp.thanhTienHoan;
             }
+            // Tính thuế VAT 5%
+            thueVAT = tongTienHoan * (VAT_RATE / 100);
+            double tongCong = tongTienHoan + thueVAT;
+
             lbTienHoan.setText(formatMoney(tongTienHoan));
+            lbThue.setText(formatMoney(thueVAT));
+            lbTongCong.setText(formatMoney(tongCong));
         }
 
         private void actionHoanTatTraHang() {
@@ -667,8 +708,12 @@ public class FormTraHang extends JPanel {
                 return;
             }
 
+            double tongCong = tongTienHoan + thueVAT;
             int confirm = JOptionPane.showConfirmDialog(this,
-                    "Xác nhận hoàn tiền: " + lbTienHoan.getText() + " cho khách?\n\n"
+                    "Xác nhận hoàn tiền cho khách?\n\n"
+                    + "Tiền hàng hoàn: " + formatMoney(tongTienHoan) + "\n"
+                    + "Thuế VAT (5%): " + formatMoney(thueVAT) + "\n"
+                    + "TỔNG CỘNG: " + formatMoney(tongCong) + "\n\n"
                     + "Lý do: " + lyDo,
                     "Xác nhận trả hàng",
                     JOptionPane.YES_NO_OPTION,
@@ -685,19 +730,20 @@ public class FormTraHang extends JPanel {
                 nhanVien.setMaNV("NV001");
             }
 
-            // Create PhieuTraHang
+            // Create PhieuTraHang (tổng tiền hoàn bao gồm cả thuế)
             String maPhieu = phieuTraDAO.getNewMaPhieuTra();
+            double tongTienHoanTraVoiThue = tongTienHoan + thueVAT;
 
             PhieuTraHang phieu = new PhieuTraHang(
                     maPhieu,
                     LocalDate.now(),
-                    tongTienHoan,
+                    tongTienHoanTraVoiThue,
                     lyDo,
                     currentHoaDon,
                     nhanVien,
                     currentHoaDon.getKhachHang(),
                     "Đã xử lý",
-                    ""
+                    "Thuế VAT: " + formatMoney(thueVAT)
             );
 
             // Create ChiTietPhieuTra list
