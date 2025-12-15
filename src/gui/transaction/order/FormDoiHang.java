@@ -258,6 +258,8 @@ public class FormDoiHang extends JPanel {
     // ==================== PANEL TẠO PHIẾU ĐỔI ====================
     private class PanelTaoPhieuDoi extends JPanel {
 
+        private static final double VAT_RATE = 5.0; // Thuế VAT 5%
+
         private JTextField txtSearchHD;
         private JLabel lbMaHD, lbKhachHang, lbNgayMua;
         private JTable tableTra;
@@ -267,7 +269,7 @@ public class FormDoiHang extends JPanel {
         private JTextField txtSearchThuoc;
         private JTable tableMua;
         private DefaultTableModel modelMua;
-        private JLabel lbTongMua;
+        private JLabel lbTongMua, lbThueMua;
 
         private JTextArea txtLyDo;
         private JLabel lbChenhLech;
@@ -275,6 +277,7 @@ public class FormDoiHang extends JPanel {
 
         private double tongTienTra = 0;
         private double tongTienMua = 0;
+        private double thueVATMua = 0; // Thuế VAT cho hàng mới
         private boolean isUpdating = false;
 
         // Data storage
@@ -320,11 +323,13 @@ public class FormDoiHang extends JPanel {
             lbNgayMua.setText("Ngày mua: ---");
             lbTongTra.setText("Giá trị trả: 0 ₫");
             lbTongMua.setText("Giá trị mới: 0 ₫");
+            lbThueMua.setText("Thuế VAT (5%): 0 ₫");
             lbChenhLech.setText("Chênh lệch: 0 ₫");
             lbChenhLech.setForeground(Color.BLACK);
             txtLyDo.setText("");
             tongTienTra = 0;
             tongTienMua = 0;
+            thueVATMua = 0;
             currentHoaDon = null;
             dsChiTietHoaDon = null;
             dsTraHang.clear();
@@ -441,13 +446,17 @@ public class FormDoiHang extends JPanel {
 
             panel.add(new JScrollPane(tableMua), "span 2, grow, wrap");
 
-            JPanel bottomPanel = new JPanel(new MigLayout("insets 0", "[]push[]"));
+            JPanel bottomPanel = new JPanel(new MigLayout("insets 0", "[]push[]", "[]5[]"));
             bottomPanel.setOpaque(false);
-            bottomPanel.add(btnXoa);
+            bottomPanel.add(btnXoa, "span 1 2");
 
             lbTongMua = new JLabel("Giá trị mới: 0 ₫");
             lbTongMua.putClientProperty(FlatClientProperties.STYLE, "font:bold +2; foreground:#1976D2");
-            bottomPanel.add(lbTongMua);
+            bottomPanel.add(lbTongMua, "wrap");
+
+            lbThueMua = new JLabel("Thuế VAT (5%): 0 ₫");
+            lbThueMua.putClientProperty(FlatClientProperties.STYLE, "font:bold; foreground:#388E3C");
+            bottomPanel.add(lbThueMua);
 
             panel.add(bottomPanel, "span 2, growx");
 
@@ -879,7 +888,11 @@ public class FormDoiHang extends JPanel {
                     }
                 }
 
+                // Tính thuế VAT 5% cho hàng mới
+                thueVATMua = tongTienMua * (VAT_RATE / 100);
+
                 lbTongMua.setText("Giá trị mới: " + formatMoney(tongTienMua));
+                lbThueMua.setText("Thuế VAT (5%): " + formatMoney(thueVATMua));
                 tinhChenhLech();
             } catch (Exception e) {
                 e.printStackTrace();
@@ -889,7 +902,9 @@ public class FormDoiHang extends JPanel {
         }
 
         private void tinhChenhLech() {
-            double diff = tongTienMua - tongTienTra;
+            // Chênh lệch = (Tiền hàng mới + Thuế mới) - Tiền hàng trả
+            double tongTienMoiVoiThue = tongTienMua + thueVATMua;
+            double diff = tongTienMoiVoiThue - tongTienTra;
             if (diff > 0) {
                 lbChenhLech.setText("Khách trả thêm: " + formatMoney(diff));
                 lbChenhLech.setForeground(new Color(56, 142, 60));
@@ -932,11 +947,26 @@ public class FormDoiHang extends JPanel {
                 return;
             }
 
+            // Tính tổng tiền mới bao gồm thuế
+            double tongTienMoiVoiThue = tongTienMua + thueVATMua;
+            double chenhLechThucTe = tongTienMoiVoiThue - tongTienTra;
+
             // Confirm
+            String chenhLechText;
+            if (chenhLechThucTe > 0) {
+                chenhLechText = "Khách trả thêm: " + formatMoney(chenhLechThucTe);
+            } else if (chenhLechThucTe < 0) {
+                chenhLechText = "Hoàn tiền khách: " + formatMoney(Math.abs(chenhLechThucTe));
+            } else {
+                chenhLechText = "Chênh lệch: 0 ₫";
+            }
+
             String message = "Xác nhận đổi hàng?\n\n" +
                     "Tiền hàng trả: " + formatMoney(tongTienTra) + "\n" +
                     "Tiền hàng mới: " + formatMoney(tongTienMua) + "\n" +
-                    lbChenhLech.getText() + "\n\n" +
+                    "Thuế VAT (5%): " + formatMoney(thueVATMua) + "\n" +
+                    "Tổng tiền mới: " + formatMoney(tongTienMoiVoiThue) + "\n" +
+                    chenhLechText + "\n\n" +
                     "Lý do: " + lyDo;
 
             int confirm = JOptionPane.showConfirmDialog(this, message, "Xác nhận đổi hàng",
@@ -954,15 +984,16 @@ public class FormDoiHang extends JPanel {
             }
 
             // Create PhieuDoiHang
+            // tongTienMoi = tiền hàng chưa thuế (thuế sẽ được tính trong DAO)
+            // chenhLech = chênh lệch thực tế bao gồm thuế
             String maPD = phieuDoiDAO.getNewMaPhieuDoi();
-            double chenhLech = tongTienMua - tongTienTra;
 
             PhieuDoiHang phieuDoi = new PhieuDoiHang(
                     maPD,
                     LocalDate.now(),
                     tongTienTra,
-                    tongTienMua,
-                    chenhLech,
+                    tongTienMua,        // Tiền hàng mới chưa thuế
+                    chenhLechThucTe,    // Chênh lệch thực tế bao gồm thuế
                     lyDo,
                     currentHoaDon,
                     null, null,

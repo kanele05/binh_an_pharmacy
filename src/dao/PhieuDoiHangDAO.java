@@ -14,6 +14,8 @@ import java.util.List;
  */
 public class PhieuDoiHangDAO {
 
+    private static final double VAT_RATE = 5.0; // Thuế VAT 5%
+
     public PhieuDoiHangDAO() {
     }
 
@@ -155,13 +157,19 @@ public class PhieuDoiHangDAO {
 
             // === 2. TẠO HÓA ĐƠN MỚI (cho hàng đổi) ===
             String maHDMoi = null;
+            double thueVAT = 0;
             if (listHangMoi != null && !listHangMoi.isEmpty()) {
                 maHDMoi = getNewMaHoaDon(con);
+
+                // Tính thuế VAT 5% trên tổng tiền hàng mới
+                thueVAT = phieuDoi.getTongTienMoi() * (VAT_RATE / 100);
+
                 HoaDon hoaDonMoi = new HoaDon(
                         maHDMoi,
                         LocalDateTime.now(),
                         phieuDoi.getTongTienMoi(),
-                        0, 0,
+                        0,       // Không giảm giá
+                        thueVAT, // Thuế VAT 5%
                         "Tiền mặt",
                         "Đổi hàng từ phiếu: " + phieuDoi.getMaPD(),
                         phieuDoi.getNhanVien(),
@@ -247,6 +255,26 @@ public class PhieuDoiHangDAO {
             stmtPD.executeUpdate();
 
             con.commit();
+
+            // === 4. CỘNG ĐIỂM CHO KHÁCH HÀNG THÂN THIẾT ===
+            // Chỉ cộng điểm nếu không phải khách lẻ và có mua hàng mới
+            if (phieuDoi.getKhachHang() != null && listHangMoi != null && !listHangMoi.isEmpty()) {
+                try {
+                    // Tính điểm: 1 điểm = 10,000 đồng (tính trên tiền hàng mới, không tính thuế)
+                    int diemMoi = (int) (phieuDoi.getTongTienMoi() / 10000);
+                    if (diemMoi > 0) {
+                        String sqlCongDiem = "UPDATE KhachHang SET diemTichLuy = diemTichLuy + ? WHERE maKH = ?";
+                        PreparedStatement stmtCongDiem = con.prepareStatement(sqlCongDiem);
+                        stmtCongDiem.setInt(1, diemMoi);
+                        stmtCongDiem.setString(2, phieuDoi.getKhachHang().getMaKH());
+                        stmtCongDiem.executeUpdate();
+                    }
+                } catch (SQLException ex) {
+                    // Log lỗi nhưng không rollback vì giao dịch chính đã hoàn tất
+                    ex.printStackTrace();
+                }
+            }
+
             return true;
 
         } catch (Exception e) {
