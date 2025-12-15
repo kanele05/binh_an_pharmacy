@@ -44,12 +44,16 @@ public class DialogChiTietHoaDon extends JDialog {
         JPanel pInfo = new JPanel(new MigLayout("insets 0, fillx", "[][grow][][grow]", "[]5[]"));
         pInfo.setOpaque(false);
 
-        addLabel(pInfo, "Mã hóa đơn:", hoaDon.getMaHD());
-        addLabel(pInfo, "Ngày lập:", hoaDon.getNgayTao().format(dateTimeFormat));
+        addLabel(pInfo, "Mã hóa đơn:", hoaDon.getMaHD() != null ? hoaDon.getMaHD() : "");
+        String ngayLap = (hoaDon.getNgayTao() != null) ? hoaDon.getNgayTao().format(dateTimeFormat) : "";
+        addLabel(pInfo, "Ngày lập:", ngayLap);
 
-        String tenKH = (hoaDon.getKhachHang() != null) ? hoaDon.getKhachHang().getTenKH() : "Khách lẻ";
+        String tenKH = (hoaDon.getKhachHang() != null && hoaDon.getKhachHang().getTenKH() != null)
+            ? hoaDon.getKhachHang().getTenKH() : "Khách lẻ";
         addLabel(pInfo, "Khách hàng:", tenKH);
-        addLabel(pInfo, "Nhân viên:", hoaDon.getNhanVien().getHoTen());
+        String tenNV = (hoaDon.getNhanVien() != null && hoaDon.getNhanVien().getHoTen() != null)
+            ? hoaDon.getNhanVien().getHoTen() : "";
+        addLabel(pInfo, "Nhân viên:", tenNV);
 
         add(pInfo, "gapbottom 10");
 
@@ -165,11 +169,17 @@ public class DialogChiTietHoaDon extends JDialog {
 
         int stt = 1;
         for (ChiTietHoaDon ct : list) {
+            String tenThuoc = (ct.getThuoc() != null && ct.getThuoc().getTenThuoc() != null)
+                ? ct.getThuoc().getTenThuoc() : "";
+            String maLo = (ct.getLoThuoc() != null && ct.getLoThuoc().getMaLo() != null)
+                ? ct.getLoThuoc().getMaLo() : "";
+            String donViTinh = ct.getDonViTinh() != null ? ct.getDonViTinh() : "";
+
             tableModel.addRow(new Object[]{
                 stt++,
-                ct.getThuoc().getTenThuoc(),
-                ct.getLoThuoc().getMaLo(),
-                ct.getDonViTinh(),
+                tenThuoc,
+                maLo,
+                donViTinh,
                 currencyFormat.format(ct.getDonGia()),
                 ct.getSoLuong(),
                 currencyFormat.format(ct.getThanhTien())
