@@ -4,7 +4,9 @@ import com.formdev.flatlaf.FlatClientProperties;
 import dao.ChiTietHoaDonDAO;
 import entities.ChiTietHoaDon;
 import entities.HoaDon;
+import utils.InvoicePDFGenerator;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.text.NumberFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -107,12 +109,46 @@ public class DialogChiTietHoaDon extends JDialog {
 
         add(pSum, "growx");
 
+        // Button panel
+        JPanel pButtons = new JPanel(new MigLayout("insets 0", "push[][]", ""));
+        pButtons.setOpaque(false);
+
+        JButton btnPrint = new JButton("In PDF");
+        btnPrint.putClientProperty(FlatClientProperties.STYLE, "foreground:#FFFFFF; background:#2196F3");
+        btnPrint.addActionListener(e -> printInvoicePDF());
+        pButtons.add(btnPrint, "gapright 10");
+
         JButton btnClose = new JButton("Đóng");
         btnClose.addActionListener(e -> dispose());
-        add(btnClose, "right");
+        pButtons.add(btnClose);
+
+        add(pButtons, "right");
 
         pack();
         setLocationRelativeTo(parent);
+    }
+
+    /**
+     * Generate and open PDF invoice
+     */
+    private void printInvoicePDF() {
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        try {
+            boolean success = InvoicePDFGenerator.generateAndOpenInvoice(hoaDon);
+            if (success) {
+                JOptionPane.showMessageDialog(this,
+                    "Đã tạo hóa đơn PDF thành công!",
+                    "Thành công",
+                    JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this,
+                    "Không thể tạo hóa đơn PDF. Vui lòng thử lại.",
+                    "Lỗi",
+                    JOptionPane.ERROR_MESSAGE);
+            }
+        } finally {
+            setCursor(Cursor.getDefaultCursor());
+        }
     }
 
     private void addLabel(JPanel p, String title, String value) {
