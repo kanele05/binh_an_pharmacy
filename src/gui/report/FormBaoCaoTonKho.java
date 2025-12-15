@@ -1,13 +1,23 @@
 package gui.report;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import dao.LoThuocDAO;
 import java.awt.Color;
 import java.awt.Component;
+import java.io.File;
+import java.text.NumberFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import net.miginfocom.swing.MigLayout;
 import raven.toast.Notifications;
+import utils.ExcelHelper;
 
 public class FormBaoCaoTonKho extends JPanel {
 
@@ -17,12 +27,20 @@ public class FormBaoCaoTonKho extends JPanel {
     private JTable table;
     private DefaultTableModel model;
 
+    private LoThuocDAO loThuocDAO;
+    private List<Map<String, Object>> currentData;
+    private Map<String, Object> currentSummary;
+    private NumberFormat currencyFormat;
+
     public FormBaoCaoTonKho() {
         initComponents();
         init();
     }
 
     private void init() {
+        loThuocDAO = new LoThuocDAO();
+        currencyFormat = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
+
         setLayout(new MigLayout("wrap,fill,insets 20", "[fill]", "[][][][grow]"));
 
         add(createHeaderPanel(), "wrap 20");
@@ -33,7 +51,7 @@ public class FormBaoCaoTonKho extends JPanel {
 
         add(createTablePanel(), "grow");
 
-        loadDataMock();
+        loadData();
     }
 
     private JPanel createHeaderPanel() {
@@ -133,27 +151,111 @@ public class FormBaoCaoTonKho extends JPanel {
         return panel;
     }
 
-    private void loadDataMock() {
+    private void loadData() {
+        String nhomThuoc = cbNhomThuoc.getSelectedItem().toString();
+        String trangThaiText = cbTrangThai.getSelectedItem().toString();
 
-        model.addRow(new Object[]{"T001", "Paracetamol 500mg", "A101", "01/01/2023", "2.000 ₫", "500", "1.000.000 ₫", "Đã hết hạn"});
-        model.addRow(new Object[]{"T002", "Vitamin C", "B202", "15/01/2024", "15.000 ₫", "20", "300.000 ₫", "Sắp hết hạn"});
-        model.addRow(new Object[]{"T003", "Khẩu trang Y tế", "C303", "20/12/2025", "30.000 ₫", "1000", "30.000.000 ₫", ""});
-        model.addRow(new Object[]{"T004", "Siro ho Prospan", "D404", "10/10/2024", "120.000 ₫", "5", "600.000 ₫", "Tồn kho thấp"});
+        // Chuyển đổi trạng thái text sang code
+        String trangThai = null;
+        if (trangThaiText.contains("Sắp hết hạn")) {
+            trangThai = "sapHetHan";
+        } else if (trangThaiText.contains("Đã hết hạn")) {
+            trangThai = "daHetHan";
+        } else if (trangThaiText.contains("Tồn kho thấp")) {
+            trangThai = "tonThap";
+        } else if (trangThaiText.contains("Tồn kho cao")) {
+            trangThai = "tonCao";
+        }
 
-        lbTongGiaTri.setText("31.900.000 ₫");
-        lbTongSoLuong.setText("1.525");
-        lbThuocHetHan.setText("2 Lô");
+        // Lấy dữ liệu từ DAO
+        currentData = loThuocDAO.getBaoCaoTonKhoChiTiet(nhomThuoc, trangThai);
+        currentSummary = loThuocDAO.getTongHopTonKho();
+
+        // Xóa dữ liệu cũ
+        model.setRowCount(0);
+
+        // Format ngày
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+        // Thêm dữ liệu mới
+        for (Map<String, Object> row : currentData) {
+            String maThuoc = row.get("maThuoc") != null ? row.get("maThuoc").toString() : "";
+            String tenThuoc = row.get("tenThuoc") != null ? row.get("tenThuoc").toString() : "";
+            String maLo = row.get("maLo") != null ? row.get("maLo").toString() : "";
+            LocalDate hanSuDung = (LocalDate) row.get("hanSuDung");
+            double giaVon = (double) row.get("giaVon");
+            int soLuongTon = (int) row.get("soLuongTon");
+            double tongGiaTri = (double) row.get("tongGiaTri");
+            String ghiChu = row.get("ghiChu") != null ? row.get("ghiChu").toString() : "";
+
+            model.addRow(new Object[]{
+                maThuoc,
+                tenThuoc,
+                maLo,
+                hanSuDung != null ? hanSuDung.format(dtf) : "",
+                currencyFormat.format(giaVon),
+                String.valueOf(soLuongTon),
+                currencyFormat.format(tongGiaTri),
+                ghiChu
+            });
+        }
+
+        // Cập nhật summary
+        double tongGiaTri = currentSummary.get("tongGiaTri") != null ? (double) currentSummary.get("tongGiaTri") : 0;
+        int tongSoLuong = currentSummary.get("tongSoLuong") != null ? (int) currentSummary.get("tongSoLuong") : 0;
+        int soLoHetHan = currentSummary.get("soLoHetHan") != null ? (int) currentSummary.get("soLoHetHan") : 0;
+
+        lbTongGiaTri.setText(currencyFormat.format(tongGiaTri));
+        lbTongSoLuong.setText(NumberFormat.getInstance(new Locale("vi", "VN")).format(tongSoLuong));
+        lbThuocHetHan.setText(soLoHetHan + " Lô");
     }
 
     private void actionFilter() {
         String nhom = cbNhomThuoc.getSelectedItem().toString();
         String trangThai = cbTrangThai.getSelectedItem().toString();
+
+        loadData();
+
         Notifications.getInstance().show(Notifications.Type.INFO, Notifications.Location.TOP_CENTER,
-                "Đang lọc: " + nhom + " - " + trangThai);
+                "Đã lọc: " + nhom + " - " + trangThai);
     }
 
     private void actionExport() {
-        Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Xuất báo cáo tồn kho thành công!");
+        if (currentData == null || currentData.isEmpty()) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
+                    "Không có dữ liệu để xuất!");
+            return;
+        }
+
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Lưu báo cáo tồn kho");
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Excel Files (*.xlsx)", "xlsx"));
+
+        // Tên file mặc định
+        String defaultFileName = "BaoCaoTonKho_" +
+                LocalDate.now().format(DateTimeFormatter.ofPattern("ddMMyyyy")) + ".xlsx";
+        fileChooser.setSelectedFile(new File(defaultFileName));
+
+        int result = fileChooser.showSaveDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File file = fileChooser.getSelectedFile();
+
+            // Đảm bảo file có đuôi .xlsx
+            if (!file.getName().toLowerCase().endsWith(".xlsx")) {
+                file = new File(file.getAbsolutePath() + ".xlsx");
+            }
+
+            try {
+                ExcelHelper.exportBaoCaoTonKho(file, currentData, currentSummary);
+
+                Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER,
+                        "Xuất báo cáo thành công: " + file.getName());
+            } catch (Exception e) {
+                e.printStackTrace();
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER,
+                        "Lỗi xuất báo cáo: " + e.getMessage());
+            }
+        }
     }
 
     private class RightAlignRenderer extends DefaultTableCellRenderer {

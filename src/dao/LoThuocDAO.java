@@ -318,4 +318,119 @@ public class LoThuocDAO {
         }
         return list;
     }
+
+    /**
+     * Lấy danh sách tồn kho chi tiết theo lô để xuất báo cáo
+     * @param nhomThuoc Nhóm thuốc cần lọc (null hoặc rỗng = tất cả)
+     * @param trangThai Trạng thái lọc: "all", "sapHetHan", "daHetHan", "tonThap", "tonCao"
+     * @return List các Map chứa thông tin chi tiết tồn kho
+     */
+    public List<Map<String, Object>> getBaoCaoTonKhoChiTiet(String nhomThuoc, String trangThai) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT t.maThuoc, t.tenThuoc, l.maLo, l.hanSuDung, l.soLuongTon, ");
+        sql.append("COALESCE(ctn.donGia, 0) as giaVon, ");
+        sql.append("l.soLuongTon * COALESCE(ctn.donGia, 0) as tongGiaTri, ");
+        sql.append("l.trangThai, ");
+        sql.append("DATEDIFF(DAY, GETDATE(), l.hanSuDung) as soNgayConLai, ");
+        sql.append("nt.tenNhom ");
+        sql.append("FROM LoThuoc l ");
+        sql.append("JOIN Thuoc t ON l.maThuoc = t.maThuoc ");
+        sql.append("LEFT JOIN NhomThuoc nt ON t.maNhom = nt.maNhom ");
+        sql.append("LEFT JOIN (SELECT maThuoc, maLo, donGia FROM ChiTietPhieuNhap WHERE maLo IS NOT NULL) ctn ");
+        sql.append("ON l.maLo = ctn.maLo ");
+        sql.append("WHERE l.isDeleted = 0 ");
+
+        // Lọc theo nhóm thuốc
+        if (nhomThuoc != null && !nhomThuoc.isEmpty() && !nhomThuoc.equals("Tất cả nhóm")) {
+            sql.append("AND nt.tenNhom = N'").append(nhomThuoc).append("' ");
+        }
+
+        // Lọc theo trạng thái
+        if (trangThai != null) {
+            switch (trangThai) {
+                case "sapHetHan":
+                    sql.append("AND DATEDIFF(DAY, GETDATE(), l.hanSuDung) BETWEEN 0 AND 90 ");
+                    break;
+                case "daHetHan":
+                    sql.append("AND l.hanSuDung < GETDATE() ");
+                    break;
+                case "tonThap":
+                    sql.append("AND l.soLuongTon < 10 AND l.soLuongTon > 0 ");
+                    break;
+                case "tonCao":
+                    sql.append("AND l.soLuongTon > 500 ");
+                    break;
+            }
+        }
+
+        sql.append("ORDER BY l.hanSuDung ASC");
+
+        try {
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql.toString());
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> row = new HashMap<>();
+                row.put("maThuoc", rs.getString("maThuoc"));
+                row.put("tenThuoc", rs.getString("tenThuoc"));
+                row.put("maLo", rs.getString("maLo"));
+                row.put("hanSuDung", rs.getDate("hanSuDung") != null ? rs.getDate("hanSuDung").toLocalDate() : null);
+                row.put("soLuongTon", rs.getInt("soLuongTon"));
+                row.put("giaVon", rs.getDouble("giaVon"));
+                row.put("tongGiaTri", rs.getDouble("tongGiaTri"));
+                row.put("soNgayConLai", rs.getInt("soNgayConLai"));
+
+                // Xác định ghi chú dựa trên trạng thái
+                int soNgay = rs.getInt("soNgayConLai");
+                int soLuong = rs.getInt("soLuongTon");
+                String ghiChu = "";
+                if (soNgay < 0) {
+                    ghiChu = "Đã hết hạn";
+                } else if (soNgay <= 90) {
+                    ghiChu = "Sắp hết hạn";
+                } else if (soLuong < 10) {
+                    ghiChu = "Tồn kho thấp";
+                } else if (soLuong > 500) {
+                    ghiChu = "Tồn kho cao";
+                }
+                row.put("ghiChu", ghiChu);
+
+                result.add(row);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    /**
+     * Lấy tổng hợp thông tin tồn kho
+     * @return Map chứa: tongGiaTri, tongSoLuong, soLoHetHan
+     */
+    public Map<String, Object> getTongHopTonKho() {
+        Map<String, Object> result = new HashMap<>();
+        String sql = "SELECT " +
+                     "COALESCE(SUM(l.soLuongTon * COALESCE(ctn.donGia, 0)), 0) as tongGiaTri, " +
+                     "COALESCE(SUM(l.soLuongTon), 0) as tongSoLuong, " +
+                     "(SELECT COUNT(*) FROM LoThuoc WHERE isDeleted = 0 AND " +
+                     "(hanSuDung < GETDATE() OR DATEDIFF(DAY, GETDATE(), hanSuDung) <= 90)) as soLoHetHan " +
+                     "FROM LoThuoc l " +
+                     "LEFT JOIN (SELECT maThuoc, maLo, donGia FROM ChiTietPhieuNhap WHERE maLo IS NOT NULL) ctn " +
+                     "ON l.maLo = ctn.maLo " +
+                     "WHERE l.isDeleted = 0";
+        try {
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                result.put("tongGiaTri", rs.getDouble("tongGiaTri"));
+                result.put("tongSoLuong", rs.getInt("tongSoLuong"));
+                result.put("soLoHetHan", rs.getInt("soLoHetHan"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
 }

@@ -1,16 +1,24 @@
 package gui.report;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import dao.ThongKeDAO;
 import java.awt.Color;
 import java.awt.Component;
+import java.io.File;
+import java.text.NumberFormat;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import net.miginfocom.swing.MigLayout;
 import raven.datetime.component.date.DatePicker;
-
 import raven.toast.Notifications;
+import utils.ExcelHelper;
 
 public class FormBaoCaoDoanhThu extends JPanel {
 
@@ -22,12 +30,20 @@ public class FormBaoCaoDoanhThu extends JPanel {
     private DatePicker datePicker1;
     private DatePicker datePicker2;
 
+    private ThongKeDAO thongKeDAO;
+    private List<Map<String, Object>> currentData;
+    private Map<String, Object> currentSummary;
+    private NumberFormat currencyFormat;
+
     public FormBaoCaoDoanhThu() {
         initComponents();
         init();
     }
 
     private void init() {
+        thongKeDAO = new ThongKeDAO();
+        currencyFormat = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
+
         setLayout(new MigLayout("wrap,fill,insets 20", "[fill]", "[][][][grow]"));
 
         add(createHeaderPanel(), "wrap 20");
@@ -35,7 +51,11 @@ public class FormBaoCaoDoanhThu extends JPanel {
         add(createSummaryPanel(), "wrap 20");
         add(createTablePanel(), "grow");
 
-        loadDataMock();
+        // Thiết lập ngày mặc định (30 ngày gần đây)
+        datePicker1.setSelectedDate(LocalDate.now().minusDays(30));
+        datePicker2.setSelectedDate(LocalDate.now());
+
+        loadData();
     }
 
     private JPanel createHeaderPanel() {
@@ -147,32 +167,120 @@ public class FormBaoCaoDoanhThu extends JPanel {
         return panel;
     }
 
-    private void loadDataMock() {
-        model.addRow(new Object[]{"08/12/2023", "15", "15.000.000 ₫", "10.000.000 ₫", "5.000.000 ₫", "+5%"});
-        model.addRow(new Object[]{"07/12/2023", "12", "12.500.000 ₫", "9.000.000 ₫", "3.500.000 ₫", "-2%"});
-
-        lbTongDoanhThu.setText("47.500.000 ₫");
-        lbTongLoiNhuan.setText("14.500.000 ₫");
-        lbTongDonHang.setText("45 Đơn");
-    }
-
-    private void actionFilter() {
-
+    private void loadData() {
         if (!datePicker1.isDateSelected() || !datePicker2.isDateSelected()) {
-            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Vui lòng chọn đầy đủ Từ ngày và Đến ngày!");
             return;
         }
 
-        String fromDate = datePicker1.getSelectedDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-        String toDate = datePicker2.getSelectedDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        LocalDate tuNgay = datePicker1.getSelectedDate();
+        LocalDate denNgay = datePicker2.getSelectedDate();
+
+        // Lấy dữ liệu từ DAO
+        currentData = thongKeDAO.getBaoCaoDoanhThuChiTiet(tuNgay, denNgay);
+        currentSummary = thongKeDAO.getTongHopDoanhThu(tuNgay, denNgay);
+
+        // Xóa dữ liệu cũ
+        model.setRowCount(0);
+
+        // Format ngày
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+        // Thêm dữ liệu mới
+        for (Map<String, Object> row : currentData) {
+            LocalDate ngay = (LocalDate) row.get("ngay");
+            int soDon = (int) row.get("soDon");
+            double doanhThu = (double) row.get("doanhThu");
+            double giaVon = (double) row.get("giaVon");
+            double loiNhuan = (double) row.get("loiNhuan");
+            double tangTruong = (double) row.get("tangTruong");
+
+            model.addRow(new Object[]{
+                ngay != null ? ngay.format(dtf) : "",
+                String.valueOf(soDon),
+                currencyFormat.format(doanhThu),
+                currencyFormat.format(giaVon),
+                currencyFormat.format(loiNhuan),
+                String.format("%+.1f%%", tangTruong)
+            });
+        }
+
+        // Cập nhật summary
+        double tongDoanhThu = currentSummary.get("tongDoanhThu") != null ? (double) currentSummary.get("tongDoanhThu") : 0;
+        double tongLoiNhuan = currentSummary.get("tongLoiNhuan") != null ? (double) currentSummary.get("tongLoiNhuan") : 0;
+        int tongDonHang = currentSummary.get("tongDonHang") != null ? (int) currentSummary.get("tongDonHang") : 0;
+
+        lbTongDoanhThu.setText(currencyFormat.format(tongDoanhThu));
+        lbTongLoiNhuan.setText(currencyFormat.format(tongLoiNhuan));
+        lbTongDonHang.setText(tongDonHang + " Đơn");
+    }
+
+    private void actionFilter() {
+        if (!datePicker1.isDateSelected() || !datePicker2.isDateSelected()) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
+                    "Vui lòng chọn đầy đủ Từ ngày và Đến ngày!");
+            return;
+        }
+
+        LocalDate tuNgay = datePicker1.getSelectedDate();
+        LocalDate denNgay = datePicker2.getSelectedDate();
+
+        if (tuNgay.isAfter(denNgay)) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
+                    "Từ ngày không được lớn hơn Đến ngày!");
+            return;
+        }
+
+        loadData();
 
         Notifications.getInstance().show(Notifications.Type.INFO, Notifications.Location.TOP_CENTER,
-                "Đang lọc từ: " + fromDate + " đến " + toDate);
-
+                "Đã tải dữ liệu từ " + tuNgay.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) +
+                " đến " + denNgay.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
     }
 
     private void actionExport() {
-        Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Xuất báo cáo thành công!");
+        if (currentData == null || currentData.isEmpty()) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
+                    "Không có dữ liệu để xuất!");
+            return;
+        }
+
+        if (!datePicker1.isDateSelected() || !datePicker2.isDateSelected()) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
+                    "Vui lòng chọn khoảng thời gian trước khi xuất!");
+            return;
+        }
+
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Lưu báo cáo doanh thu");
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Excel Files (*.xlsx)", "xlsx"));
+
+        // Tên file mặc định
+        String defaultFileName = "BaoCaoDoanhThu_" +
+                datePicker1.getSelectedDate().format(DateTimeFormatter.ofPattern("ddMMyyyy")) + "_" +
+                datePicker2.getSelectedDate().format(DateTimeFormatter.ofPattern("ddMMyyyy")) + ".xlsx";
+        fileChooser.setSelectedFile(new File(defaultFileName));
+
+        int result = fileChooser.showSaveDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File file = fileChooser.getSelectedFile();
+
+            // Đảm bảo file có đuôi .xlsx
+            if (!file.getName().toLowerCase().endsWith(".xlsx")) {
+                file = new File(file.getAbsolutePath() + ".xlsx");
+            }
+
+            try {
+                ExcelHelper.exportBaoCaoDoanhThu(file, currentData, currentSummary,
+                        datePicker1.getSelectedDate(), datePicker2.getSelectedDate());
+
+                Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER,
+                        "Xuất báo cáo thành công: " + file.getName());
+            } catch (Exception e) {
+                e.printStackTrace();
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER,
+                        "Lỗi xuất báo cáo: " + e.getMessage());
+            }
+        }
     }
 
     private class RightAlignRenderer extends DefaultTableCellRenderer {
