@@ -31,77 +31,129 @@ public class PhieuNhapDAO {
         return newMa;
     }
 
-    // Hàm TRANSACTION quan trọng nhất
+    // Hàm TRANSACTION - Tạo phiếu nhập với trạng thái "Chờ nhập" (chưa cộng tồn kho)
     public boolean createPhieuNhap(PhieuNhap pn, ArrayList<ChiTietPhieuNhap> listCT) {
         Connection con = null;
         PreparedStatement stmtPN = null;
         PreparedStatement stmtCT = null;
-        CallableStatement cstmtLo = null; // Để gọi Stored Procedure
+        CallableStatement cstmtLo = null;
         boolean result = false;
 
         try {
             con = ConnectDB.getConnection();
-            // 1. Tắt Auto Commit để bắt đầu Transaction
             con.setAutoCommit(false);
 
-            // 2. Insert bảng PhieuNhap
+            // 1. Insert bảng PhieuNhap với trạng thái "Chờ nhập"
             String sqlPN = "INSERT INTO PhieuNhap (maPN, ngayTao, tongTien, trangThai, maNV, maNCC, ghiChu) VALUES (?, ?, ?, ?, ?, ?, ?)";
             stmtPN = con.prepareStatement(sqlPN);
             stmtPN.setString(1, pn.getMaPN());
-            stmtPN.setDate(2, java.sql.Date.valueOf(pn.getNgayTao())); // Lưu ý convert Date
+            stmtPN.setDate(2, java.sql.Date.valueOf(pn.getNgayTao()));
             stmtPN.setDouble(3, pn.getTongTien());
-            stmtPN.setString(4, "Đã nhập");
+            stmtPN.setString(4, "Chờ nhập"); // Trạng thái mặc định là "Chờ nhập"
             stmtPN.setString(5, pn.getNhanVien().getMaNV());
             stmtPN.setString(6, pn.getNcc().getMaNCC());
-            stmtPN.setString(7, "Nhập hàng từ hệ thống");
+            stmtPN.setString(7, pn.getGhiChu() != null ? pn.getGhiChu() : "Nhập hàng từ hệ thống");
             stmtPN.executeUpdate();
 
-            // 3. Insert ChiTietPhieuNhap & Cập nhật Lô (Gọi SP)
-            String sqlCT = "INSERT INTO ChiTietPhieuNhap (maPN, maThuoc, maLo, hanSuDung, soLuong, donGia, thanhTien) VALUES (?, ?, ?, ?, ?, ?, ?)";
-            String sqlSP = "{call sp_TimHoacTaoLoThuoc(?, ?, ?, ?)}"; // Input: MaThuoc, HSD, SL -> Output: MaLo
-            
+            // 2. Insert ChiTietPhieuNhap - Dùng SP không cộng tồn kho
+            String sqlCT = "INSERT INTO ChiTietPhieuNhap (maPN, maThuoc, maLo, hanSuDung, soLuong, donGia, thanhTien, donViTinh) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            String sqlSP = "{call sp_TimHoacTaoLoThuoc_KhongCongTon(?, ?, ?)}"; // Chỉ tạo lô, không cộng tồn
+
             stmtCT = con.prepareStatement(sqlCT);
             cstmtLo = con.prepareCall(sqlSP);
 
             for (ChiTietPhieuNhap ct : listCT) {
-                // A. Gọi SP để lấy/tạo Mã Lô và cập nhật tồn kho
+                // A. Gọi SP để lấy/tạo Mã Lô (không cộng tồn kho)
                 cstmtLo.setString(1, ct.getThuoc().getMaThuoc());
-                cstmtLo.setDate(2, java.sql.Date.valueOf(ct.getHanSuDung())); // java.util.Date -> java.sql.Date
-                cstmtLo.setInt(3, ct.getSoLuong());
-                cstmtLo.registerOutParameter(4, Types.VARCHAR); // Tham số OUTPUT @MaLo
+                cstmtLo.setDate(2, java.sql.Date.valueOf(ct.getHanSuDung()));
+                cstmtLo.registerOutParameter(3, Types.VARCHAR);
                 cstmtLo.execute();
-                
-                String maLo = cstmtLo.getString(4); // Lấy mã lô vừa được SP trả về
-                
-                // B. Insert Chi Tiết
+
+                String maLo = cstmtLo.getString(3);
+
+                // B. Insert Chi Tiết với đơn vị tính
                 stmtCT.setString(1, pn.getMaPN());
                 stmtCT.setString(2, ct.getThuoc().getMaThuoc());
-                stmtCT.setString(3, maLo); // Dùng mã lô lấy từ SP
+                stmtCT.setString(3, maLo);
                 stmtCT.setDate(4, java.sql.Date.valueOf(ct.getHanSuDung()));
                 stmtCT.setInt(5, ct.getSoLuong());
                 stmtCT.setDouble(6, ct.getDonGia());
                 stmtCT.setDouble(7, ct.getThanhTien());
+                stmtCT.setString(8, ct.getDonViTinh());
                 stmtCT.executeUpdate();
             }
 
-            // 4. Nếu chạy đến đây mà không lỗi -> Commit (Lưu thật)
             con.commit();
             result = true;
 
         } catch (SQLException e) {
             e.printStackTrace();
             try {
-                if (con != null) con.rollback(); // Có lỗi -> Hoàn tác mọi thứ
+                if (con != null) con.rollback();
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
         } finally {
-            // Đóng kết nối và bật lại auto commit
             try {
                 if (con != null) con.setAutoCommit(true);
                 if (stmtPN != null) stmtPN.close();
                 if (stmtCT != null) stmtCT.close();
                 if (cstmtLo != null) cstmtLo.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return result;
+    }
+
+    // Xác nhận nhập kho - cập nhật tồn kho khi nhấn button Xác nhận
+    public boolean xacNhanNhapKho(String maPN) {
+        Connection con = null;
+        CallableStatement cstmt = null;
+        PreparedStatement stmtGetCT = null;
+        boolean result = false;
+
+        try {
+            con = ConnectDB.getConnection();
+            con.setAutoCommit(false);
+
+            // 1. Gọi SP xác nhận nhập kho (cập nhật tồn kho)
+            String sqlSP = "{call sp_XacNhanNhapKho(?)}";
+            cstmt = con.prepareCall(sqlSP);
+            cstmt.setString(1, maPN);
+            cstmt.execute();
+
+            // 2. Lấy chi tiết phiếu nhập để cập nhật giá nhập vào bảng giá
+            String sqlGetCT = "SELECT maThuoc, donViTinh, donGia FROM ChiTietPhieuNhap WHERE maPN = ?";
+            stmtGetCT = con.prepareStatement(sqlGetCT);
+            stmtGetCT.setString(1, maPN);
+            ResultSet rs = stmtGetCT.executeQuery();
+
+            ChiTietBangGiaDAO ctbgDAO = new ChiTietBangGiaDAO();
+            while (rs.next()) {
+                String maThuoc = rs.getString("maThuoc");
+                String donViTinh = rs.getString("donViTinh");
+                double giaNhap = rs.getDouble("donGia");
+
+                // Cập nhật giá nhập vào chi tiết bảng giá (tạo mới nếu chưa có)
+                ctbgDAO.capNhatGiaNhap(maThuoc, donViTinh, giaNhap);
+            }
+
+            con.commit();
+            result = true;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            try {
+                if (con != null) con.rollback();
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+        } finally {
+            try {
+                if (con != null) con.setAutoCommit(true);
+                if (cstmt != null) cstmt.close();
+                if (stmtGetCT != null) stmtGetCT.close();
             } catch (Exception e) {
                 e.printStackTrace();
             }

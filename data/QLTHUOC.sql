@@ -517,39 +517,50 @@ GO
 UPDATE Thuoc SET TonToiThieu = 10 WHERE TonToiThieu IS NULL;
 GO
 -- View hiển thị danh sách thuốc với đầy đủ thông tin cần thiết
+-- Giá nhập và giá bán theo đơn vị cơ bản
 CREATE OR ALTER VIEW vw_DanhSachThuocFull AS
-SELECT 
-    t.maThuoc, 
-    t.tenThuoc, 
-    t.hoatChat, 
-    t.donViCoBan, 
+SELECT
+    t.maThuoc,
+    t.tenThuoc,
+    t.hoatChat,
+    t.donViCoBan,
     nt.tenNhom,
     t.TonToiThieu,
-    -- Giá nhập
-    ISNULL((SELECT TOP 1 ctpn.donGia FROM ChiTietPhieuNhap ctpn JOIN PhieuNhap pn ON ctpn.maPN = pn.maPN WHERE ctpn.maThuoc = t.maThuoc ORDER BY pn.ngayTao DESC), 0) AS giaNhap, 
-    -- Giá bán
-    ISNULL((SELECT TOP 1 ctbg.giaBan FROM ChiTietBangGia ctbg JOIN BangGia bg ON ctbg. maBG = bg.maBG WHERE ctbg.maThuoc = t.maThuoc AND bg.trangThai = 1), 0) AS giaBan, 
-    
+    -- Giá nhập theo đơn vị cơ bản (lấy từ phiếu nhập mới nhất có cùng đơn vị tính)
+    ISNULL((SELECT TOP 1 ctpn.donGia
+            FROM ChiTietPhieuNhap ctpn
+            JOIN PhieuNhap pn ON ctpn.maPN = pn.maPN
+            WHERE ctpn.maThuoc = t.maThuoc
+              AND (ctpn.donViTinh = t.donViCoBan OR ctpn.donViTinh IS NULL)
+            ORDER BY pn.ngayTao DESC), 0) AS giaNhap,
+    -- Giá bán theo đơn vị cơ bản
+    ISNULL((SELECT TOP 1 ctbg.giaBan
+            FROM ChiTietBangGia ctbg
+            JOIN BangGia bg ON ctbg.maBG = bg.maBG
+            WHERE ctbg.maThuoc = t.maThuoc
+              AND ctbg.donViTinh = t.donViCoBan
+              AND bg.trangThai = 1), 0) AS giaBan,
+
     -- Tồn kho thực tế
     ISNULL((
-        SELECT SUM(soLuongTon) 
-        FROM LoThuoc 
+        SELECT SUM(soLuongTon)
+        FROM LoThuoc
         WHERE maThuoc = t.maThuoc AND isDeleted = 0
     ), 0) AS tonKho,
 
     -- Tồn kho bán được
     ISNULL((
-        SELECT SUM(soLuongTon) 
-        FROM LoThuoc 
-        WHERE maThuoc = t. maThuoc 
-          AND isDeleted = 0 
+        SELECT SUM(soLuongTon)
+        FROM LoThuoc
+        WHERE maThuoc = t.maThuoc
+          AND isDeleted = 0
           AND hanSuDung > GETDATE()
           AND (trangThai = N'Còn hạn' OR trangThai = N'Sắp hết hạn')
     ), 0) AS tonKhoBanDuoc,
 
     t.trangThai
-FROM Thuoc t 
-JOIN NhomThuoc nt ON t. maNhom = nt.maNhom
+FROM Thuoc t
+JOIN NhomThuoc nt ON t.maNhom = nt.maNhom
 GO
 PRINT N'✅ Đã cập nhật VIEW vw_DanhSachThuocFull';
 GO

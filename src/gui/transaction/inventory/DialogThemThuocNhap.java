@@ -1,8 +1,10 @@
 package gui.transaction.inventory;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import dao.DonViQuyDoiDAO;
 import dao.ThuocDAO;
 import dto.ThuocFullInfo;
+import entities.DonViQuyDoi;
 import java.awt.*;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
@@ -21,6 +23,7 @@ public class DialogThemThuocNhap extends JDialog {
 
     private FormNhapHang formNhapHang;
     private ThuocDAO thuocDAO = new ThuocDAO();
+    private DonViQuyDoiDAO donViDAO = new DonViQuyDoiDAO();
     private List<ThuocFullInfo> dsThuoc;
     private DecimalFormat moneyFormat = new DecimalFormat("#,##0 ₫");
 
@@ -30,6 +33,8 @@ public class DialogThemThuocNhap extends JDialog {
     private JSpinner spnSoLuong;
     private JTextField txtDonGia;
     private JSpinner spnHanSuDung;
+    private JComboBox<String> cbDonViTinh;
+    private List<DonViQuyDoi> listDonViHienTai = new ArrayList<>();
 
     public DialogThemThuocNhap(Frame parent, FormNhapHang formNhapHang) {
         super(parent, "Thêm Thuốc Vào Phiếu Nhập", true);
@@ -111,7 +116,7 @@ public class DialogThemThuocNhap extends JDialog {
         tableThuoc.getColumnModel().getColumn(4).setCellRenderer(rightRenderer);
         tableThuoc.getColumnModel().getColumn(5).setCellRenderer(rightRenderer);
 
-        // Khi chọn thuốc, tự động điền giá nhập gợi ý
+        // Khi chọn thuốc, tự động điền giá nhập gợi ý và load danh sách đơn vị tính
         tableThuoc.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 int row = tableThuoc.getSelectedRow();
@@ -124,6 +129,10 @@ public class DialogThemThuocNhap extends JDialog {
                     } catch (Exception ex) {
                         txtDonGia.setText("0");
                     }
+
+                    // Load danh sách đơn vị tính của thuốc được chọn
+                    String maThuoc = modelThuoc.getValueAt(row, 0).toString();
+                    loadDonViTinh(maThuoc);
                 }
             }
         });
@@ -143,7 +152,7 @@ public class DialogThemThuocNhap extends JDialog {
     }
 
     private JPanel createInputPanel() {
-        JPanel panel = new JPanel(new MigLayout("insets 15", "[][grow,fill][][grow,fill][][grow,fill]", "[]"));
+        JPanel panel = new JPanel(new MigLayout("insets 15, wrap 8", "[][grow,fill][][grow,fill][][grow,fill][][grow,fill]", "[]"));
         panel.putClientProperty(FlatClientProperties.STYLE, "arc:15; background:lighten(#E3F2FD,5%)");
 
         // Số lượng
@@ -152,6 +161,12 @@ public class DialogThemThuocNhap extends JDialog {
         spnSoLuong = new JSpinner(new SpinnerNumberModel(1, 1, 10000, 1));
         JSpinner.NumberEditor editorSL = new JSpinner.NumberEditor(spnSoLuong, "#,##0");
         spnSoLuong.setEditor(editorSL);
+
+        // Đơn vị tính
+        JLabel lbDonViTinh = new JLabel("Đơn vị tính:");
+        lbDonViTinh.putClientProperty(FlatClientProperties.STYLE, "font:bold");
+        cbDonViTinh = new JComboBox<>();
+        cbDonViTinh.setPreferredSize(new Dimension(100, 25));
 
         // Đơn giá
         JLabel lbDonGia = new JLabel("Đơn giá nhập:");
@@ -167,12 +182,50 @@ public class DialogThemThuocNhap extends JDialog {
 
         panel.add(lbSoLuong);
         panel.add(spnSoLuong, "w 100");
+        panel.add(lbDonViTinh);
+        panel.add(cbDonViTinh, "w 100");
         panel.add(lbDonGia);
         panel.add(txtDonGia, "w 120");
         panel.add(lbHSD);
         panel.add(spnHanSuDung, "w 80");
 
         return panel;
+    }
+
+    private void loadDonViTinh(String maThuoc) {
+        cbDonViTinh.removeAllItems();
+        listDonViHienTai.clear();
+
+        // Lấy danh sách đơn vị quy đổi của thuốc
+        listDonViHienTai = donViDAO.getAllDonViByMaThuoc(maThuoc);
+
+        // Lấy thông tin thuốc để biết đơn vị cơ bản
+        ThuocFullInfo thuoc = dsThuoc.stream()
+                .filter(t -> t.getMaThuoc().equals(maThuoc))
+                .findFirst()
+                .orElse(null);
+        String donViCoBan = thuoc != null ? thuoc.getDonViCoBan() : "";
+
+        // Nếu không có đơn vị quy đổi hoặc chỉ có đơn vị cơ bản, hiển thị thông báo
+        if (listDonViHienTai.isEmpty()) {
+            // Không có đơn vị nào - hiển thị thông báo
+            cbDonViTinh.addItem("(Chưa có đơn vị lớn)");
+        } else {
+            // Chỉ thêm các đơn vị KHÔNG phải đơn vị cơ bản vào combobox
+            // Vì nhập hàng thường nhập số lượng lớn ở các đơn vị tính lớn
+            boolean hasNonBaseUnit = false;
+            for (DonViQuyDoi dv : listDonViHienTai) {
+                if (!dv.isLaDonViCoBan() && !dv.getTenDonVi().equalsIgnoreCase(donViCoBan)) {
+                    cbDonViTinh.addItem(dv.getTenDonVi());
+                    hasNonBaseUnit = true;
+                }
+            }
+
+            // Nếu không có đơn vị lớn nào, hiển thị thông báo
+            if (!hasNonBaseUnit) {
+                cbDonViTinh.addItem("(Chưa có đơn vị lớn)");
+            }
+        }
     }
 
     private JPanel createButtonPanel() {
@@ -274,11 +327,23 @@ public class DialogThemThuocNhap extends JDialog {
             return;
         }
 
+        // Lấy đơn vị tính đã chọn
+        String donViTinh = cbDonViTinh.getSelectedItem() != null
+                ? cbDonViTinh.getSelectedItem().toString()
+                : null;
+
+        // Kiểm tra đơn vị tính hợp lệ
+        if (donViTinh == null || donViTinh.startsWith("(Chưa có")) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
+                "Thuốc này chưa có đơn vị lớn! Vui lòng thêm đơn vị quy đổi trước.");
+            return;
+        }
+
         int thangHSD = (Integer) spnHanSuDung.getValue();
         LocalDate hanSuDung = LocalDate.now().plusMonths(thangHSD);
 
-        // Gọi method của FormNhapHang để thêm thuốc
-        formNhapHang.themThuocVaoBang(thuoc, soLuong, donGia, hanSuDung);
+        // Gọi method của FormNhapHang để thêm thuốc với đơn vị tính
+        formNhapHang.themThuocVaoBang(thuoc, soLuong, donGia, hanSuDung, donViTinh);
 
         // Reset form
         spnSoLuong.setValue(1);

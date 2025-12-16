@@ -272,12 +272,18 @@ public class FormNhapHang extends javax.swing.JPanel {
         dialog.setVisible(true);
     }
 
-    // Method được gọi từ DialogThemThuocNhap để thêm thuốc vào bảng
+    // Method được gọi từ DialogThemThuocNhap để thêm thuốc vào bảng (backward compatibility)
     public void themThuocVaoBang(ThuocFullInfo thuoc, int soLuong, double donGia, LocalDate hanSuDung) {
-        // Kiểm tra thuốc đã có trong giỏ chưa
+        themThuocVaoBang(thuoc, soLuong, donGia, hanSuDung, thuoc.getDonViCoBan());
+    }
+
+    // Method được gọi từ DialogThemThuocNhap để thêm thuốc vào bảng với đơn vị tính
+    public void themThuocVaoBang(ThuocFullInfo thuoc, int soLuong, double donGia, LocalDate hanSuDung, String donViTinh) {
+        // Kiểm tra thuốc đã có trong giỏ chưa (cùng mã và cùng đơn vị tính)
         for (int i = 0; i < model.getRowCount(); i++) {
             String maThuocTrongBang = model.getValueAt(i, 0).toString();
-            if (maThuocTrongBang.equals(thuoc.getMaThuoc())) {
+            String dvtTrongBang = model.getValueAt(i, 2).toString();
+            if (maThuocTrongBang.equals(thuoc.getMaThuoc()) && dvtTrongBang.equals(donViTinh)) {
                 // Cập nhật số lượng nếu thuốc đã có
                 int slCu = Integer.parseInt(model.getValueAt(i, 4).toString().replace(",", ""));
                 int slMoi = slCu + soLuong;
@@ -293,14 +299,14 @@ public class FormNhapHang extends javax.swing.JPanel {
         Thuoc t = new Thuoc();
         t.setMaThuoc(thuoc.getMaThuoc());
         t.setTenThuoc(thuoc.getTenThuoc());
-        t.setDonViTinh(thuoc.getDonViCoBan());
+        t.setDonViTinh(donViTinh);
 
         ChiTietPhieuNhap ct = new ChiTietPhieuNhap();
         ct.setThuoc(t);
         ct.setSoLuong(soLuong);
         ct.setDonGia(donGia);
         ct.setHanSuDung(hanSuDung);
-        ct.setDonViTinh(thuoc.getDonViCoBan());
+        ct.setDonViTinh(donViTinh);
         ct.setThanhTien(soLuong * donGia);
         gioHang.add(ct);
 
@@ -308,7 +314,7 @@ public class FormNhapHang extends javax.swing.JPanel {
         model.addRow(new Object[]{
             thuoc.getMaThuoc(),
             thuoc.getTenThuoc(),
-            thuoc.getDonViCoBan(),
+            donViTinh,
             hanSuDung.format(dateFormat),
             soLuong,
             formatMoney(donGia),
@@ -318,7 +324,7 @@ public class FormNhapHang extends javax.swing.JPanel {
         tinhTienHang();
 
         Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER,
-            "Đã thêm thuốc: " + thuoc.getTenThuoc());
+            "Đã thêm thuốc: " + thuoc.getTenThuoc() + " (" + donViTinh + ")");
     }
 
     private void actionXoaDong() {

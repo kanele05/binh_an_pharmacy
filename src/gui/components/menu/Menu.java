@@ -2,6 +2,7 @@ package gui.components.menu;
 
 import gui.components.menu.mode.LightDarkMode;
 import com.formdev.flatlaf.FlatClientProperties;
+import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.ui.FlatUIUtils;
 import com.formdev.flatlaf.util.UIScale;
 import java.awt.Component;
@@ -83,7 +84,8 @@ public class Menu extends JPanel {
                 + "background:$Menu.background;"
                 + "arc:10");
         header = new JLabel(headerName);
-        header.setIcon(new ImageIcon(getClass().getResource("/resources/icon/png/logo_hieu_thuoc_tay_42x30px.png")));
+        FlatSVGIcon icon = new FlatSVGIcon("resources/icon/svg/logo_hieuThuoc.svg", 50, 50);
+        header.setIcon(icon);
         header.putClientProperty(FlatClientProperties.STYLE, ""
                 + "font:$Menu.header.font;"
                 + "foreground:$Menu.foreground");
