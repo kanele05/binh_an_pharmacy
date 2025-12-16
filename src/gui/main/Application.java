@@ -27,7 +27,7 @@ public class Application extends javax.swing.JFrame {
         setLocationRelativeTo(null);
         mainForm = new MainForm();
         loginForm = new LoginForm();
-        setContentPane(mainForm);
+        setContentPane(loginForm);
         getRootPane().putClientProperty(FlatClientProperties.FULL_WINDOW_CONTENT, true);
         Notifications.getInstance().setJFrame(this);
     }
@@ -88,9 +88,12 @@ public class Application extends javax.swing.JFrame {
         UIManager.put("defaultFont", new Font(FlatRobotoFont.FAMILY, Font.PLAIN, 13));
         FlatMacLightLaf.setup();
         java.awt.EventQueue.invokeLater(() -> {
-            app = new Application();
-
-            app.setVisible(true);
+            // Hiển thị splash screen trước
+            SplashScreen.showSplash(() -> {
+                // Sau khi splash screen hoàn tất, hiển thị ứng dụng chính
+                app = new Application();
+                app.setVisible(true);
+            });
         });
     }
 
