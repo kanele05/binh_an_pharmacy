@@ -75,6 +75,8 @@ public class MainForm extends JLayeredPane {
                     Application.showForm(new FormTraHang());
                 } else if (subIndex == 4) {
                     Application.showForm(new FormDoiHang());
+                } else if (subIndex == 5) {
+                    Application.showForm(new FormBaoCaoDoanhThu());
                 } else {
                     action.cancel();
                 }
@@ -85,6 +87,10 @@ public class MainForm extends JLayeredPane {
                     FormQuanLyThuoc form = new FormQuanLyThuoc();
                     Application.showForm(form);
                     form.openThemMoi();
+                } else if (subIndex == 3) {
+                    Application.showForm(new FormCanhBaoHetHan());
+                } else if (subIndex == 4) {
+                    Application.showForm(new FormCanhBaoTonKho());
                 }
             } else if (index == 3) {
                 if (subIndex == 1) {
@@ -93,7 +99,11 @@ public class MainForm extends JLayeredPane {
                     Application.showForm(new FormNhapHang());
                 }
             } else if (index == 4) {
+                if (subIndex == 1) {
                 Application.showForm(new FormQuanLyLoThuoc());
+                }else if (subIndex == 2) {
+                    Application.showForm(new FormBaoCaoTonKho());
+                }
             } else if (index == 5) {
                 if (subIndex == 1) {
                     Application.showForm(new FormBangGia());
@@ -120,19 +130,7 @@ public class MainForm extends JLayeredPane {
                 }
             } else if (index == 8) {
                 Application.showForm(new FormNhaCungCap());
-            } else if (index == 9) {
-                if (subIndex == 1) {
-                    Application.showForm(new FormBaoCaoDoanhThu());
-                } else if (subIndex == 2) {
-                    Application.showForm(new FormBaoCaoTonKho());
-                }
-            } else if (index == 10) {
-                if (subIndex == 1) {
-                    Application.showForm(new FormCanhBaoHetHan());
-                } else if (subIndex == 2) {
-                    Application.showForm(new FormCanhBaoTonKho());
-                }
-            } else if (index == 11) {
+            } else if (index ==9) {
                 if (subIndex == 1) {
                     Application.showForm(new FormHoSo());
                 } else if (subIndex == 2) {

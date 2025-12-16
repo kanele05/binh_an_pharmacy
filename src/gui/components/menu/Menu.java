@@ -27,16 +27,14 @@ public class Menu extends JPanel {
 
     private final String menuItems[][] = {
         {"Trang chủ", "Tổng quan"},
-        {"Đơn hàng", "Bán thuốc", "Đặt thuốc", "Trả thuốc", "Đổi thuốc"},
-        {"Thuốc", "Danh mục thuốc", "Thêm thuốc mới"},
+        {"Đơn hàng", "Bán thuốc", "Đặt thuốc", "Trả thuốc", "Đổi thuốc", "Báo cáo doanh thu"},
+        {"Thuốc", "Danh mục thuốc", "Thêm thuốc mới", "Cảnh báo hết hạn", "Cảnh báo tồn kho thấp"},
         {"Phiếu nhập", "Danh sách phiếu nhập", "Lập phiếu nhập"},
-        {"Lô thuốc", "Danh sách lô thuốc"},
+        {"Lô thuốc", "Danh sách lô thuốc", "Báo cáo tồn kho"},
         {"Bảng giá", "Danh sách bảng giá", "Tạo bảng giá mới"},
         {"Nhân viên", "Danh sách nhân viên", "Thêm nhân viên"},
         {"Khách hàng", "Danh sách khách hàng", "Thêm khách hàng"},
         {"Nhà cung cấp", "Danh sách nhà cung cấp"},
-        {"Báo cáo", "Báo cáo doanh thu", "Báo cáo tồn kho"},
-        {"Cảnh báo", "Sắp hết hạn", "Tồn kho thấp"},
         {"Hệ thống", "Hồ sơ", "Đăng xuất"}
     };
 
