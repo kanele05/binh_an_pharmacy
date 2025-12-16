@@ -9,5 +9,21 @@
 	<classpathentry kind="lib" path="lib/miglayout-core.jar"/>
 	<classpathentry kind="lib" path="lib/miglayout-swing.jar"/>
 	<classpathentry kind="lib" path="lib/swing-toast-notifications-1.0.2.jar"/>
+	<classpathentry kind="lib" path="lib/swing-datetime-picker-1.4.0.jar"/>
+	<classpathentry kind="lib" path="lib/sqljdbc42.jar"/>
+	<classpathentry kind="lib" path="lib/glazedlists-1.11.0.jar"/>
+	<classpathentry kind="lib" path="lib/jfreechart-1.5.4.jar"/>
+	<classpathentry kind="lib" path="lib/pdfbox-2.0.29.jar"/>
+	<classpathentry kind="lib" path="lib/fontbox-2.0.29.jar"/>
+	<classpathentry kind="lib" path="lib/commons-logging-1.2.jar"/>
+	<classpathentry kind="lib" path="lib/commons-io-2.11.0.jar"/>
+	<classpathentry kind="lib" path="lib/poi-5.2.3.jar"/>
+	<classpathentry kind="lib" path="lib/poi-ooxml-5.2.3.jar"/>
+	<classpathentry kind="lib" path="lib/poi-ooxml-lite-5.2.3.jar"/>
+	<classpathentry kind="lib" path="lib/commons-collections4-4.4.jar"/>
+	<classpathentry kind="lib" path="lib/commons-compress-1.21.jar"/>
+	<classpathentry kind="lib" path="lib/xmlbeans-5.1.1.jar"/>
+	<classpathentry kind="lib" path="lib/SparseBitSet-1.2.jar"/>
+	<classpathentry kind="lib" path="lib/log4j-api-2.18.0.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

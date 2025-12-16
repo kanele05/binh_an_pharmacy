@@ -55,6 +55,7 @@ public class MenuItem extends JPanel {
     private final List<MenuEvent> events;
     private final Menu menu;
     private final String menus[];
+    private final String originalMenus[]; // Menu gốc để map đúng subIndex
     private final int menuIndex;
     private final int menuItemHeight = 38;
     private final int subMenuItemHeight = 35;
@@ -67,10 +68,15 @@ public class MenuItem extends JPanel {
     private PopupSubmenu popup;
 
     public MenuItem(Menu menu, String menus[], int menuIndex, List<MenuEvent> events) {
+        this(menu, menus, menuIndex, events, menus);
+    }
+
+    public MenuItem(Menu menu, String menus[], int menuIndex, List<MenuEvent> events, String[] originalMenus) {
         this.menu = menu;
         this.menus = menus;
         this.menuIndex = menuIndex;
         this.events = events;
+        this.originalMenus = originalMenus;
         init();
     }
 
@@ -106,14 +112,31 @@ public class MenuItem extends JPanel {
                     }
                 });
             } else {
-                final int subIndex = i;
+                // Map filtered index sang original index
+                final int originalSubIndex = getOriginalSubIndex(i);
                 menuItem.addActionListener((ActionEvent e) -> {
-                    menu.runEvent(menuIndex, subIndex);
+                    menu.runEvent(menuIndex, originalSubIndex);
                 });
             }
             add(menuItem);
         }
-        popup = new PopupSubmenu(getComponentOrientation(), menu, menuIndex, menus);
+        popup = new PopupSubmenu(getComponentOrientation(), menu, menuIndex, menus, originalMenus);
+    }
+
+    /**
+     * Tìm subIndex gốc từ subIndex đã lọc
+     */
+    private int getOriginalSubIndex(int filteredIndex) {
+        if (menus == originalMenus || filteredIndex == 0) {
+            return filteredIndex;
+        }
+        String filteredName = menus[filteredIndex];
+        for (int i = 1; i < originalMenus.length; i++) {
+            if (originalMenus[i].equals(filteredName)) {
+                return i;
+            }
+        }
+        return filteredIndex;
     }
 
     protected void setSelectedIndex(int index) {

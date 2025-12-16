@@ -124,30 +124,44 @@ public class InvoicePDFGenerator {
 
         // Try to load from FlatLaf Roboto font in lib
         try {
-            String jarPath = System.getProperty("user.dir") + "/lib/flatlaf-fonts-roboto-2.137.jar";
-            File jarFile = new File(jarPath);
-            if (jarFile.exists()) {
-                try (java.util.jar.JarFile jar = new java.util.jar.JarFile(jarFile)) {
-                    String fontName = resourcePath.contains("Bold") ?
-                        "com/formdev/flatlaf/fonts/roboto/Roboto-Bold.ttf" :
-                        "com/formdev/flatlaf/fonts/roboto/Roboto-Regular.ttf";
-                    java.util.zip.ZipEntry entry = jar.getEntry(fontName);
-                    if (entry != null) {
-                        try (InputStream is = jar.getInputStream(entry)) {
-                            return PDType0Font.load(document, is);
+            String userDir = System.getProperty("user.dir");
+            // Try multiple path formats for Windows compatibility
+            String[] jarPaths = {
+                userDir + File.separator + "lib" + File.separator + "flatlaf-fonts-roboto-2.137.jar",
+                userDir + "/lib/flatlaf-fonts-roboto-2.137.jar"
+            };
+
+            for (String jarPath : jarPaths) {
+                File jarFile = new File(jarPath);
+                if (jarFile.exists()) {
+                    try (java.util.jar.JarFile jar = new java.util.jar.JarFile(jarFile)) {
+                        String fontName = resourcePath.contains("Bold") ?
+                            "com/formdev/flatlaf/fonts/roboto/Roboto-Bold.ttf" :
+                            "com/formdev/flatlaf/fonts/roboto/Roboto-Regular.ttf";
+                        java.util.zip.ZipEntry entry = jar.getEntry(fontName);
+                        if (entry != null) {
+                            try (InputStream is = jar.getInputStream(entry)) {
+                                // Read all bytes first to avoid stream close issues
+                                byte[] fontData = is.readAllBytes();
+                                return PDType0Font.load(document, new java.io.ByteArrayInputStream(fontData));
+                            }
                         }
                     }
                 }
             }
         } catch (Exception e) {
+            e.printStackTrace();
             // Ignore and try system font
         }
 
-        // Final fallback: use system font
+        // Final fallback: use system font (Windows fonts that support Vietnamese)
         String[] fallbackPaths = {
+            "C:\\Windows\\Fonts\\arial.ttf",
+            "C:/Windows/Fonts/arial.ttf",
+            "C:\\Windows\\Fonts\\segoeui.ttf",
+            "C:/Windows/Fonts/segoeui.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-            "C:/Windows/Fonts/arial.ttf"
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
         };
 
         for (String path : fallbackPaths) {

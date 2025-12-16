@@ -840,6 +840,9 @@ public class FormDatThuoc extends javax.swing.JPanel {
                                 if (soLuongToiDa > 0) {
                                     modelGioHang.setValueAt(soLuongToiDa, row, 3); // SL Đặt
                                     modelGioHang.setValueAt(formatMoney(dv.getGiaBan()), row, 5); // Đơn giá
+                                    // Tính thành tiền cho dòng này
+                                    double thanhTien = soLuongToiDa * dv.getGiaBan();
+                                    modelGioHang.setValueAt(formatMoney(thanhTien), row, 6); // Thành tiền
                                     Notifications.getInstance().show(
                                         Notifications.Type.WARNING,
                                         Notifications.Location.TOP_CENTER,
@@ -858,9 +861,13 @@ public class FormDatThuoc extends javax.swing.JPanel {
                             } else {
                                 // Stock is sufficient, proceed with update
                                 modelGioHang.setValueAt(formatMoney(dv.getGiaBan()), row, 5); // Đơn giá
+                                // Tính thành tiền cho dòng này
+                                double thanhTien = soLuongDat * dv.getGiaBan();
+                                modelGioHang.setValueAt(formatMoney(thanhTien), row, 6); // Thành tiền
                             }
 
-                            tinhTongTien();
+                            // Tính lại tổng tiền toàn bộ giỏ hàng
+                            capNhatTongTien();
                             return;
                         }
                     }
@@ -872,12 +879,27 @@ public class FormDatThuoc extends javax.swing.JPanel {
             }
         }
 
+        // Phương thức tính tổng tiền - không kiểm tra isUpdating
+        private void capNhatTongTien() {
+            double total = 0;
+            for (int i = 0; i < modelGioHang.getRowCount(); i++) {
+                try {
+                    double tt = parseMoney(modelGioHang.getValueAt(i, 6)); // Thành tiền
+                    total += tt;
+                } catch (Exception e) {
+                }
+            }
+            this.tongTien = total;
+            lbTongTien.setText("Tổng cộng: " + formatMoney(total));
+        }
+
         private void validateSoLuongTonKho(int row) {
             isUpdating = true;
             try {
                 String maThuoc = modelGioHang.getValueAt(row, 0).toString();
                 int soLuongDat = Integer.parseInt(modelGioHang.getValueAt(row, 3).toString()); // SL Đặt
                 String donViTinh = modelGioHang.getValueAt(row, 4).toString(); // Đơn vị tính
+                double donGia = parseMoney(modelGioHang.getValueAt(row, 5)); // Đơn giá từ cột hiển thị
 
                 // Lấy giá trị quy đổi của đơn vị hiện tại
                 List<DonViQuyDoi> listDVT = (List<DonViQuyDoi>) modelGioHang.getValueAt(row, 7); // Hidden_List
@@ -898,6 +920,9 @@ public class FormDatThuoc extends javax.swing.JPanel {
                     int soLuongToiDa = tonKho / giaTriQuyDoi;
                     if (soLuongToiDa > 0) {
                         modelGioHang.setValueAt(soLuongToiDa, row, 3); // SL Đặt
+                        // Cập nhật thành tiền
+                        double thanhTien = soLuongToiDa * donGia;
+                        modelGioHang.setValueAt(formatMoney(thanhTien), row, 6); // Thành tiền
                         Notifications.getInstance().show(
                             Notifications.Type.WARNING,
                             Notifications.Location.TOP_CENTER,
@@ -912,7 +937,13 @@ public class FormDatThuoc extends javax.swing.JPanel {
                             "Không đủ tồn kho! Đã xóa thuốc khỏi giỏ hàng."
                         );
                     }
+                } else {
+                    // Cập nhật thành tiền khi số lượng thay đổi hợp lệ
+                    double thanhTien = soLuongDat * donGia;
+                    modelGioHang.setValueAt(formatMoney(thanhTien), row, 6); // Thành tiền
                 }
+                // Cập nhật tổng tiền
+                capNhatTongTien();
             } catch (Exception ex) {
                 ex.printStackTrace();
             } finally {
@@ -1005,7 +1036,7 @@ public class FormDatThuoc extends javax.swing.JPanel {
                 Notifications.getInstance().show(Notifications.Type.WARNING, "Chưa chọn thuốc nào!");
                 return;
             }
-            
+
             // Validate all quantities before saving
             if (!validateTatCaSoLuong()) {
                 return;
@@ -1018,6 +1049,15 @@ public class FormDatThuoc extends javax.swing.JPanel {
                 Date time = (Date) timeSpinner.getValue();
                 LocalTime localTime = time.toInstant().atZone(ZoneId.systemDefault()).toLocalTime();
                 LocalDateTime henLay = LocalDateTime.of(date != null ? date : LocalDate.now(), localTime);
+
+                // Validate giờ hẹn lấy phải sau thời điểm hiện tại ít nhất 30 phút
+                LocalDateTime thoiGianToiThieu = LocalDateTime.now().plusMinutes(30);
+                if (henLay.isBefore(thoiGianToiThieu)) {
+                    Notifications.getInstance().show(Notifications.Type.WARNING,
+                        Notifications.Location.TOP_CENTER,
+                        "Giờ hẹn lấy phải sau thời điểm hiện tại ít nhất 30 phút!");
+                    return;
+                }
 
                 List<ChiTietDonDat> listChiTiet = new ArrayList<>();
                 for (int i = 0; i < modelGioHang.getRowCount(); i++) {

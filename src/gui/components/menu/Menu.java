@@ -18,6 +18,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import gui.components.menu.mode.ToolBarAccentColor;
+import utils.MenuPermission;
 
 /**
  *
@@ -35,7 +36,7 @@ public class Menu extends JPanel {
         {"Nhân viên", "Danh sách nhân viên", "Thêm nhân viên"},
         {"Khách hàng", "Danh sách khách hàng", "Thêm khách hàng"},
         {"Nhà cung cấp", "Danh sách nhà cung cấp"},
-        {"Hệ thống", "Hồ sơ", "Đăng xuất"}
+        {"Hệ thống", "Hồ sơ", "Đăng xuất", "Hướng dẫn sử dụng"}
     };
 
     public boolean isMenuFull() {
@@ -120,10 +121,34 @@ public class Menu extends JPanel {
             if (menuName.startsWith("~") && menuName.endsWith("~")) {
                 panelMenu.add(createTitle(menuName));
             } else {
-                MenuItem menuItem = new MenuItem(this, menuItems[i], index++, events);
-                panelMenu.add(menuItem);
+                // Kiểm tra quyền truy cập menu
+                if (!MenuPermission.isMenuVisible(index)) {
+                    index++;
+                    continue; // Bỏ qua menu này nếu không có quyền
+                }
+
+                // Lọc các submenu theo quyền
+                String[] filteredItems = MenuPermission.filterMenuItems(menuItems[i], index);
+
+                // Chỉ tạo menu nếu còn ít nhất 1 item (menu title)
+                if (filteredItems.length > 0) {
+                    MenuItem menuItem = new MenuItem(this, filteredItems, index, events, menuItems[i]);
+                    panelMenu.add(menuItem);
+                }
+                index++;
             }
         }
+    }
+
+    /**
+     * Làm mới menu theo quyền của người dùng hiện tại
+     * Gọi method này sau khi đăng nhập để cập nhật menu
+     */
+    public void refreshMenuByPermission() {
+        panelMenu.removeAll();
+        createMenu();
+        panelMenu.revalidate();
+        panelMenu.repaint();
     }
 
     private JLabel createTitle(String title) {
