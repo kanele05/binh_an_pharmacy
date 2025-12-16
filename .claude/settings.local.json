@@ -5,7 +5,11 @@
       "Bash(tree:*)",
       "Bash(ant compile:*)",
       "Bash(where:*)",
-      "Bash(javac:*)"
+      "Bash(javac:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(git push:*)"
     ]
   }
 }
