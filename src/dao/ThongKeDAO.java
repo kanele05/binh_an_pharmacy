@@ -176,13 +176,24 @@ public class ThongKeDAO {
     public List<Map<String, Object>> getBaoCaoDoanhThuChiTiet(LocalDate tuNgay, LocalDate denNgay) {
         List<Map<String, Object>> result = new ArrayList<>();
 
-        // Query lấy doanh thu theo ngày
+        // Query lấy doanh thu theo ngày với giá vốn từ giá nhập lô gần nhất (có cùng đơn vị tính)
+        // Sử dụng CROSS APPLY để lấy giá nhập gần nhất cho mỗi chi tiết hóa đơn
         String sqlDoanhThu = "SELECT CAST(h.ngayTao AS DATE) as ngay, " +
                      "COUNT(DISTINCT h.maHD) as soDon, " +
                      "COALESCE(SUM(h.tongTien - h.giamGia), 0) as doanhThu, " +
-                     "COALESCE(SUM(ct.soLuong * ct.donGia * 0.7), 0) as giaVon " +
+                     "COALESCE(SUM(ct.soLuong * ISNULL(giaNhap.donGia, ct.donGia * 0.7)), 0) as giaVon " +
                      "FROM HoaDon h " +
                      "LEFT JOIN ChiTietHoaDon ct ON h.maHD = ct.maHD " +
+                     "OUTER APPLY ( " +
+                     "    SELECT TOP 1 ctn.donGia " +
+                     "    FROM ChiTietPhieuNhap ctn " +
+                     "    JOIN PhieuNhap pn ON ctn.maPN = pn.maPN " +
+                     "    WHERE ctn.maThuoc = ct.maThuoc " +
+                     "    AND ctn.donViTinh = ct.donViTinh " +
+                     "    AND pn.trangThai = N'Đã nhập' " +
+                     "    AND pn.ngayTao <= h.ngayTao " +
+                     "    ORDER BY pn.ngayTao DESC " +
+                     ") giaNhap " +
                      "WHERE CAST(h.ngayTao AS DATE) BETWEEN ? AND ? " +
                      "GROUP BY CAST(h.ngayTao AS DATE) " +
                      "ORDER BY ngay DESC";
@@ -290,11 +301,22 @@ public class ThongKeDAO {
     public Map<String, Object> getTongHopDoanhThu(LocalDate tuNgay, LocalDate denNgay) {
         Map<String, Object> result = new HashMap<>();
 
+        // Sử dụng giá nhập từ lô gần nhất có cùng đơn vị tính
         String sqlDoanhThu = "SELECT COUNT(DISTINCT h.maHD) as tongDon, " +
                      "COALESCE(SUM(h.tongTien - h.giamGia), 0) as tongDoanhThu, " +
-                     "COALESCE(SUM(ct.soLuong * ct.donGia * 0.7), 0) as tongGiaVon " +
+                     "COALESCE(SUM(ct.soLuong * ISNULL(giaNhap.donGia, ct.donGia * 0.7)), 0) as tongGiaVon " +
                      "FROM HoaDon h " +
                      "LEFT JOIN ChiTietHoaDon ct ON h.maHD = ct.maHD " +
+                     "OUTER APPLY ( " +
+                     "    SELECT TOP 1 ctn.donGia " +
+                     "    FROM ChiTietPhieuNhap ctn " +
+                     "    JOIN PhieuNhap pn ON ctn.maPN = pn.maPN " +
+                     "    WHERE ctn.maThuoc = ct.maThuoc " +
+                     "    AND ctn.donViTinh = ct.donViTinh " +
+                     "    AND pn.trangThai = N'Đã nhập' " +
+                     "    AND pn.ngayTao <= h.ngayTao " +
+                     "    ORDER BY pn.ngayTao DESC " +
+                     ") giaNhap " +
                      "WHERE CAST(h.ngayTao AS DATE) BETWEEN ? AND ?";
 
         String sqlHoanTra = "SELECT COALESCE(SUM(tongTienHoanTra), 0) as tongTienHoanTra " +

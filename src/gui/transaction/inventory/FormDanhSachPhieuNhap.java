@@ -240,12 +240,13 @@ public class FormDanhSachPhieuNhap extends javax.swing.JPanel {
                 "Xác nhận nhập kho", JOptionPane.YES_NO_OPTION);
 
         if (confirm == JOptionPane.YES_OPTION) {
-            boolean success = phieuNhapDAO.updateTrangThai(maPhieu, "Đã nhập");
+            // Gọi method xacNhanNhapKho để cập nhật tồn kho
+            boolean success = phieuNhapDAO.xacNhanNhapKho(maPhieu);
             if (success) {
                 model.setValueAt("Đã nhập", row, 5);
                 Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Đã nhập kho thành công!");
             } else {
-                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi khi cập nhật trạng thái!");
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi khi cập nhật tồn kho!");
             }
         }
     }

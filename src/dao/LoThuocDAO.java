@@ -4,6 +4,7 @@ import connectDB.ConnectDB;
 import dto.ThuocTimKiem;
 import entities.LoThuoc;
 import entities.Thuoc;
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -102,6 +103,42 @@ public class LoThuocDAO {
             stmt.close();
         }
         return n > 0;
+    }
+
+    // Lấy danh sách lô của thuốc, sắp xếp theo hạn sử dụng gần nhất
+    public List<LoThuoc> getLoByMaThuoc(String maThuoc) {
+        List<LoThuoc> list = new ArrayList<>();
+        String sql = "SELECT l.*, t.tenThuoc, t.donViCoBan " +
+                     "FROM LoThuoc l " +
+                     "JOIN Thuoc t ON l.maThuoc = t.maThuoc " +
+                     "WHERE l.maThuoc = ? AND l.isDeleted = 0 AND l.soLuongTon > 0 " +
+                     "AND l.trangThai != N'Đã hết hạn' " +
+                     "ORDER BY l.hanSuDung ASC";
+        try {
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            stmt.setString(1, maThuoc);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                Thuoc t = new Thuoc(rs.getString("maThuoc"));
+                t.setTenThuoc(rs.getString("tenThuoc"));
+                t.setDonViTinh(rs.getString("donViCoBan"));
+
+                LoThuoc lo = new LoThuoc(
+                        rs.getString("maLo"),
+                        t,
+                        rs.getDate("ngayNhap").toLocalDate(),
+                        rs.getDate("hanSuDung").toLocalDate(),
+                        rs.getInt("soLuongTon"),
+                        rs.getString("trangThai"),
+                        rs.getBoolean("isDeleted")
+                );
+                list.add(lo);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
     }
 
     public ArrayList<ThuocTimKiem> getDanhSachThuocBanHang() {
@@ -550,6 +587,31 @@ public class LoThuocDAO {
             e.printStackTrace();
         }
         return result;
+    }
+
+    // Cập nhật lô với logic cộng dồn nếu HSD trùng lô khác
+    public int updateWithMerge(LoThuoc lo) throws SQLException {
+        ConnectDB.getInstance();
+        Connection con = ConnectDB.getConnection();
+        CallableStatement cstmt = null;
+        int resultCode = -1;
+        try {
+            String sql = "{call sp_CongDonLoKhiSuaHSD(?, ?, ?)}";
+            cstmt = con.prepareCall(sql);
+            cstmt.setString(1, lo.getMaLo());
+            cstmt.setDate(2, Date.valueOf(lo.getHanSuDung()));
+            cstmt.registerOutParameter(3, java.sql.Types.INTEGER);
+            cstmt.execute();
+            resultCode = cstmt.getInt(3);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw e;
+        } finally {
+            if (cstmt != null) {
+                cstmt.close();
+            }
+        }
+        return resultCode; // 0: Chỉ cập nhật HSD, 1: Đã cộng dồn, -1: Lỗi
     }
 
     public Map<String, Object> getTongHopTonKho() {

@@ -15,16 +15,25 @@ import dto.ThuocFullInfo;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.sql.SQLException;
+import java.text.DecimalFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 import net.miginfocom.swing.MigLayout;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import raven.toast.Notifications;
 
 public class FormQuanLyThuoc extends javax.swing.JPanel {
@@ -113,6 +122,7 @@ public class FormQuanLyThuoc extends javax.swing.JPanel {
                 Logger.getLogger(FormQuanLyThuoc.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
+        btnXuatExcel.addActionListener(e -> actionXuatExcel());
 
         panel.add(txtTimKiem, "w 250");
         panel.add(btnTim);
@@ -380,6 +390,195 @@ public class FormQuanLyThuoc extends javax.swing.JPanel {
                 Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi hệ thống!");
             }
         }
+    }
+
+    private void actionXuatExcel() {
+        if (comboFiltered.isEmpty()) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Không có dữ liệu để xuất!");
+            return;
+        }
+
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Lưu file Excel");
+        fileChooser.setSelectedFile(new File("DanhSachThuoc_" + LocalDate.now().format(DateTimeFormatter.ofPattern("ddMMyyyy")) + ".xlsx"));
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Excel Files (*.xlsx)", "xlsx"));
+
+        if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = fileChooser.getSelectedFile();
+            if (!file.getName().endsWith(".xlsx")) {
+                file = new File(file.getAbsolutePath() + ".xlsx");
+            }
+
+            try {
+                exportToExcel(file);
+                Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Xuất Excel thành công!");
+
+                // Mở file sau khi xuất
+                int openFile = JOptionPane.showConfirmDialog(this, "Bạn có muốn mở file vừa xuất?", "Thông báo", JOptionPane.YES_NO_OPTION);
+                if (openFile == JOptionPane.YES_OPTION) {
+                    java.awt.Desktop.getDesktop().open(file);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi xuất Excel: " + e.getMessage());
+            }
+        }
+    }
+
+    private void exportToExcel(File file) throws Exception {
+        Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("Danh sách thuốc");
+
+        DecimalFormat moneyFormat = new DecimalFormat("#,##0");
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+        // Style cho tiêu đề
+        CellStyle titleStyle = workbook.createCellStyle();
+        Font titleFont = workbook.createFont();
+        titleFont.setBold(true);
+        titleFont.setFontHeightInPoints((short) 16);
+        titleFont.setColor(IndexedColors.DARK_BLUE.getIndex());
+        titleStyle.setFont(titleFont);
+        titleStyle.setAlignment(HorizontalAlignment.CENTER);
+
+        // Style cho header
+        CellStyle headerStyle = workbook.createCellStyle();
+        Font headerFont = workbook.createFont();
+        headerFont.setBold(true);
+        headerFont.setColor(IndexedColors.WHITE.getIndex());
+        headerStyle.setFont(headerFont);
+        headerStyle.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
+        headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        headerStyle.setAlignment(HorizontalAlignment.CENTER);
+        headerStyle.setBorderBottom(BorderStyle.THIN);
+        headerStyle.setBorderTop(BorderStyle.THIN);
+        headerStyle.setBorderLeft(BorderStyle.THIN);
+        headerStyle.setBorderRight(BorderStyle.THIN);
+
+        // Style cho dữ liệu
+        CellStyle dataStyle = workbook.createCellStyle();
+        dataStyle.setBorderBottom(BorderStyle.THIN);
+        dataStyle.setBorderTop(BorderStyle.THIN);
+        dataStyle.setBorderLeft(BorderStyle.THIN);
+        dataStyle.setBorderRight(BorderStyle.THIN);
+
+        // Style cho tiền
+        CellStyle currencyStyle = workbook.createCellStyle();
+        DataFormat format = workbook.createDataFormat();
+        currencyStyle.setDataFormat(format.getFormat("#,##0\" ₫\""));
+        currencyStyle.setAlignment(HorizontalAlignment.RIGHT);
+        currencyStyle.setBorderBottom(BorderStyle.THIN);
+        currencyStyle.setBorderTop(BorderStyle.THIN);
+        currencyStyle.setBorderLeft(BorderStyle.THIN);
+        currencyStyle.setBorderRight(BorderStyle.THIN);
+
+        // Style cho ngừng kinh doanh
+        CellStyle inactiveStyle = workbook.createCellStyle();
+        Font inactiveFont = workbook.createFont();
+        inactiveFont.setColor(IndexedColors.RED.getIndex());
+        inactiveStyle.setFont(inactiveFont);
+        inactiveStyle.setFillForegroundColor(IndexedColors.ROSE.getIndex());
+        inactiveStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        inactiveStyle.setBorderBottom(BorderStyle.THIN);
+        inactiveStyle.setBorderTop(BorderStyle.THIN);
+        inactiveStyle.setBorderLeft(BorderStyle.THIN);
+        inactiveStyle.setBorderRight(BorderStyle.THIN);
+
+        int rowNum = 0;
+
+        // Tiêu đề
+        Row titleRow = sheet.createRow(rowNum++);
+        Cell titleCell = titleRow.createCell(0);
+        titleCell.setCellValue("DANH SÁCH THUỐC");
+        titleCell.setCellStyle(titleStyle);
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 8));
+
+        // Ngày xuất
+        Row dateRow = sheet.createRow(rowNum++);
+        Cell dateCell = dateRow.createCell(0);
+        dateCell.setCellValue("Ngày xuất: " + LocalDate.now().format(dtf));
+        sheet.addMergedRegion(new CellRangeAddress(1, 1, 0, 8));
+
+        // Dòng trống
+        rowNum++;
+
+        // Header
+        Row headerRow = sheet.createRow(rowNum++);
+        String[] headers = {"STT", "Mã Thuốc", "Tên Thuốc", "Nhóm", "Hoạt Chất", "ĐVT", "Giá Nhập", "Giá Bán", "Tồn Kho", "Trạng Thái"};
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerStyle);
+        }
+
+        // Dữ liệu
+        int stt = 1;
+        for (ThuocFullInfo t : comboFiltered) {
+            Row dataRow = sheet.createRow(rowNum++);
+            boolean isInactive = !t.isTrangThai();
+            CellStyle rowStyle = isInactive ? inactiveStyle : dataStyle;
+
+            // STT
+            Cell sttCell = dataRow.createCell(0);
+            sttCell.setCellValue(stt++);
+            sttCell.setCellStyle(rowStyle);
+
+            // Mã thuốc
+            Cell maCell = dataRow.createCell(1);
+            maCell.setCellValue(t.getMaThuoc());
+            maCell.setCellStyle(rowStyle);
+
+            // Tên thuốc
+            Cell tenCell = dataRow.createCell(2);
+            tenCell.setCellValue(t.getTenThuoc());
+            tenCell.setCellStyle(rowStyle);
+
+            // Nhóm
+            Cell nhomCell = dataRow.createCell(3);
+            nhomCell.setCellValue(t.getTenNhom());
+            nhomCell.setCellStyle(rowStyle);
+
+            // Hoạt chất
+            Cell hcCell = dataRow.createCell(4);
+            hcCell.setCellValue(t.getHoatChat());
+            hcCell.setCellStyle(rowStyle);
+
+            // ĐVT
+            Cell dvtCell = dataRow.createCell(5);
+            dvtCell.setCellValue(t.getDonViCoBan());
+            dvtCell.setCellStyle(rowStyle);
+
+            // Giá nhập
+            Cell giaNhapCell = dataRow.createCell(6);
+            giaNhapCell.setCellValue(t.getGiaNhap());
+            giaNhapCell.setCellStyle(isInactive ? inactiveStyle : currencyStyle);
+
+            // Giá bán
+            Cell giaBanCell = dataRow.createCell(7);
+            giaBanCell.setCellValue(t.getGiaBan());
+            giaBanCell.setCellStyle(isInactive ? inactiveStyle : currencyStyle);
+
+            // Tồn kho
+            Cell tonKhoCell = dataRow.createCell(8);
+            tonKhoCell.setCellValue(t.getTonKho());
+            tonKhoCell.setCellStyle(rowStyle);
+
+            // Trạng thái
+            Cell trangThaiCell = dataRow.createCell(9);
+            trangThaiCell.setCellValue(t.isTrangThai() ? "Đang kinh doanh" : "Ngừng kinh doanh");
+            trangThaiCell.setCellStyle(rowStyle);
+        }
+
+        // Auto-size columns
+        for (int i = 0; i < headers.length; i++) {
+            sheet.autoSizeColumn(i);
+        }
+
+        // Ghi file
+        FileOutputStream fos = new FileOutputStream(file);
+        workbook.write(fos);
+        fos.close();
+        workbook.close();
     }
 
     private class StatusAndAlignRenderer extends DefaultTableCellRenderer {

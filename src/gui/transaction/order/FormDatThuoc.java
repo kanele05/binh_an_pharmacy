@@ -19,6 +19,7 @@ import entities.ChiTietDonDat;
 import entities.DonDatHang;
 import entities.DonViQuyDoi;
 import entities.KhachHang;
+import entities.LoThuoc;
 import entities.NhanVien;
 import entities.Thuoc;
 import java.awt.BorderLayout;
@@ -436,14 +437,34 @@ public class FormDatThuoc extends javax.swing.JPanel {
                 if (listDVT.isEmpty()) {
                     listDVT.add(new DonViQuyDoi(0, ct.getThuoc().getMaThuoc(), ct.getDonViTinh(), 1, ct.getDonGia(), true));
                 }
+
+                // Lấy giá bán đúng theo đơn vị tính đã chọn
+                double donGiaTheoUnit = ct.getDonGia();
+                for (DonViQuyDoi dv : listDVT) {
+                    if (dv.getTenDonVi().equals(ct.getDonViTinh())) {
+                        donGiaTheoUnit = dv.getGiaBan();
+                        break;
+                    }
+                }
+
+                // Lấy danh sách lô của thuốc
+                List<LoThuoc> listLo = loThuocDAO.getLoByMaThuoc(ct.getThuoc().getMaThuoc());
+                String loDisplay = "";
+                if (!listLo.isEmpty()) {
+                    LoThuoc loMacDinh = listLo.get(0);
+                    loDisplay = loMacDinh.getMaLo() + " (" + loMacDinh.getHanSuDung().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + ")";
+                }
+
                 modelGioHang.addRow(new Object[]{
                     ct.getThuoc().getMaThuoc(),
                     ct.getThuoc().getTenThuoc(),
-                    ct.getSoLuong(),
-                    ct.getDonViTinh(),
-                    formatMoney(ct.getDonGia()),
-                    formatMoney(ct.getThanhTien()),
-                    listDVT
+                    loDisplay,                      // Lô (HSD) - cột 2
+                    ct.getSoLuong(),                // SL Đặt - cột 3
+                    ct.getDonViTinh(),              // Đơn vị tính - cột 4
+                    formatMoney(donGiaTheoUnit),    // Đơn giá - cột 5 (load đúng giá theo đơn vị)
+                    formatMoney(ct.getSoLuong() * donGiaTheoUnit), // Thành tiền - cột 6
+                    listDVT,                        // Hidden_List - cột 7
+                    listLo                          // Hidden_LoList - cột 8
                 });
             }
             tinhTongTien();
@@ -572,11 +593,11 @@ public class FormDatThuoc extends javax.swing.JPanel {
             JPanel panel = new JPanel(new java.awt.BorderLayout());
             panel.setBorder(BorderFactory.createTitledBorder("Danh sách đặt"));
 
-            String[] cols = {"Mã Thuốc", "Tên thuốc", "SL Đặt", "Đơn vị tính", "Đơn giá", "Thành tiền", "Hidden_List"};
+            String[] cols = {"Mã Thuốc", "Tên thuốc", "Lô (HSD)", "SL Đặt", "Đơn vị tính", "Đơn giá", "Thành tiền", "Hidden_List", "Hidden_LoList"};
             modelGioHang = new DefaultTableModel(cols, 0) {
                 @Override
                 public boolean isCellEditable(int r, int c) {
-                    return c == 2 || c == 3;
+                    return c == 2 || c == 3 || c == 4; // Lô, SL Đặt, Đơn vị tính
                 }
             };
 
@@ -588,9 +609,16 @@ public class FormDatThuoc extends javax.swing.JPanel {
 
             tableGioHang = new JTable(modelGioHang);
             tableGioHang.putClientProperty(FlatClientProperties.STYLE, "rowHeight:30; showHorizontalLines:true");
-            tableGioHang.getColumnModel().getColumn(4).setCellRenderer(new RightAlignRenderer());
-            tableGioHang.getColumnModel().getColumn(5).setCellRenderer(new RightAlignRenderer());
-            tableGioHang.removeColumn(tableGioHang.getColumnModel().getColumn(6));
+            tableGioHang.getColumnModel().getColumn(5).setCellRenderer(new RightAlignRenderer()); // Đơn giá
+            tableGioHang.getColumnModel().getColumn(6).setCellRenderer(new RightAlignRenderer()); // Thành tiền
+            // Ẩn 2 cột hidden
+            tableGioHang.removeColumn(tableGioHang.getColumnModel().getColumn(8)); // Hidden_LoList
+            tableGioHang.removeColumn(tableGioHang.getColumnModel().getColumn(7)); // Hidden_List
+
+            // Editor cho cột Lô
+            LoCellEditor loEditor = new LoCellEditor();
+            tableGioHang.getColumnModel().getColumn(2).setCellEditor(loEditor);
+
             UnitCellEditor unitEditor = new UnitCellEditor();
 
             unitEditor.addCellEditorListener(new CellEditorListener() {
@@ -607,11 +635,11 @@ public class FormDatThuoc extends javax.swing.JPanel {
                 }
             });
 
-            tableGioHang.getColumnModel().getColumn(3).setCellEditor(unitEditor);
+            tableGioHang.getColumnModel().getColumn(4).setCellEditor(unitEditor); // Đơn vị tính ở cột 4
 
             modelGioHang.addTableModelListener(e -> {
-                // Column 2 is "SL Đặt" (Quantity Ordered)
-                if (e.getColumn() == 2 && e.getType() == javax.swing.event.TableModelEvent.UPDATE) {
+                // Column 3 is "SL Đặt" (Quantity Ordered) - sau khi thêm cột Lô
+                if (e.getColumn() == 3 && e.getType() == javax.swing.event.TableModelEvent.UPDATE) {
                     int row = e.getFirstRow();
                     if (row >= 0 && !isUpdating) {
                         validateSoLuongTonKho(row);
@@ -703,7 +731,18 @@ public class FormDatThuoc extends javax.swing.JPanel {
                 }
             }
 
-            String input = JOptionPane.showInputDialog(FormDatThuoc.this, "Nhập số lượng đặt (Tổng tồn: " + t.getSoLuongTon() + "):", "1");
+            // Lấy danh sách lô của thuốc, sắp xếp theo HSD gần nhất
+            List<LoThuoc> listLo = loThuocDAO.getLoByMaThuoc(t.getMaThuoc());
+            if (listLo.isEmpty()) {
+                Notifications.getInstance().show(Notifications.Type.WARNING, "Thuốc này không còn lô nào khả dụng!");
+                return;
+            }
+
+            // Mặc định chọn lô có HSD gần nhất
+            LoThuoc loMacDinh = listLo.get(0);
+            String loDisplay = loMacDinh.getMaLo() + " (" + loMacDinh.getHanSuDung().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + ")";
+
+            String input = JOptionPane.showInputDialog(FormDatThuoc.this, "Nhập số lượng đặt (Tồn lô gần nhất: " + loMacDinh.getSoLuongTon() + "):", "1");
             if (input == null) {
                 return;
             }
@@ -715,14 +754,15 @@ public class FormDatThuoc extends javax.swing.JPanel {
                     return;
                 }
 
-                // Check if item already exists in cart
+                // Check if item already exists in cart (cùng mã + cùng lô + cùng đơn vị)
                 for (int i = 0; i < modelGioHang.getRowCount(); i++) {
                     String maTrongGio = modelGioHang.getValueAt(i, 0).toString();
-                    String dvtTrongGio = modelGioHang.getValueAt(i, 3).toString();
+                    String loTrongGio = modelGioHang.getValueAt(i, 2).toString();
+                    String dvtTrongGio = modelGioHang.getValueAt(i, 4).toString();
 
-                    if (maTrongGio.equals(t.getMaThuoc()) && dvtTrongGio.equals(dvtChuan.getTenDonVi())) {
-                        int slCu = Integer.parseInt(modelGioHang.getValueAt(i, 2).toString());
-                        modelGioHang.setValueAt(slCu + sl, i, 2);
+                    if (maTrongGio.equals(t.getMaThuoc()) && loTrongGio.equals(loDisplay) && dvtTrongGio.equals(dvtChuan.getTenDonVi())) {
+                        int slCu = Integer.parseInt(modelGioHang.getValueAt(i, 3).toString());
+                        modelGioHang.setValueAt(slCu + sl, i, 3);
                         tinhThanhTienRow(i);
                         return;
                     }
@@ -732,11 +772,13 @@ public class FormDatThuoc extends javax.swing.JPanel {
                 modelGioHang.addRow(new Object[]{
                     t.getMaThuoc(),
                     t.getTenThuoc(),
-                    sl,
-                    dvtChuan.getTenDonVi(),
-                    formatMoney(dvtChuan.getGiaBan()),
-                    formatMoney(dvtChuan.getGiaBan() * sl),
-                    listDVT
+                    loDisplay,                     // Lô (HSD)
+                    sl,                            // SL Đặt
+                    dvtChuan.getTenDonVi(),        // Đơn vị tính
+                    formatMoney(dvtChuan.getGiaBan()), // Đơn giá
+                    formatMoney(dvtChuan.getGiaBan() * sl), // Thành tiền
+                    listDVT,                       // Hidden_List
+                    listLo                         // Hidden_LoList
                 });
                 tinhTongTien();
 
@@ -748,20 +790,20 @@ public class FormDatThuoc extends javax.swing.JPanel {
         private void updateGiaKhiDoiDonVi(int row) {
             isUpdating = true;
             try {
-                Object valDVT = modelGioHang.getValueAt(row, 3);
+                Object valDVT = modelGioHang.getValueAt(row, 4); // Cột đơn vị tính
                 if (valDVT == null) {
                     return;
                 }
                 String tenMoi = valDVT.toString();
 
-                Object valList = modelGioHang.getValueAt(row, 6);
+                Object valList = modelGioHang.getValueAt(row, 7); // Hidden_List
 
                 if (valList instanceof List) {
                     List<entities.DonViQuyDoi> list = (List<entities.DonViQuyDoi>) valList;
 
                     for (entities.DonViQuyDoi dv : list) {
                         if (dv.getTenDonVi().equals(tenMoi)) {
-                            
+
                             // Validate conversion rate first (fail fast)
                             if (dv.getGiaTriQuyDoi() <= 0) {
                                 Notifications.getInstance().show(
@@ -771,11 +813,11 @@ public class FormDatThuoc extends javax.swing.JPanel {
                                 );
                                 return;
                             }
-                            
+
                             // Validate stock when changing unit
                             String maThuoc = modelGioHang.getValueAt(row, 0).toString();
-                            int soLuongDat = Integer.parseInt(modelGioHang.getValueAt(row, 2).toString());
-                            
+                            int soLuongDat = Integer.parseInt(modelGioHang.getValueAt(row, 3).toString()); // SL Đặt
+
                             // Calculate converted quantity using long to prevent overflow
                             long soLuongQuyDoiLong = (long) soLuongDat * (long) dv.getGiaTriQuyDoi();
                             if (soLuongQuyDoiLong > Integer.MAX_VALUE) {
@@ -787,17 +829,17 @@ public class FormDatThuoc extends javax.swing.JPanel {
                                 return;
                             }
                             int soLuongQuyDoi = (int) soLuongQuyDoiLong;
-                            
+
                             // Get total stock for this drug
                             int tonKho = loThuocDAO.getTongTonByMaThuoc(maThuoc);
-                            
+
                             if (soLuongQuyDoi > tonKho) {
                                 // Calculate maximum quantity for this unit
                                 int soLuongToiDa = tonKho / dv.getGiaTriQuyDoi();
-                                
+
                                 if (soLuongToiDa > 0) {
-                                    modelGioHang.setValueAt(soLuongToiDa, row, 2);
-                                    modelGioHang.setValueAt(formatMoney(dv.getGiaBan()), row, 4);
+                                    modelGioHang.setValueAt(soLuongToiDa, row, 3); // SL Đặt
+                                    modelGioHang.setValueAt(formatMoney(dv.getGiaBan()), row, 5); // Đơn giá
                                     Notifications.getInstance().show(
                                         Notifications.Type.WARNING,
                                         Notifications.Location.TOP_CENTER,
@@ -815,9 +857,9 @@ public class FormDatThuoc extends javax.swing.JPanel {
                                 }
                             } else {
                                 // Stock is sufficient, proceed with update
-                                modelGioHang.setValueAt(formatCurrency(dv.getGiaBan()), row, 4);
+                                modelGioHang.setValueAt(formatMoney(dv.getGiaBan()), row, 5); // Đơn giá
                             }
-                            
+
                             tinhTongTien();
                             return;
                         }
@@ -834,11 +876,11 @@ public class FormDatThuoc extends javax.swing.JPanel {
             isUpdating = true;
             try {
                 String maThuoc = modelGioHang.getValueAt(row, 0).toString();
-                int soLuongDat = Integer.parseInt(modelGioHang.getValueAt(row, 2).toString());
-                String donViTinh = modelGioHang.getValueAt(row, 3).toString();
-                
+                int soLuongDat = Integer.parseInt(modelGioHang.getValueAt(row, 3).toString()); // SL Đặt
+                String donViTinh = modelGioHang.getValueAt(row, 4).toString(); // Đơn vị tính
+
                 // Lấy giá trị quy đổi của đơn vị hiện tại
-                List<DonViQuyDoi> listDVT = (List<DonViQuyDoi>) modelGioHang.getValueAt(row, 6);
+                List<DonViQuyDoi> listDVT = (List<DonViQuyDoi>) modelGioHang.getValueAt(row, 7); // Hidden_List
                 int giaTriQuyDoi = 1;
                 for (DonViQuyDoi dv : listDVT) {
                     if (dv.getTenDonVi().equals(donViTinh)) {
@@ -846,16 +888,16 @@ public class FormDatThuoc extends javax.swing.JPanel {
                         break;
                     }
                 }
-                
+
                 // Tính số lượng thực tế và so sánh với tồn kho
                 int soLuongThucTe = soLuongDat * giaTriQuyDoi;
                 int tonKho = loThuocDAO.getTongTonByMaThuoc(maThuoc);
-                
+
                 if (soLuongThucTe > tonKho) {
                     // Tự động điều chỉnh về số lượng tối đa
                     int soLuongToiDa = tonKho / giaTriQuyDoi;
                     if (soLuongToiDa > 0) {
-                        modelGioHang.setValueAt(soLuongToiDa, row, 2);
+                        modelGioHang.setValueAt(soLuongToiDa, row, 3); // SL Đặt
                         Notifications.getInstance().show(
                             Notifications.Type.WARNING,
                             Notifications.Location.TOP_CENTER,
@@ -887,11 +929,11 @@ public class FormDatThuoc extends javax.swing.JPanel {
                 return;
             }
             try {
-                int sl = Integer.parseInt(modelGioHang.getValueAt(row, 2).toString());
-                double donGia = parseMoney(modelGioHang.getValueAt(row, 4));
+                int sl = Integer.parseInt(modelGioHang.getValueAt(row, 3).toString()); // SL Đặt
+                double donGia = parseMoney(modelGioHang.getValueAt(row, 5)); // Đơn giá
 
                 double thanhTien = sl * donGia;
-                modelGioHang.setValueAt(formatMoney(thanhTien), row, 5);
+                modelGioHang.setValueAt(formatMoney(thanhTien), row, 6); // Thành tiền
 
                 tinhTongTien();
             } catch (Exception e) {
@@ -908,10 +950,10 @@ public class FormDatThuoc extends javax.swing.JPanel {
                 double total = 0;
                 for (int i = 0; i < modelGioHang.getRowCount(); i++) {
                     try {
-                        int sl = Integer.parseInt(modelGioHang.getValueAt(i, 2).toString());
-                        double gia = parseMoney(modelGioHang.getValueAt(i, 4));
+                        int sl = Integer.parseInt(modelGioHang.getValueAt(i, 3).toString()); // SL Đặt
+                        double gia = parseMoney(modelGioHang.getValueAt(i, 5)); // Đơn giá
                         double tt = sl * gia;
-                        modelGioHang.setValueAt(formatMoney(tt), i, 5);
+                        modelGioHang.setValueAt(formatMoney(tt), i, 6); // Thành tiền
                         total += tt;
                     } catch (Exception e) {
                     }
@@ -927,10 +969,10 @@ public class FormDatThuoc extends javax.swing.JPanel {
         private boolean validateTatCaSoLuong() {
             for (int i = 0; i < modelGioHang.getRowCount(); i++) {
                 String maThuoc = modelGioHang.getValueAt(i, 0).toString();
-                int soLuongDat = Integer.parseInt(modelGioHang.getValueAt(i, 2).toString());
-                String donViTinh = modelGioHang.getValueAt(i, 3).toString();
-                
-                List<DonViQuyDoi> listDVT = (List<DonViQuyDoi>) modelGioHang.getValueAt(i, 6);
+                int soLuongDat = Integer.parseInt(modelGioHang.getValueAt(i, 3).toString()); // SL Đặt
+                String donViTinh = modelGioHang.getValueAt(i, 4).toString(); // Đơn vị tính
+
+                List<DonViQuyDoi> listDVT = (List<DonViQuyDoi>) modelGioHang.getValueAt(i, 7); // Hidden_List
                 int giaTriQuyDoi = 1;
                 for (DonViQuyDoi dv : listDVT) {
                     if (dv.getTenDonVi().equals(donViTinh)) {
@@ -938,10 +980,10 @@ public class FormDatThuoc extends javax.swing.JPanel {
                         break;
                     }
                 }
-                
+
                 int soLuongThucTe = soLuongDat * giaTriQuyDoi;
                 int tonKho = loThuocDAO.getTongTonByMaThuoc(maThuoc);
-                
+
                 if (soLuongThucTe > tonKho) {
                     Notifications.getInstance().show(
                         Notifications.Type.ERROR,
@@ -980,10 +1022,11 @@ public class FormDatThuoc extends javax.swing.JPanel {
                 List<ChiTietDonDat> listChiTiet = new ArrayList<>();
                 for (int i = 0; i < modelGioHang.getRowCount(); i++) {
                     String maThuoc = modelGioHang.getValueAt(i, 0).toString();
-                    int sl = Integer.parseInt(modelGioHang.getValueAt(i, 2).toString());
-                    String donViTinh = modelGioHang.getValueAt(i, 3).toString();
-                    double donGia = parseMoney(modelGioHang.getValueAt(i, 4));
-                    double thanhTien = parseMoney(modelGioHang.getValueAt(i, 5));
+                    // Cột 2 là Lô (HSD), bỏ qua cho ChiTietDonDat
+                    int sl = Integer.parseInt(modelGioHang.getValueAt(i, 3).toString()); // SL Đặt
+                    String donViTinh = modelGioHang.getValueAt(i, 4).toString(); // Đơn vị tính
+                    double donGia = parseMoney(modelGioHang.getValueAt(i, 5)); // Đơn giá
+                    double thanhTien = parseMoney(modelGioHang.getValueAt(i, 6)); // Thành tiền
 
                     Thuoc t = new Thuoc(maThuoc);
 
@@ -1055,6 +1098,36 @@ public class FormDatThuoc extends javax.swing.JPanel {
         }
     }
 
+    // Inner class for lot cell editor
+    private class LoCellEditor extends javax.swing.DefaultCellEditor {
+        private javax.swing.JComboBox<String> comboBox;
+
+        public LoCellEditor() {
+            super(new javax.swing.JComboBox<>());
+            this.comboBox = (javax.swing.JComboBox<String>) getComponent();
+        }
+
+        @Override
+        public java.awt.Component getTableCellEditorComponent(javax.swing.JTable table, Object value, boolean isSelected, int row, int column) {
+            comboBox.removeAllItems();
+            int modelRow = table.convertRowIndexToModel(row);
+            Object valList = table.getModel().getValueAt(modelRow, 8); // Hidden_LoList
+
+            if (valList instanceof java.util.List) {
+                java.util.List<LoThuoc> list = (java.util.List<LoThuoc>) valList;
+                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                for (LoThuoc lo : list) {
+                    comboBox.addItem(lo.getMaLo() + " (" + lo.getHanSuDung().format(fmt) + ")");
+                }
+            }
+
+            if (value != null) {
+                comboBox.setSelectedItem(value.toString());
+            }
+            return comboBox;
+        }
+    }
+
     // Inner class for unit cell editor (shared by both panels if needed)
     private class UnitCellEditor extends javax.swing.DefaultCellEditor {
 
@@ -1070,7 +1143,7 @@ public class FormDatThuoc extends javax.swing.JPanel {
             comboBox.removeAllItems();
 
             int modelRow = table.convertRowIndexToModel(row);
-            Object valList = table.getModel().getValueAt(modelRow, 6);
+            Object valList = table.getModel().getValueAt(modelRow, 7); // Hidden_List
 
             if (valList instanceof java.util.List) {
                 java.util.List<entities.DonViQuyDoi> list = (java.util.List<entities.DonViQuyDoi>) valList;

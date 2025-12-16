@@ -323,7 +323,21 @@ public class FormQuanLyLoThuoc extends javax.swing.JPanel {
                 selectedLo.setSoLuongTon(newTon);
                 selectedLo.setTrangThai(newStatus);
 
-                if (loThuocDAO.update(selectedLo)) {
+                // Kiểm tra xem có lô khác cùng thuốc cùng HSD không để cộng dồn
+                int mergeResult = loThuocDAO.updateWithMerge(selectedLo);
+
+                if (mergeResult == 1) {
+                    // Đã cộng dồn vào lô khác
+                    loadData();
+                    Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER,
+                            "Đã cộng dồn lô " + selectedLo.getMaLo() + " vào lô khác có cùng hạn sử dụng!");
+                } else if (mergeResult == 0) {
+                    // Chỉ cập nhật HSD, cần cập nhật số lượng tồn nếu thay đổi
+                    if (newTon != selectedLo.getSoLuongTon() || !newStatus.equals(selectedLo.getTrangThai())) {
+                        selectedLo.setSoLuongTon(newTon);
+                        selectedLo.setTrangThai(newStatus);
+                        loThuocDAO.update(selectedLo);
+                    }
                     loadData();
                     Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Cập nhật thành công!");
                 } else {

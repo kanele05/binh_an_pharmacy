@@ -24,9 +24,9 @@ public class ChiTietPhieuNhapDAO {
         PreparedStatement stmt = null;
         int n = 0;
         try {
-            // Fixed: column names khớp với DB schema (maPN thay vì maPhieuNhap, donGia thay vì donGiaNhap)
-            String sql = "INSERT INTO ChiTietPhieuNhap (maPN, maThuoc, maLo, hanSuDung, soLuong, donGia, thanhTien) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?)";
+            // Thêm cột donViTinh vào câu INSERT
+            String sql = "INSERT INTO ChiTietPhieuNhap (maPN, maThuoc, maLo, hanSuDung, soLuong, donGia, thanhTien, donViTinh) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
             stmt = con.prepareStatement(sql);
             stmt.setString(1, ct.getPn().getMaPN());
             stmt.setString(2, ct.getThuoc().getMaThuoc());
@@ -35,6 +35,7 @@ public class ChiTietPhieuNhapDAO {
             stmt.setInt(5, ct.getSoLuong());
             stmt.setDouble(6, ct.getDonGia());
             stmt.setDouble(7, ct.getThanhTien());
+            stmt.setString(8, ct.getDonViTinh());
 
             n = stmt.executeUpdate();
         } catch (SQLException e) {
@@ -53,7 +54,7 @@ public class ChiTietPhieuNhapDAO {
 
     public List<ChiTietPhieuNhap> getChiTietByMaPhieu(String maPhieu) {
         List<ChiTietPhieuNhap> listCT = new ArrayList<>();
-        // Fixed: column name maPN thay vì maPhieuNhap
+        // Lấy đơn vị tính từ cột donViTinh, nếu null thì fallback về donViCoBan
         String sql = "SELECT ct.*, t.tenThuoc, t.donViCoBan FROM ChiTietPhieuNhap ct "
                 + "JOIN Thuoc t ON ct.maThuoc = t.maThuoc "
                 + "WHERE ct.maPN = ?";
@@ -70,7 +71,12 @@ public class ChiTietPhieuNhapDAO {
                 thuoc.setDonViTinh(rs.getString("donViCoBan"));
                 LoThuoc lo = new LoThuoc(rs.getString("maLo"), null, null, null, 0, "", false);
 
-                // Fixed: column name donGia thay vì donGiaNhap
+                // Lấy đơn vị tính từ DB, fallback về đơn vị cơ bản nếu null
+                String donViTinh = rs.getString("donViTinh");
+                if (donViTinh == null || donViTinh.isEmpty()) {
+                    donViTinh = rs.getString("donViCoBan");
+                }
+
                 ChiTietPhieuNhap ct = new ChiTietPhieuNhap(
                         pn,
                         thuoc,
@@ -79,7 +85,7 @@ public class ChiTietPhieuNhapDAO {
                         rs.getInt("soLuong"),
                         rs.getDouble("donGia"),
                         rs.getDouble("thanhTien"),
-                        rs.getString("donViCoBan")
+                        donViTinh
                 );
                 listCT.add(ct);
             }
