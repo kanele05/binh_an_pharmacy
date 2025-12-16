@@ -29,8 +29,8 @@ public class LoginForm extends javax.swing.JPanel {
         cmdLogin.putClientProperty(FlatClientProperties.STYLE, ""
                 + "borderWidth:0;"
                 + "focusWidth:0");
-        txtUser.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "User Name");
-        txtPass.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Password");
+        txtUser.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Mã nhân viên");
+        txtPass.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Mật khẩu");
         KeyAdapter enterKeyAdapter = new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -58,18 +58,18 @@ public class LoginForm extends javax.swing.JPanel {
         cmdLogin = new javax.swing.JButton();
 
         lbTitle.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        lbTitle.setText("Login");
+        lbTitle.setText("Đăng nhập");
         panelLogin1.add(lbTitle);
 
-        lbUser.setText("User Name");
+        lbUser.setText("Mã nhân viên");
         panelLogin1.add(lbUser);
         panelLogin1.add(txtUser);
 
-        lbPass.setText("Password");
+        lbPass.setText("Mật khẩu");
         panelLogin1.add(lbPass);
         panelLogin1.add(txtPass);
 
-        cmdLogin.setText("Login");
+        cmdLogin.setText("Đăng nhập");
         cmdLogin.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cmdLoginActionPerformed(evt);
