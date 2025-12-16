@@ -186,38 +186,54 @@ public class ChiTietBangGiaDAO {
     }
 
     /**
-     * Cập nhật hoặc thêm mới giá nhập vào bảng DonViQuyDoi khi xác nhận nhập kho
-     * Đồng thời tự động tính giá nhập cho đơn vị cơ bản = giá nhập đơn vị lớn / giá trị quy đổi
-     * @param maThuoc Mã thuốc
-     * @param donViTinh Đơn vị tính (đơn vị lớn từ phiếu nhập)
-     * @param giaNhap Giá nhập của đơn vị lớn
+     * Cập nhật giá nhập cho TẤT CẢ các đơn vị quy đổi của thuốc khi xác nhận nhập kho.
+     * Giá nhập được tính dựa trên giá nhập của đơn vị lớn và giá trị quy đổi.
+     * Ví dụ: Nhập 1 hộp 50 viên giá 70000 -> viên = 70000/50 = 1400, vỉ 10 viên = 1400*10 = 14000
+     *
+     * @param maThuoc   Mã thuốc
+     * @param donViTinh Đơn vị tính (đơn vị từ phiếu nhập)
+     * @param giaNhap   Giá nhập của đơn vị nhập
      * @return true nếu thành công
      */
     public boolean capNhatGiaNhap(String maThuoc, String donViTinh, double giaNhap) {
         try {
             Connection con = ConnectDB.getConnection();
 
-            // Lấy thông tin đơn vị cơ bản và giá trị quy đổi của đơn vị nhập
-            String sqlGetInfo = "SELECT t.donViCoBan, " +
-                    "ISNULL((SELECT giaTriQuyDoi FROM DonViQuyDoi WHERE maThuoc = ? AND tenDonVi = ?), 1) as giaTriQuyDoi " +
-                    "FROM Thuoc t WHERE t.maThuoc = ?";
-            PreparedStatement stmtInfo = con.prepareStatement(sqlGetInfo);
-            stmtInfo.setString(1, maThuoc);
-            stmtInfo.setString(2, donViTinh);
-            stmtInfo.setString(3, maThuoc);
-            ResultSet rsInfo = stmtInfo.executeQuery();
+            // Lấy giá trị quy đổi của đơn vị nhập
+            String sqlGetQuyDoi = "SELECT giaTriQuyDoi FROM DonViQuyDoi WHERE maThuoc = ? AND tenDonVi = ?";
+            PreparedStatement stmtQuyDoi = con.prepareStatement(sqlGetQuyDoi);
+            stmtQuyDoi.setString(1, maThuoc);
+            stmtQuyDoi.setString(2, donViTinh);
+            ResultSet rsQuyDoi = stmtQuyDoi.executeQuery();
 
-            String donViCoBan = donViTinh;
-            int giaTriQuyDoi = 1;
-            if (rsInfo.next()) {
-                donViCoBan = rsInfo.getString("donViCoBan");
-                giaTriQuyDoi = rsInfo.getInt("giaTriQuyDoi");
+            int giaTriQuyDoiNhap = 1;
+            if (rsQuyDoi.next()) {
+                giaTriQuyDoiNhap = rsQuyDoi.getInt("giaTriQuyDoi");
             }
 
-            // Tính giá nhập cho đơn vị cơ bản = giá nhập đơn vị lớn / giá trị quy đổi
-            double giaNhapDonViCoBan = giaNhap / giaTriQuyDoi;
+            // Tính giá nhập cho đơn vị cơ bản (1 đơn vị nhỏ nhất)
+            // Giá đơn vị cơ bản = giá nhập / giá trị quy đổi
+            double giaNhapDonViCoBan = giaNhap / giaTriQuyDoiNhap;
 
-            // Kiểm tra xem đơn vị nhập này đã tồn tại trong DonViQuyDoi chưa
+            // Lấy TẤT CẢ các đơn vị quy đổi của thuốc này
+            String sqlGetAllDonVi = "SELECT tenDonVi, giaTriQuyDoi FROM DonViQuyDoi WHERE maThuoc = ?";
+            PreparedStatement stmtAllDonVi = con.prepareStatement(sqlGetAllDonVi);
+            stmtAllDonVi.setString(1, maThuoc);
+            ResultSet rsAllDonVi = stmtAllDonVi.executeQuery();
+
+            // Cập nhật giá cho TẤT CẢ các đơn vị quy đổi
+            while (rsAllDonVi.next()) {
+                String tenDonVi = rsAllDonVi.getString("tenDonVi");
+                int giaTriQuyDoi = rsAllDonVi.getInt("giaTriQuyDoi");
+
+                // Giá nhập của đơn vị này = giá đơn vị cơ bản * giá trị quy đổi
+                double giaNhapDonVi = giaNhapDonViCoBan * giaTriQuyDoi;
+
+                // Cập nhật hoặc thêm vào ChiTietBangGia với giá bán = giá nhập * 1.2 (20% lãi)
+                capNhatChiTietBangGia(con, maThuoc, tenDonVi, giaNhapDonVi * 1.2);
+            }
+
+            // Nếu đơn vị nhập chưa có trong DonViQuyDoi, thêm mới
             String sqlCheck = "SELECT id FROM DonViQuyDoi WHERE maThuoc = ? AND tenDonVi = ?";
             PreparedStatement stmtCheck = con.prepareStatement(sqlCheck);
             stmtCheck.setString(1, maThuoc);
@@ -225,26 +241,18 @@ public class ChiTietBangGiaDAO {
             ResultSet rs = stmtCheck.executeQuery();
 
             if (!rs.next()) {
-                // Chưa tồn tại - tạo mới đơn vị quy đổi với giá bán mặc định = giá nhập * 1.2 (20% lãi)
-                boolean laDonViCoBan = donViTinh.equalsIgnoreCase(donViCoBan);
-
                 // Thêm vào DonViQuyDoi
                 String sqlInsert = "INSERT INTO DonViQuyDoi (maThuoc, tenDonVi, giaTriQuyDoi, giaBan, laDonViCoBan) VALUES (?, ?, ?, ?, ?)";
                 PreparedStatement stmtInsert = con.prepareStatement(sqlInsert);
                 stmtInsert.setString(1, maThuoc);
                 stmtInsert.setString(2, donViTinh);
-                stmtInsert.setInt(3, laDonViCoBan ? 1 : giaTriQuyDoi);
-                stmtInsert.setDouble(4, giaNhap * 1.2); // Giá bán mặc định = giá nhập + 20%
-                stmtInsert.setBoolean(5, laDonViCoBan);
+                stmtInsert.setInt(3, giaTriQuyDoiNhap);
+                stmtInsert.setDouble(4, giaNhap * 1.2);
+                stmtInsert.setBoolean(5, giaTriQuyDoiNhap == 1);
                 stmtInsert.executeUpdate();
-            }
 
-            // Thêm vào ChiTietBangGia nếu chưa có (cho đơn vị nhập)
-            capNhatChiTietBangGia(con, maThuoc, donViTinh, giaNhap * 1.2);
-
-            // Nếu đơn vị nhập khác đơn vị cơ bản, cũng cập nhật giá cho đơn vị cơ bản
-            if (!donViTinh.equalsIgnoreCase(donViCoBan)) {
-                capNhatChiTietBangGia(con, maThuoc, donViCoBan, giaNhapDonViCoBan * 1.2);
+                // Thêm vào ChiTietBangGia
+                capNhatChiTietBangGia(con, maThuoc, donViTinh, giaNhap * 1.2);
             }
 
             return true;

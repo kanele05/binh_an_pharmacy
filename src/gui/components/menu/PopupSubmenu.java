@@ -31,12 +31,18 @@ public class PopupSubmenu extends JPanel {
     private final int subMenuLeftGap = 20;
     private final int subMenuItemHeight = 30;
     private final String menus[];
+    private final String originalMenus[]; // Menu gốc để map đúng subIndex
     private JPopupMenu popup;
 
     public PopupSubmenu(ComponentOrientation orientation, Menu menu, int menuIndex, String menus[]) {
+        this(orientation, menu, menuIndex, menus, menus);
+    }
+
+    public PopupSubmenu(ComponentOrientation orientation, Menu menu, int menuIndex, String menus[], String[] originalMenus) {
         this.menu = menu;
         this.menuIndex = menuIndex;
         this.menus = menus;
+        this.originalMenus = originalMenus;
         applyComponentOrientation(orientation);
         init();
     }
@@ -53,14 +59,31 @@ public class PopupSubmenu extends JPanel {
                 + "foreground:$Menu.lineColor");
         for (int i = 1; i < menus.length; i++) {
             JButton button = createButtonItem(menus[i]);
-            final int subIndex = i;
+            // Map filtered index sang original index
+            final int originalSubIndex = getOriginalSubIndex(i);
             button.addActionListener((ActionEvent e) -> {
-                menu.runEvent(menuIndex, subIndex);
+                menu.runEvent(menuIndex, originalSubIndex);
                 popup.setVisible(false);
             });
             add(button);
         }
         popup.add(this);
+    }
+
+    /**
+     * Tìm subIndex gốc từ subIndex đã lọc
+     */
+    private int getOriginalSubIndex(int filteredIndex) {
+        if (menus == originalMenus || filteredIndex == 0) {
+            return filteredIndex;
+        }
+        String filteredName = menus[filteredIndex];
+        for (int i = 1; i < originalMenus.length; i++) {
+            if (originalMenus[i].equals(filteredName)) {
+                return i;
+            }
+        }
+        return filteredIndex;
     }
 
     private JButton createButtonItem(String text) {

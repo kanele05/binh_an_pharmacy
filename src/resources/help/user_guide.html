@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hướng dẫn sử dụng - Nhà thuốc Bình An</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .section-header {
+            background: #f5f5f5;
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: background 0.3s;
+        }
+        .section-header:hover {
+            background: #e3f2fd;
+        }
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            background: #2196F3;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin-right: 15px;
+            font-size: 1.2em;
+        }
+        .section-title {
+            font-size: 1.3em;
+            color: #1976D2;
+            flex-grow: 1;
+        }
+        .section-content {
+            padding: 20px;
+            background: white;
+        }
+        .feature-list {
+            list-style: none;
+        }
+        .feature-list li {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: flex-start;
+        }
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+        .feature-list li::before {
+            content: "✓";
+            color: #4CAF50;
+            font-weight: bold;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+        .step-list {
+            counter-reset: step;
+            list-style: none;
+        }
+        .step-list li {
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            position: relative;
+            padding-left: 50px;
+        }
+        .step-list li::before {
+            counter-increment: step;
+            content: counter(step);
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 25px;
+            height: 25px;
+            background: #2196F3;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .tip-box {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .tip-box h4 {
+            color: #e65100;
+            margin-bottom: 5px;
+        }
+        .warning-box {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .warning-box h4 {
+            color: #c62828;
+            margin-bottom: 5px;
+        }
+        .shortcut-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .shortcut-table th, .shortcut-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .shortcut-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+        }
+        .shortcut-table tr:hover {
+            background: #f9f9f9;
+        }
+        .kbd {
+            background: #e0e0e0;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        footer a {
+            color: #64b5f6;
+        }
+        .contact-info {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📖 Hướng Dẫn Sử Dụng</h1>
+            <p>Phần mềm Quản lý Nhà thuốc Bình An - Phiên bản 1.0</p>
+        </header>
+
+        <div class="content">
+            <!-- Giới thiệu -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon">1</div>
+                    <div class="section-title">Giới thiệu chung</div>
+                </div>
+                <div class="section-content">
+                    <p>Phần mềm Quản lý Nhà thuốc Bình An được phát triển để hỗ trợ quản lý toàn diện các hoạt động kinh doanh của nhà thuốc, bao gồm:</p>
+                    <ul class="feature-list">
+                        <li>Quản lý bán hàng và đơn đặt thuốc</li>
+                        <li>Quản lý nhập hàng và tồn kho</li>
+                        <li>Quản lý thông tin thuốc và lô thuốc</li>
+                        <li>Quản lý khách hàng và nhà cung cấp</li>
+                        <li>Báo cáo doanh thu và cảnh báo hết hạn</li>
+                        <li>Quản lý nhân viên và phân quyền</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Đăng nhập -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon">2</div>
+                    <div class="section-title">Đăng nhập hệ thống</div>
+                </div>
+                <div class="section-content">
+                    <ol class="step-list">
+                        <li>Mở ứng dụng "Nhà thuốc Bình An"</li>
+                        <li>Nhập <strong>Tên đăng nhập</strong> và <strong>Mật khẩu</strong> được cấp</li>
+                        <li>Nhấn nút <strong>"Đăng nhập"</strong> hoặc nhấn <span class="kbd">Enter</span></li>
+                    </ol>
+                    <div class="tip-box">
+                        <h4>💡 Mẹo</h4>
+                        <p>Nếu quên mật khẩu, vui lòng liên hệ quản trị viên để được cấp lại.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bán hàng -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon">3</div>
+                    <div class="section-title">Quy trình bán hàng</div>
+                </div>
+                <div class="section-content">
+                    <ol class="step-list">
+                        <li>Vào menu <strong>Đơn hàng → Bán thuốc</strong></li>
+                        <li>Tìm kiếm thuốc theo tên hoặc mã thuốc</li>
+                        <li>Nhấp đúp vào thuốc để thêm vào giỏ hàng</li>
+                        <li>Điều chỉnh số lượng và đơn vị tính nếu cần</li>
+                        <li>Nhập thông tin khách hàng (nếu có)</li>
+                        <li>Chọn hình thức thanh toán và nhấn <strong>"Thanh toán"</strong></li>
+                        <li>In hóa đơn (tùy chọn)</li>
+                    </ol>
+                    <div class="warning-box">
+                        <h4>⚠️ Lưu ý</h4>
+                        <p>Kiểm tra kỹ thông tin đơn hàng trước khi thanh toán. Sau khi thanh toán, không thể chỉnh sửa hóa đơn.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Đặt thuốc -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon">4</div>
+                    <div class="section-title">Đặt thuốc / Giữ hàng</div>
+                </div>
+                <div class="section-content">
+                    <ol class="step-list">
+                        <li>Vào menu <strong>Đơn hàng → Đặt thuốc</strong></li>
+                        <li>Nhấn nút <strong>"Tạo phiếu giữ"</strong></li>
+                        <li>Nhập số điện thoại khách hàng và tìm kiếm</li>
+                        <li>Chọn ngày giờ hẹn lấy (tối thiểu sau 30 phút)</li>
+                        <li>Thêm thuốc vào danh sách đặt</li>
+                        <li>Nhấn <strong>"Lưu phiếu"</strong> để hoàn tất</li>
+                    </ol>
+                    <div class="tip-box">
+                        <h4>💡 Khi khách đến lấy hàng</h4>
+                        <p>Chọn phiếu giữ trong danh sách và nhấn <strong>"Khách đến lấy hàng"</strong> để chuyển sang màn hình thanh toán.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nhập hàng -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon">5</div>
+                    <div class="section-title">Nhập hàng từ nhà cung cấp</div>
+                </div>
+                <div class="section-content">
+                    <ol class="step-list">
+                        <li>Vào menu <strong>Phiếu nhập → Lập phiếu nhập</strong></li>
+                        <li>Chọn nhà cung cấp từ danh sách</li>
+                        <li>Thêm thuốc cần nhập với số lượng, đơn giá và hạn sử dụng</li>
+                        <li>Kiểm tra và nhấn <strong>"Lưu phiếu"</strong></li>
+                        <li>Khi hàng về đầy đủ, vào <strong>Danh sách phiếu nhập</strong></li>
+                        <li>Chọn phiếu và nhấn <strong>"Xác nhận nhập kho"</strong></li>
+                    </ol>
+                    <div class="tip-box">
+                        <h4>💡 Tự động cập nhật giá</h4>
+                        <p>Khi xác nhận nhập kho, hệ thống sẽ tự động cập nhật giá nhập cho tất cả các đơn vị quy đổi của thuốc.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quản lý thuốc -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon">6</div>
+                    <div class="section-title">Quản lý danh mục thuốc</div>
+                </div>
+                <div class="section-content">
+                    <h4 style="margin-bottom: 10px;">Thêm thuốc mới:</h4>
+                    <ol class="step-list">
+                        <li>Vào menu <strong>Thuốc → Thêm thuốc mới</strong></li>
+                        <li>Điền đầy đủ thông tin: tên thuốc, nhóm thuốc, đơn vị cơ bản</li>
+                        <li>Thiết lập các đơn vị quy đổi (nếu có): vỉ, hộp...</li>
+                        <li>Nhấn <strong>"Lưu"</strong> để hoàn tất</li>
+                    </ol>
+
+                    <h4 style="margin: 20px 0 10px;">Cảnh báo:</h4>
+                    <ul class="feature-list">
+                        <li><strong>Cảnh báo hết hạn:</strong> Hiển thị thuốc sắp hết hạn trong 30/60/90 ngày</li>
+                        <li><strong>Cảnh báo tồn kho:</strong> Hiển thị thuốc có số lượng tồn dưới mức cảnh báo</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Báo cáo -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon">7</div>
+                    <div class="section-title">Báo cáo & Thống kê</div>
+                </div>
+                <div class="section-content">
+                    <ul class="feature-list">
+                        <li><strong>Báo cáo doanh thu:</strong> Xem doanh thu theo ngày/tuần/tháng, xuất Excel</li>
+                        <li><strong>Báo cáo tồn kho:</strong> Kiểm tra số lượng tồn của tất cả thuốc</li>
+                        <li><strong>In hóa đơn PDF:</strong> Tạo file PDF hóa đơn để in hoặc gửi khách</li>
+                    </ul>
+                    <div class="tip-box">
+                        <h4>💡 Xuất báo cáo</h4>
+                        <p>Tất cả báo cáo đều có thể xuất ra file Excel để lưu trữ hoặc in ấn.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phím tắt -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon">8</div>
+                    <div class="section-title">Phím tắt thông dụng</div>
+                </div>
+                <div class="section-content">
+                    <table class="shortcut-table">
+                        <thead>
+                            <tr>
+                                <th>Phím tắt</th>
+                                <th>Chức năng</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="kbd">F1</span></td>
+                                <td>Mở hướng dẫn sử dụng</td>
+                            </tr>
+                            <tr>
+                                <td><span class="kbd">F5</span></td>
+                                <td>Làm mới dữ liệu</td>
+                            </tr>
+                            <tr>
+                                <td><span class="kbd">Enter</span></td>
+                                <td>Xác nhận / Tìm kiếm</td>
+                            </tr>
+                            <tr>
+                                <td><span class="kbd">Esc</span></td>
+                                <td>Hủy / Đóng dialog</td>
+                            </tr>
+                            <tr>
+                                <td><span class="kbd">Double Click</span></td>
+                                <td>Thêm thuốc vào giỏ hàng</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Hỗ trợ -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon">?</div>
+                    <div class="section-title">Liên hệ hỗ trợ</div>
+                </div>
+                <div class="section-content">
+                    <p>Nếu gặp vấn đề trong quá trình sử dụng, vui lòng liên hệ:</p>
+                    <div class="contact-info" style="margin-top: 15px; display: block;">
+                        <p><strong>📞 Hotline:</strong> 0909 123 456</p>
+                        <p><strong>📧 Email:</strong> support@nhathuocbinhan.vn</p>
+                        <p><strong>🏠 Địa chỉ:</strong> 12 Nguyễn Văn Bảo, Phường 4, Gò Vấp, TP.HCM</p>
+                        <p><strong>⏰ Giờ hỗ trợ:</strong> 8:00 - 22:00 (Thứ 2 - Chủ nhật)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>© 2024 Nhà thuốc Bình An. Phát triển bởi Nhóm 05 - IUH.</p>
+            <div class="contact-info">
+                <span class="contact-item">📞 0909 123 456</span>
+                <span class="contact-item">📧 support@nhathuocbinhan.vn</span>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

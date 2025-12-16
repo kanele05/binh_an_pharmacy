@@ -36,6 +36,9 @@ import gui.components.menu.Menu;
 import gui.components.menu.MenuAction;
 import gui.manage.price.FormBangGia;
 import gui.manage.staff.FormNhanVien;
+import gui.help.FormHuongDan;
+import utils.MenuPermission;
+import raven.toast.Notifications;
 
 public class MainForm extends JLayeredPane {
 
@@ -130,11 +133,13 @@ public class MainForm extends JLayeredPane {
                 }
             } else if (index == 8) {
                 Application.showForm(new FormNhaCungCap());
-            } else if (index ==9) {
+            } else if (index == 9) {
                 if (subIndex == 1) {
                     Application.showForm(new FormHoSo());
                 } else if (subIndex == 2) {
                     Application.logout();
+                } else if (subIndex == 3) {
+                    Application.showForm(new FormHuongDan());
                 }
             }
         });
@@ -153,6 +158,14 @@ public class MainForm extends JLayeredPane {
 
     public void setSelectedMenu(int index, int subIndex) {
         menu.setSelectedMenu(index, subIndex);
+    }
+
+    /**
+     * Làm mới menu theo quyền của người dùng hiện tại
+     * Gọi sau khi đăng nhập
+     */
+    public void refreshMenuByPermission() {
+        menu.refreshMenuByPermission();
     }
 
     private Menu menu;
