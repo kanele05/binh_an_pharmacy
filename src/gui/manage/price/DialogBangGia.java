@@ -23,6 +23,9 @@ import javax.swing.table.TableRowSorter;
 import net.miginfocom.swing.MigLayout;
 import raven.datetime.component.date.DatePicker;
 import raven.toast.Notifications;
+import dao.DonViQuyDoiDAO;
+import dao.ChiTietPhieuNhapDAO;
+import entities.DonViQuyDoi;
 
 public class DialogBangGia extends JDialog {
 
@@ -44,7 +47,8 @@ public class DialogBangGia extends JDialog {
     private BangGiaDAO bgDAO = new BangGiaDAO();
     private ChiTietBangGiaDAO ctDAO = new ChiTietBangGiaDAO();
     private ThuocDAO thuocDAO = new ThuocDAO();
-
+    private DonViQuyDoiDAO dvqdDAO = new DonViQuyDoiDAO();
+    private ChiTietPhieuNhapDAO ctpnDAO = new ChiTietPhieuNhapDAO();
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public DialogBangGia(Component parent, Object[] data) {
@@ -242,9 +246,28 @@ public class DialogBangGia extends JDialog {
         }
 
         for (Object[] row : list) {
+            String maThuoc = row[0].toString();
+            String donViTinh = row[3].toString();
+
+            double giaNhapCoBan = ctpnDAO.getGiaNhapCoBanMoiNhat(maThuoc);
+
+            DonViQuyDoi dv = dvqdDAO.getDonViByTen(maThuoc, donViTinh);
+
+            double giaNhapMoi = 0;
+            if (dv != null && giaNhapCoBan > 0) {
+
+                giaNhapMoi = giaNhapCoBan * dv.getGiaTriQuyDoi();
+            } else {
+
+                giaNhapMoi = Double.parseDouble(row[4].toString());
+            }
+
             model.addRow(new Object[]{
-                row[0], row[1], row[2], row[3],
-                formatMoney(Double.parseDouble(row[4].toString())),
+                row[0],
+                row[1],
+                row[2],
+                row[3],
+                formatMoney(giaNhapMoi),
                 formatMoney(Double.parseDouble(row[5].toString()))
             });
         }

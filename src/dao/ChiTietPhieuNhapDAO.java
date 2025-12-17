@@ -94,4 +94,33 @@ public class ChiTietPhieuNhapDAO {
         }
         return listCT;
     }
+
+    public double getGiaNhapCoBanMoiNhat(String maThuoc) {
+        double giaCoBan = 0;
+
+        String sql = "SELECT TOP 1 ctpn.donGia, dv.giaTriQuyDoi "
+                + "FROM ChiTietPhieuNhap ctpn "
+                + "JOIN PhieuNhap pn ON ctpn.maPN = pn.maPN "
+                + "JOIN DonViQuyDoi dv ON ctpn.maThuoc = dv.maThuoc AND ctpn.donViTinh = dv.tenDonVi "
+                + "WHERE ctpn.maThuoc = ? "
+                + "ORDER BY pn.ngayTao DESC, pn.maPN DESC";
+
+        try {
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            stmt.setString(1, maThuoc);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                double donGiaNhap = rs.getDouble("donGia");
+                int giaTriQuyDoi = rs.getInt("giaTriQuyDoi");
+                if (giaTriQuyDoi != 0) {
+                    giaCoBan = donGiaNhap / giaTriQuyDoi;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return giaCoBan;
+    }
 }
