@@ -310,7 +310,7 @@ public class FormBaoCaoDoanhThu extends JPanel {
         for (Map<String, Object> row : currentData) {
             LocalDate ngay = (LocalDate) row.get("ngay");
             int soDon = (int) row.get("soDon");
-            double doanhThuThuc = row.get("doanhThuThuc") != null ? (double) row.get("doanhThuThuc") : 0;
+            double doanhThu = row.get("doanhThu") != null ? (double) row.get("doanhThu") : 0;
             double tienHoanTra = row.get("tienHoanTra") != null ? (double) row.get("tienHoanTra") : 0;
             double loiNhuan = row.get("loiNhuan") != null ? (double) row.get("loiNhuan") : 0;
             double tangTruong = row.get("tangTruong") != null ? (double) row.get("tangTruong") : 0;
@@ -318,7 +318,7 @@ public class FormBaoCaoDoanhThu extends JPanel {
             model.addRow(new Object[]{
                 ngay != null ? ngay.format(dtf) : "",
                 String.valueOf(soDon),
-                currencyFormat.format(doanhThuThuc),
+                currencyFormat.format(doanhThu),
                 currencyFormat.format(tienHoanTra),
                 currencyFormat.format(loiNhuan),
                 String.format("%+.1f%%", tangTruong)
