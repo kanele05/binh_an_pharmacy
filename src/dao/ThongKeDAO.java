@@ -203,7 +203,7 @@ public class ThongKeDAO {
                      "COALESCE(SUM(tongTienHoanTra), 0) as tienHoanTra " +
                      "FROM PhieuTraHang " +
                      "WHERE CAST(ngayTra AS DATE) BETWEEN ? AND ? " +
-                     "AND trangThai = N'Đã xử lý' OR trangThai = N'Đổi hàng' " +
+                     "AND (trangThai = N'Đã xử lý' OR trangThai = N'Đổi hàng') " +
                      "GROUP BY CAST(ngayTra AS DATE)";
 
         try {
@@ -322,7 +322,7 @@ public class ThongKeDAO {
         String sqlHoanTra = "SELECT COALESCE(SUM(tongTienHoanTra), 0) as tongTienHoanTra " +
                      "FROM PhieuTraHang " +
                      "WHERE CAST(ngayTra AS DATE) BETWEEN ? AND ? " +
-                     "AND trangThai = N'Đã xử lý' OR trangThai = N'Đổi hàng'";
+                     "AND (trangThai = N'Đã xử lý' OR trangThai = N'Đổi hàng')";
 
         try {
             ConnectDB.getInstance();

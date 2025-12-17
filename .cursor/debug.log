@@ -1,0 +1,11 @@
+{"location":"ThongKeDAO.getDoanhThu7NgayGanNhat","message":"SQL result row","data":{"ngay":"2025-12-16","doanhThu":87500.0},"hypothesisId":"H5","timestamp":1765977517914}
+{"location":"ThongKeDAO.getDoanhThu7NgayGanNhat","message":"SQL result row","data":{"ngay":"2025-12-17","doanhThu":7500.0},"hypothesisId":"H5","timestamp":1765977517928}
+{"location":"ThongKeDAO.getDoanhThu7NgayGanNhat.DEBUG","message":"Individual invoice","data":{"maHD":"HD003","ngay":"2025-12-17","tongTien":7500.0,"giamGia":0.0,"doanhThuThuc":7500.0},"hypothesisId":"H2,H3","timestamp":1765977517962}
+{"location":"ThongKeDAO.getDoanhThu7NgayGanNhat.DEBUG","message":"Individual invoice","data":{"maHD":"HD002","ngay":"2025-12-16","tongTien":80000.0,"giamGia":0.0,"doanhThuThuc":80000.0},"hypothesisId":"H2,H3","timestamp":1765977517975}
+{"location":"ThongKeDAO.getDoanhThu7NgayGanNhat.DEBUG","message":"Individual invoice","data":{"maHD":"HD001","ngay":"2025-12-16","tongTien":7500.0,"giamGia":0.0,"doanhThuThuc":7500.0},"hypothesisId":"H2,H3","timestamp":1765977517976}
+{"location":"ThongKeDAO.getDoanhThu7NgayGanNhat","message":"SQL result row","data":{"ngay":"2025-12-16","doanhThu":87500.0},"hypothesisId":"H5","timestamp":1765977534438}
+{"location":"ThongKeDAO.getDoanhThu7NgayGanNhat","message":"SQL result row","data":{"ngay":"2025-12-17","doanhThu":7500.0},"hypothesisId":"H5","timestamp":1765977534440}
+{"location":"ThongKeDAO.getDoanhThu7NgayGanNhat.DEBUG","message":"Individual invoice","data":{"maHD":"HD003","ngay":"2025-12-17","tongTien":7500.0,"giamGia":0.0,"doanhThuThuc":7500.0},"hypothesisId":"H2,H3","timestamp":1765977534446}
+{"location":"ThongKeDAO.getDoanhThu7NgayGanNhat.DEBUG","message":"Individual invoice","data":{"maHD":"HD002","ngay":"2025-12-16","tongTien":80000.0,"giamGia":0.0,"doanhThuThuc":80000.0},"hypothesisId":"H2,H3","timestamp":1765977534446}
+{"location":"ThongKeDAO.getDoanhThu7NgayGanNhat.DEBUG","message":"Individual invoice","data":{"maHD":"HD001","ngay":"2025-12-16","tongTien":7500.0,"giamGia":0.0,"doanhThuThuc":7500.0},"hypothesisId":"H2,H3","timestamp":1765977534447}
+{"location":"FormBanHang.tinhTongTien","message":"Final totals","data":{"tongTien":0.0,"tienGiamGia":0.0,"thueVAT":0.0,"thanhTienCuoi":0.0,"rowCount":0},"hypothesisId":"H4","timestamp":1765977580302}
