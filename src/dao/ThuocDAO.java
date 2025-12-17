@@ -112,7 +112,41 @@ public class ThuocDAO {
         }
         return thuoc;
     }
+public Thuoc getThuocById(String maThuoc) {
+        Thuoc thuoc = null;
+        String sql = 
+           " SELECT t.maThuoc, t.tenThuoc, t.hoatChat, t.donViCoBan," +
+                   "t.trangThai, n.maNhom, n.tenNhom"+
+           " FROM Thuoc t"+
+           " JOIN NhomThuoc n ON t.maNhom = n.maNhom"+
+           " WHERE t.maThuoc = ?";
+     
+        try {
+            ConnectDB.getInstance();
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setString(1, maThuoc);
 
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                NhomThuoc nhom = new NhomThuoc();
+                nhom.setMaNhom(rs.getString("maNhom"));
+                nhom.setTenNhom(rs.getString("tenNhom"));
+
+                thuoc = new Thuoc();
+                thuoc.setMaThuoc(rs.getString("maThuoc"));
+                thuoc.setTenThuoc(rs.getString("tenThuoc"));
+                thuoc.setHoatChat(rs.getString("hoatChat"));
+                thuoc.setDonViCoBan(rs.getString("donViCoBan"));
+                thuoc.setTrangThai(rs.getBoolean("trangThai"));
+                thuoc.setNhomThuoc(nhom);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return thuoc;
+    }
     public boolean delete(String maThuoc) throws SQLException {
         ConnectDB.getInstance();
         Connection con = ConnectDB.getConnection();
@@ -248,7 +282,31 @@ public class ThuocDAO {
         }
         return false;
     }
+    public boolean insertThuoc(Thuoc t) {
+        String sql =
+            "INSERT INTO Thuoc" +
+            "(maThuoc, tenThuoc, hoatChat, donViCoBan, trangThai, maNhom)"+
+            "VALUES (?, ?, ?, ?, ?, ?)";
+        try {
+            ConnectDB.getInstance();
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql);
 
+            ps.setString(1, t.getMaThuoc());
+            ps.setString(2, t.getTenThuoc());
+            ps.setString(3, t.getHoatChat());
+            ps.setString(4, t.getDonViCoBan());
+            ps.setBoolean(5, t.isTrangThai());
+            ps.setString(6, t.getNhomThuoc().getMaNhom());
+            
+
+            return ps.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
     private String getMaNhomByTen(Connection con, String tenNhom) throws SQLException {
         String sql = "SELECT maNhom FROM NhomThuoc WHERE tenNhom = ?";
         PreparedStatement p = con.prepareStatement(sql);

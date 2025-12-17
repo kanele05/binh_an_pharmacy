@@ -30,6 +30,9 @@ public class LoThuoc {
         this.isDeleted = isDeleted;
     }
 
+    public LoThuoc() {
+    }
+
     public String getMaLo() {
         return maLo;
     }
