@@ -26,8 +26,11 @@ import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import javax.swing.AbstractAction;
+import javax.swing.KeyStroke;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -69,6 +72,106 @@ public class FormBanHang extends JPanel {
         mainPanel.add(panelBanHang, "POS");
 
         add(mainPanel, BorderLayout.CENTER);
+        
+        setupKeyboardShortcuts();
+    }
+    
+    private void setupKeyboardShortcuts() {
+        // Sử dụng WHEN_IN_FOCUSED_WINDOW để phím tắt hoạt động toàn cục trong form
+        int condition = JComponent.WHEN_IN_FOCUSED_WINDOW;
+        
+        // F1: Mở màn hình bán hàng
+        getInputMap(condition).put(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), "openSales");
+        getActionMap().put("openSales", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                showBanHang();
+            }
+        });
+        
+        // F2: Focus ô tìm kiếm thuốc
+        getInputMap(condition).put(KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0), "focusSearch");
+        getActionMap().put("focusSearch", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                panelBanHang.focusTimKiem();
+            }
+        });
+        
+        // F3: Thêm thuốc vào giỏ hàng
+        getInputMap(condition).put(KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0), "addToCart");
+        getActionMap().put("addToCart", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                panelBanHang.themVaoGioHangAction();
+            }
+        });
+        
+        // F4: Thanh toán
+        getInputMap(condition).put(KeyStroke.getKeyStroke(KeyEvent.VK_F4, 0), "payment");
+        getActionMap().put("payment", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                panelBanHang.thanhToanAction();
+            }
+        });
+        
+        // F5: Mở hướng dẫn sử dụng
+        getInputMap(condition).put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "showHelp");
+        getActionMap().put("showHelp", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                showHelpDialog();
+            }
+        });
+    }
+    
+    private void showHelpDialog() {
+        String helpContent = """
+            <html>
+            <body style='width: 350px; padding: 10px; font-family: Arial, sans-serif;'>
+            <h2 style='color: #4CAF50; text-align: center;'>📖 Hướng Dẫn Sử Dụng Phím Tắt</h2>
+            <hr>
+            <table style='width: 100%; border-collapse: collapse;'>
+            <tr style='background-color: #E8F5E9;'>
+                <td style='padding: 8px; font-weight: bold;'>F1</td>
+                <td style='padding: 8px;'>Mở màn hình bán hàng</td>
+            </tr>
+            <tr>
+                <td style='padding: 8px; font-weight: bold;'>F2</td>
+                <td style='padding: 8px;'>Focus vào ô tìm kiếm thuốc</td>
+            </tr>
+            <tr style='background-color: #E8F5E9;'>
+                <td style='padding: 8px; font-weight: bold;'>F3</td>
+                <td style='padding: 8px;'>Thêm thuốc đang chọn vào giỏ hàng</td>
+            </tr>
+            <tr>
+                <td style='padding: 8px; font-weight: bold;'>F4</td>
+                <td style='padding: 8px;'>Thực hiện thanh toán</td>
+            </tr>
+            <tr style='background-color: #E8F5E9;'>
+                <td style='padding: 8px; font-weight: bold;'>F5</td>
+                <td style='padding: 8px;'>Mở hướng dẫn sử dụng (cửa sổ này)</td>
+            </tr>
+            <tr>
+                <td style='padding: 8px; font-weight: bold;'>Enter</td>
+                <td style='padding: 8px;'>Tìm kiếm khách hàng (trong ô SĐT)</td>
+            </tr>
+            </table>
+            <hr>
+            <p style='color: #666; font-size: 11px; text-align: center;'>
+            💡 <i>Sử dụng phím tắt giúp bán hàng nhanh hơn!</i>
+            </p>
+            </body>
+            </html>
+            """;
+        
+        JOptionPane.showMessageDialog(
+            SwingUtilities.getWindowAncestor(this),
+            helpContent,
+            "Hướng Dẫn Sử Dụng - Phím Tắt Bán Hàng",
+            JOptionPane.INFORMATION_MESSAGE
+        );
     }
 
     public void showBanHang() {
@@ -336,6 +439,28 @@ public class FormBanHang extends JPanel {
             tinhTongTien();
             loadKhoThuoc();
             generateNewMaHD();
+        }
+        
+        /**
+         * Focus vào ô tìm kiếm thuốc - được gọi từ phím tắt F2
+         */
+        public void focusTimKiem() {
+            txtTimKiem.requestFocusInWindow();
+            txtTimKiem.selectAll();
+        }
+        
+        /**
+         * Thêm thuốc vào giỏ hàng - được gọi từ phím tắt F3
+         */
+        public void themVaoGioHangAction() {
+            themVaoGioHang();
+        }
+        
+        /**
+         * Thực hiện thanh toán - được gọi từ phím tắt F4
+         */
+        public void thanhToanAction() {
+            thanhToan();
         }
 
         private JPanel createSearchPanel() {

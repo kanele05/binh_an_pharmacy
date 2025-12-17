@@ -18,6 +18,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import net.miginfocom.swing.MigLayout;
 import raven.toast.Notifications;
+import utils.ImportReceiptPDFGenerator;
 
 public class FormDanhSachPhieuNhap extends javax.swing.JPanel {
 
@@ -89,6 +90,13 @@ public class FormDanhSachPhieuNhap extends javax.swing.JPanel {
         JButton btnXemChiTiet = new JButton("Xem chi tiết");
         btnXemChiTiet.addActionListener(e -> actionXemChiTiet());
 
+        JButton btnInPhieu = new JButton("In phiếu");
+        btnInPhieu.putClientProperty(FlatClientProperties.STYLE, ""
+                + "background:#1976D2;"
+                + "foreground:#ffffff;"
+                + "font:bold");
+        btnInPhieu.addActionListener(e -> actionInPhieu());
+
         JButton btnHuyPhieu = new JButton("Hủy phiếu");
         btnHuyPhieu.putClientProperty(FlatClientProperties.STYLE, ""
                 + "background:#f44336;"
@@ -108,6 +116,7 @@ public class FormDanhSachPhieuNhap extends javax.swing.JPanel {
         panel.add(cbTrangThai);
 
         panel.add(btnXemChiTiet);
+        panel.add(btnInPhieu);
         panel.add(btnHuyPhieu);
         panel.add(btnXacNhan);
 
@@ -297,6 +306,30 @@ public class FormDanhSachPhieuNhap extends javax.swing.JPanel {
         Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(this);
         DialogChiTietPhieuNhap dialog = new DialogChiTietPhieuNhap(parentFrame, maPhieu);
         dialog.setVisible(true);
+    }
+
+    private void actionInPhieu() {
+        int row = table.getSelectedRow();
+        if (row == -1) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Vui lòng chọn phiếu cần in!");
+            return;
+        }
+        String maPhieu = model.getValueAt(row, 0).toString();
+
+        // Lấy thông tin phiếu nhập
+        PhieuNhap phieuNhap = phieuNhapDAO.getPhieuNhapById(maPhieu);
+        if (phieuNhap == null) {
+            Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Không tìm thấy thông tin phiếu nhập!");
+            return;
+        }
+
+        // Tạo và mở PDF
+        boolean success = ImportReceiptPDFGenerator.generateAndOpenImportReceipt(phieuNhap);
+        if (success) {
+            Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Đã tạo phiếu nhập PDF thành công!");
+        } else {
+            Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi khi tạo phiếu nhập PDF!");
+        }
     }
 
     @SuppressWarnings("unchecked")

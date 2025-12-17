@@ -13,6 +13,8 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import net.miginfocom.swing.MigLayout;
+import raven.toast.Notifications;
+import utils.ImportReceiptPDFGenerator;
 
 public class DialogChiTietPhieuNhap extends JDialog {
 
@@ -25,6 +27,7 @@ public class DialogChiTietPhieuNhap extends JDialog {
     private JLabel lbMaPhieu, lbNgayTao, lbNCC, lbNguoiNhap, lbTrangThai, lbGhiChu, lbTongTien;
     private JTable table;
     private DefaultTableModel model;
+    private PhieuNhap currentPhieuNhap;
 
     public DialogChiTietPhieuNhap(Frame parent, String maPhieu) {
         super(parent, "Chi Tiết Phiếu Nhập - " + maPhieu, true);
@@ -151,7 +154,7 @@ public class DialogChiTietPhieuNhap extends JDialog {
     }
 
     private JPanel createFooterPanel() {
-        JPanel panel = new JPanel(new MigLayout("insets 10", "[grow][]", "[]"));
+        JPanel panel = new JPanel(new MigLayout("insets 10", "[grow][][]", "[]"));
         panel.putClientProperty(FlatClientProperties.STYLE, "arc:15; background:lighten(#E8F5E9,3%)");
 
         // Tổng tiền
@@ -165,6 +168,17 @@ public class DialogChiTietPhieuNhap extends JDialog {
         totalPanel.add(lbTongTien);
 
         panel.add(totalPanel, "grow");
+
+        // Button in phiếu
+        JButton btnInPhieu = new JButton("In phiếu");
+        btnInPhieu.putClientProperty(FlatClientProperties.STYLE, ""
+                + "background:#1976D2;"
+                + "foreground:#ffffff;"
+                + "font:bold;"
+                + "borderWidth:0;"
+                + "arc:8");
+        btnInPhieu.addActionListener(e -> actionInPhieu());
+        panel.add(btnInPhieu, "w 100, h 40");
 
         // Button đóng
         JButton btnDong = new JButton("Đóng");
@@ -180,9 +194,27 @@ public class DialogChiTietPhieuNhap extends JDialog {
         return panel;
     }
 
+    private void actionInPhieu() {
+        if (currentPhieuNhap == null) {
+            Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, 
+                "Không tìm thấy thông tin phiếu nhập!");
+            return;
+        }
+
+        boolean success = ImportReceiptPDFGenerator.generateAndOpenImportReceipt(currentPhieuNhap);
+        if (success) {
+            Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, 
+                "Đã tạo phiếu nhập PDF thành công!");
+        } else {
+            Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, 
+                "Lỗi khi tạo phiếu nhập PDF!");
+        }
+    }
+
     private void loadData() {
         // Load thông tin phiếu nhập
         PhieuNhap pn = phieuNhapDAO.getPhieuNhapById(maPhieu);
+        currentPhieuNhap = pn; // Store for PDF generation
         if (pn != null) {
             lbMaPhieu.setText(pn.getMaPN());
             lbNgayTao.setText(pn.getNgayTao() != null ? pn.getNgayTao().format(dateFormat) : "");
