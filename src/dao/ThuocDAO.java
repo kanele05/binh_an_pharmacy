@@ -2,6 +2,7 @@ package dao;
 
 import connectDB.ConnectDB;
 import dto.ThuocFullInfo;
+import entities.DonViQuyDoi;
 import entities.NhomThuoc;
 import entities.Thuoc;
 import java.sql.Connection;
@@ -12,6 +13,8 @@ import java.sql.Statement;
 import java.util.ArrayList;
 
 public class ThuocDAO {
+
+    private ArrayList<DonViQuyDoi> listDVQD = new ArrayList<>();
 
     public ThuocDAO() {
     }
@@ -156,14 +159,14 @@ public class ThuocDAO {
         return n > 0;
     }
 
-    public boolean themThuocMoi(ThuocFullInfo t) {
+    public boolean themThuocMoi(ThuocFullInfo t, ArrayList<DonViQuyDoi> listDVQD) {
         Connection con = null;
         PreparedStatement stmtThuoc = null;
         PreparedStatement stmtGia = null;
+        PreparedStatement stmtDVQD = null;
 
         try {
             con = ConnectDB.getConnection();
-
             con.setAutoCommit(false);
 
             String sqlThuoc = "INSERT INTO Thuoc (maThuoc, tenThuoc, hoatChat, donViCoBan, maNhom, trangThai) VALUES (?, ?, ?, ?, ?, ?)";
@@ -172,10 +175,8 @@ public class ThuocDAO {
             stmtThuoc.setString(2, t.getTenThuoc());
             stmtThuoc.setString(3, t.getHoatChat());
             stmtThuoc.setString(4, t.getDonViCoBan());
-
             String maNhom = getMaNhomByTen(con, t.getTenNhom());
             stmtThuoc.setString(5, maNhom);
-
             stmtThuoc.setBoolean(6, true);
             stmtThuoc.executeUpdate();
 
@@ -185,17 +186,44 @@ public class ThuocDAO {
             if (rs.next()) {
                 maBG = rs.getString("maBG");
             } else {
-
                 maBG = taoBangGiaMacDinh(con);
             }
 
-            String sqlGia = "INSERT INTO ChiTietBangGia (maBG, maThuoc, donViCoBan, giaBan) VALUES (?, ?, ?, ?)";
+            String sqlGia = "INSERT INTO ChiTietBangGia (maBG, maThuoc, donViTinh, giaBan) VALUES (?, ?, ?, ?)";
             stmtGia = con.prepareStatement(sqlGia);
             stmtGia.setString(1, maBG);
             stmtGia.setString(2, t.getMaThuoc());
             stmtGia.setString(3, t.getDonViCoBan());
             stmtGia.setDouble(4, t.getGiaBan());
             stmtGia.executeUpdate();
+
+            String sqlInsertDVQD = "INSERT INTO DonViQuyDoi (maThuoc, tenDonVi, giaTriQuyDoi, giaBan, laDonViCoBan) VALUES (?, ?, ?, ?, ?)";
+            stmtDVQD = con.prepareStatement(sqlInsertDVQD);
+
+            stmtDVQD.setString(1, t.getMaThuoc());
+            stmtDVQD.setString(2, t.getDonViCoBan());
+            stmtDVQD.setInt(3, 1);
+            stmtDVQD.setDouble(4, t.getGiaBan());
+            stmtDVQD.setBoolean(5, true);
+            stmtDVQD.executeUpdate();
+
+            if (listDVQD != null && !listDVQD.isEmpty()) {
+                for (DonViQuyDoi dv : listDVQD) {
+
+                    stmtDVQD.setString(1, t.getMaThuoc());
+                    stmtDVQD.setString(2, dv.getTenDonVi());
+                    stmtDVQD.setInt(3, dv.getGiaTriQuyDoi());
+                    stmtDVQD.setDouble(4, dv.getGiaBan());
+                    stmtDVQD.setBoolean(5, false);
+                    stmtDVQD.executeUpdate();
+
+                    stmtGia.setString(1, maBG);
+                    stmtGia.setString(2, t.getMaThuoc());
+                    stmtGia.setString(3, dv.getTenDonVi());
+                    stmtGia.setDouble(4, dv.getGiaBan());
+                    stmtGia.executeUpdate();
+                }
+            }
 
             con.commit();
             return true;
@@ -210,12 +238,11 @@ public class ThuocDAO {
                 ex.printStackTrace();
             }
         } finally {
-
             try {
                 if (con != null) {
                     con.setAutoCommit(true);
+                    con.close();
                 }
-                con.close();
             } catch (Exception ex) {
             }
         }

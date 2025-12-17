@@ -42,6 +42,12 @@ public class DialogNhanVien extends JDialog {
 
             generateNewMaNV();
         }
+        this.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowOpened(java.awt.event.WindowEvent e) {
+                txtHoTen.requestFocusInWindow();
+            }
+        });
     }
 
     private void initComponents() {

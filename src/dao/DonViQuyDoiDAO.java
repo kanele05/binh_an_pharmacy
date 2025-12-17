@@ -125,4 +125,33 @@ public class DonViQuyDoiDAO {
         }
         return false;
     }
+
+    public ArrayList<Object[]> getBangQuyDoiDayDu() {
+        ArrayList<Object[]> list = new ArrayList<>();
+        String sql = "SELECT t.maThuoc, t.tenThuoc, dv.tenDonVi, dv.giaTriQuyDoi, dv.giaBan "
+                + "FROM DonViQuyDoi dv "
+                + "JOIN Thuoc t ON dv.maThuoc = t.maThuoc "
+                + "WHERE t.trangThai = 1 "
+                + // Chỉ lấy thuốc đang kinh doanh
+                "ORDER BY t.tenThuoc ASC, dv.giaTriQuyDoi ASC";
+
+        try {
+            Connection con = ConnectDB.getConnection();
+            java.sql.Statement stmt = con.createStatement();
+            ResultSet rs = stmt.executeQuery(sql);
+
+            while (rs.next()) {
+                list.add(new Object[]{
+                    rs.getString("maThuoc"),
+                    rs.getString("tenThuoc"),
+                    rs.getString("tenDonVi"),
+                    rs.getInt("giaTriQuyDoi"),
+                    rs.getDouble("giaBan")
+                });
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
 }

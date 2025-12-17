@@ -1,156 +1,103 @@
 package gui.help;
 
-import com.formdev.flatlaf.FlatClientProperties;
+import dao.DonViQuyDoiDAO;
 import java.awt.BorderLayout;
-import java.awt.Desktop;
-import java.io.File;
-import java.io.FileOutputStream;
+import java.io.BufferedReader;
 import java.io.InputStream;
-import java.net.URI;
-import javax.swing.*;
-import net.miginfocom.swing.MigLayout;
-import raven.toast.Notifications;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
+import javax.swing.JEditorPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 
-/**
- * Form hướng dẫn sử dụng - Mở file HTML hướng dẫn trong trình duyệt
- */
 public class FormHuongDan extends JPanel {
 
+    private JEditorPane editorPane;
+
     public FormHuongDan() {
-        initComponents();
-        openUserGuide();
+        setLayout(new BorderLayout());
+        init();
     }
 
-    private void initComponents() {
-        setLayout(new MigLayout("wrap,fill,insets 20", "[center]", "[center]"));
-        putClientProperty(FlatClientProperties.STYLE, "background:@background");
+    private void init() {
+        editorPane = new JEditorPane();
+        editorPane.setEditable(false);
+        editorPane.setContentType("text/html");
 
-        JLabel lbLoading = new JLabel("Đang mở hướng dẫn sử dụng...");
-        lbLoading.putClientProperty(FlatClientProperties.STYLE, "font:bold +4");
-        add(lbLoading);
+        loadDynamicContent();
 
-        JLabel lbInfo = new JLabel("Nếu trình duyệt không tự động mở, vui lòng kiểm tra trình duyệt mặc định.");
-        lbInfo.putClientProperty(FlatClientProperties.STYLE, "foreground:$Text.secondary");
-        add(lbInfo);
-
-        JButton btnOpenManual = new JButton("Mở lại hướng dẫn");
-        btnOpenManual.putClientProperty(FlatClientProperties.STYLE,
-            "background:#2196F3; foreground:#fff; font:bold");
-        btnOpenManual.addActionListener(e -> openUserGuide());
-        add(btnOpenManual, "gapy 20");
+        JScrollPane scrollPane = new JScrollPane(editorPane);
+        add(scrollPane, BorderLayout.CENTER);
     }
 
-    /**
-     * Mở file HTML hướng dẫn trong trình duyệt mặc định
-     */
-    private void openUserGuide() {
+    private void loadDynamicContent() {
         try {
-            // Tạo file tạm từ resources
-            File tempFile = extractHtmlToTemp();
 
-            if (tempFile != null && tempFile.exists()) {
-                // Mở file trong trình duyệt mặc định
-                if (Desktop.isDesktopSupported()) {
-                    Desktop desktop = Desktop.getDesktop();
-                    if (desktop.isSupported(Desktop.Action.BROWSE)) {
-                        desktop.browse(tempFile.toURI());
-                        Notifications.getInstance().show(
-                            Notifications.Type.SUCCESS,
-                            Notifications.Location.TOP_CENTER,
-                            "Đã mở hướng dẫn sử dụng trong trình duyệt!"
-                        );
-                    } else if (desktop.isSupported(Desktop.Action.OPEN)) {
-                        desktop.open(tempFile);
-                    }
-                } else {
-                    // Fallback cho các hệ điều hành không hỗ trợ Desktop
-                    openBrowserFallback(tempFile.toURI());
+            String content = "";
+            InputStream is = getClass().getResourceAsStream("/resources/help/user_guide.html");
+            if (is != null) {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                    content = reader.lines().collect(Collectors.joining("\n"));
                 }
             } else {
-                Notifications.getInstance().show(
-                    Notifications.Type.ERROR,
-                    Notifications.Location.TOP_CENTER,
-                    "Không tìm thấy file hướng dẫn!"
-                );
+                editorPane.setText("<html><body><h1>Lỗi: Không tìm thấy file hướng dẫn!</h1></body></html>");
+                return;
             }
+
+            String tableHtml = generateConversionTable();
+
+            content = content.replace("{{DYNAMIC_CONVERSION_TABLE}}", tableHtml);
+
+            editorPane.setText(content);
+
+            editorPane.setCaretPosition(0);
+
         } catch (Exception e) {
             e.printStackTrace();
-            Notifications.getInstance().show(
-                Notifications.Type.ERROR,
-                Notifications.Location.TOP_CENTER,
-                "Lỗi khi mở hướng dẫn: " + e.getMessage()
-            );
+            editorPane.setText("<html><body><h1>Lỗi khi tải hướng dẫn: " + e.getMessage() + "</h1></body></html>");
         }
     }
 
-    /**
-     * Extract file HTML từ resources vào thư mục temp
-     */
-    private File extractHtmlToTemp() {
-        try {
-            // Đọc file từ resources
-            InputStream is = getClass().getResourceAsStream("/resources/help/user_guide.html");
+    private String generateConversionTable() {
+        StringBuilder sb = new StringBuilder();
+        DonViQuyDoiDAO dvDAO = new DonViQuyDoiDAO();
+        ArrayList<Object[]> listData = dvDAO.getBangQuyDoiDayDu();
+        DecimalFormat df = new DecimalFormat("#,##0 ₫");
 
-            if (is == null) {
-                // Thử đường dẫn khác
-                is = getClass().getClassLoader().getResourceAsStream("resources/help/user_guide.html");
+        sb.append("<table class='table-conversion'>");
+        sb.append("<thead>");
+        sb.append("<tr>");
+        sb.append("<th>Mã Thuốc</th>");
+        sb.append("<th>Tên Thuốc</th>");
+        sb.append("<th>Đơn Vị Quy Đổi</th>");
+        sb.append("<th>Số Lượng (Cơ bản)</th>");
+        sb.append("<th>Giá Bán</th>");
+        sb.append("</tr>");
+        sb.append("</thead>");
+        sb.append("<tbody>");
+
+        if (listData.isEmpty()) {
+            sb.append("<tr><td colspan='5' style='text-align:center;'>Chưa có dữ liệu quy đổi nào.</td></tr>");
+        } else {
+            for (Object[] row : listData) {
+                sb.append("<tr>");
+                sb.append("<td>").append(row[0]).append("</td>");
+                sb.append("<td>").append(row[1]).append("</td>");
+                sb.append("<td><b>").append(row[2]).append("</b></td>");
+                sb.append("<td style='text-align:center;'>").append(row[3]).append("</td>");
+                sb.append("<td style='text-align:right;'>").append(df.format(row[4])).append("</td>");
+                sb.append("</tr>");
             }
-
-            if (is == null) {
-                // Fallback: tìm file trong thư mục hiện tại
-                String userDir = System.getProperty("user.dir");
-                File localFile = new File(userDir + File.separator + "src" + File.separator +
-                    "resources" + File.separator + "help" + File.separator + "user_guide.html");
-                if (localFile.exists()) {
-                    return localFile;
-                }
-                return null;
-            }
-
-            // Tạo file tạm
-            File tempFile = File.createTempFile("user_guide_", ".html");
-            tempFile.deleteOnExit();
-
-            // Ghi nội dung vào file tạm
-            try (FileOutputStream fos = new FileOutputStream(tempFile)) {
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((bytesRead = is.read(buffer)) != -1) {
-                    fos.write(buffer, 0, bytesRead);
-                }
-            }
-            is.close();
-
-            return tempFile;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
         }
-    }
 
-    /**
-     * Fallback để mở trình duyệt trên các hệ điều hành khác nhau
-     */
-    private void openBrowserFallback(URI uri) {
-        String os = System.getProperty("os.name").toLowerCase();
-        Runtime rt = Runtime.getRuntime();
+        sb.append("</tbody>");
+        sb.append("</table>");
 
-        try {
-            if (os.contains("win")) {
-                rt.exec("rundll32 url.dll,FileProtocolHandler " + uri.toString());
-            } else if (os.contains("mac")) {
-                rt.exec("open " + uri.toString());
-            } else if (os.contains("nix") || os.contains("nux")) {
-                String[] browsers = {"google-chrome", "firefox", "mozilla", "opera", "epiphany", "konqueror", "netscape"};
-                StringBuilder cmd = new StringBuilder();
-                for (int i = 0; i < browsers.length; i++) {
-                    if (i > 0) cmd.append(" || ");
-                    cmd.append(browsers[i]).append(" \"").append(uri.toString()).append("\"");
-                }
-                rt.exec(new String[]{"sh", "-c", cmd.toString()});
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        sb.append("<p><i>* Dữ liệu được cập nhật tự động từ hệ thống quản lý kho.</i></p>");
+
+        return sb.toString();
     }
 }

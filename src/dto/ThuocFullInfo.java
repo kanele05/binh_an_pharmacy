@@ -26,6 +26,9 @@ public class ThuocFullInfo {
         this.trangThai = trangThai;
     }
 
+    public ThuocFullInfo() {
+    }
+
     public String getMaThuoc() {
         return maThuoc;
     }

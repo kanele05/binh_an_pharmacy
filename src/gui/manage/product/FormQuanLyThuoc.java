@@ -12,6 +12,7 @@ import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import dao.ThuocDAO;
 import dto.ThuocFullInfo;
+import entities.DonViQuyDoi;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -315,25 +316,23 @@ public class FormQuanLyThuoc extends javax.swing.JPanel {
         if (dialog.isSave()) {
 
             Object[] data = dialog.getData();
+            ThuocFullInfo t = new ThuocFullInfo();
+            t.setMaThuoc(data[0].toString());
+            t.setTenThuoc(data[1].toString());
+            t.setTenNhom(data[2].toString());
+            t.setHoatChat(data[3].toString());
+            t.setDonViCoBan(data[4].toString());
 
-            ThuocFullInfo t = new ThuocFullInfo(
-                    data[0].toString(),
-                    data[1].toString(),
-                    data[3].toString(),
-                    data[4].toString(),
-                    data[2].toString(),
-                    0,
-                    Double.parseDouble(data[6].toString().replace(",", "")),
-                    0,
-                    0,
-                    true
-            );
+            String giaStr = data[6].toString().replace(".", "").replace(",", "").replace("₫", "").trim();
+            t.setGiaBan(Double.parseDouble(giaStr));
 
-            if (thuocDAO.themThuocMoi(t)) {
+            ArrayList<DonViQuyDoi> listDVQD = dialog.getListDonViQuyDoi();
+
+            if (thuocDAO.themThuocMoi(t, listDVQD)) {
+                Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_RIGHT, "Thêm thuốc thành công!");
                 loadData();
-                Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Thêm thuốc thành công (Tồn kho: 0)");
             } else {
-                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Thêm thất bại!");
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_RIGHT, "Thêm thất bại!");
             }
         }
     }
@@ -413,7 +412,6 @@ public class FormQuanLyThuoc extends javax.swing.JPanel {
                 exportToExcel(file);
                 Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Xuất Excel thành công!");
 
-                // Mở file sau khi xuất
                 int openFile = JOptionPane.showConfirmDialog(this, "Bạn có muốn mở file vừa xuất?", "Thông báo", JOptionPane.YES_NO_OPTION);
                 if (openFile == JOptionPane.YES_OPTION) {
                     java.awt.Desktop.getDesktop().open(file);
@@ -432,7 +430,6 @@ public class FormQuanLyThuoc extends javax.swing.JPanel {
         DecimalFormat moneyFormat = new DecimalFormat("#,##0");
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-        // Style cho tiêu đề
         CellStyle titleStyle = workbook.createCellStyle();
         Font titleFont = workbook.createFont();
         titleFont.setBold(true);
@@ -441,7 +438,6 @@ public class FormQuanLyThuoc extends javax.swing.JPanel {
         titleStyle.setFont(titleFont);
         titleStyle.setAlignment(HorizontalAlignment.CENTER);
 
-        // Style cho header
         CellStyle headerStyle = workbook.createCellStyle();
         Font headerFont = workbook.createFont();
         headerFont.setBold(true);
@@ -455,14 +451,12 @@ public class FormQuanLyThuoc extends javax.swing.JPanel {
         headerStyle.setBorderLeft(BorderStyle.THIN);
         headerStyle.setBorderRight(BorderStyle.THIN);
 
-        // Style cho dữ liệu
         CellStyle dataStyle = workbook.createCellStyle();
         dataStyle.setBorderBottom(BorderStyle.THIN);
         dataStyle.setBorderTop(BorderStyle.THIN);
         dataStyle.setBorderLeft(BorderStyle.THIN);
         dataStyle.setBorderRight(BorderStyle.THIN);
 
-        // Style cho tiền
         CellStyle currencyStyle = workbook.createCellStyle();
         DataFormat format = workbook.createDataFormat();
         currencyStyle.setDataFormat(format.getFormat("#,##0\" ₫\""));
@@ -472,7 +466,6 @@ public class FormQuanLyThuoc extends javax.swing.JPanel {
         currencyStyle.setBorderLeft(BorderStyle.THIN);
         currencyStyle.setBorderRight(BorderStyle.THIN);
 
-        // Style cho ngừng kinh doanh
         CellStyle inactiveStyle = workbook.createCellStyle();
         Font inactiveFont = workbook.createFont();
         inactiveFont.setColor(IndexedColors.RED.getIndex());
@@ -486,23 +479,19 @@ public class FormQuanLyThuoc extends javax.swing.JPanel {
 
         int rowNum = 0;
 
-        // Tiêu đề
         Row titleRow = sheet.createRow(rowNum++);
         Cell titleCell = titleRow.createCell(0);
         titleCell.setCellValue("DANH SÁCH THUỐC");
         titleCell.setCellStyle(titleStyle);
         sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 8));
 
-        // Ngày xuất
         Row dateRow = sheet.createRow(rowNum++);
         Cell dateCell = dateRow.createCell(0);
         dateCell.setCellValue("Ngày xuất: " + LocalDate.now().format(dtf));
         sheet.addMergedRegion(new CellRangeAddress(1, 1, 0, 8));
 
-        // Dòng trống
         rowNum++;
 
-        // Header
         Row headerRow = sheet.createRow(rowNum++);
         String[] headers = {"STT", "Mã Thuốc", "Tên Thuốc", "Nhóm", "Hoạt Chất", "ĐVT", "Giá Nhập", "Giá Bán", "Tồn Kho", "Trạng Thái"};
         for (int i = 0; i < headers.length; i++) {
@@ -511,70 +500,57 @@ public class FormQuanLyThuoc extends javax.swing.JPanel {
             cell.setCellStyle(headerStyle);
         }
 
-        // Dữ liệu
         int stt = 1;
         for (ThuocFullInfo t : comboFiltered) {
             Row dataRow = sheet.createRow(rowNum++);
             boolean isInactive = !t.isTrangThai();
             CellStyle rowStyle = isInactive ? inactiveStyle : dataStyle;
 
-            // STT
             Cell sttCell = dataRow.createCell(0);
             sttCell.setCellValue(stt++);
             sttCell.setCellStyle(rowStyle);
 
-            // Mã thuốc
             Cell maCell = dataRow.createCell(1);
             maCell.setCellValue(t.getMaThuoc());
             maCell.setCellStyle(rowStyle);
 
-            // Tên thuốc
             Cell tenCell = dataRow.createCell(2);
             tenCell.setCellValue(t.getTenThuoc());
             tenCell.setCellStyle(rowStyle);
 
-            // Nhóm
             Cell nhomCell = dataRow.createCell(3);
             nhomCell.setCellValue(t.getTenNhom());
             nhomCell.setCellStyle(rowStyle);
 
-            // Hoạt chất
             Cell hcCell = dataRow.createCell(4);
             hcCell.setCellValue(t.getHoatChat());
             hcCell.setCellStyle(rowStyle);
 
-            // ĐVT
             Cell dvtCell = dataRow.createCell(5);
             dvtCell.setCellValue(t.getDonViCoBan());
             dvtCell.setCellStyle(rowStyle);
 
-            // Giá nhập
             Cell giaNhapCell = dataRow.createCell(6);
             giaNhapCell.setCellValue(t.getGiaNhap());
             giaNhapCell.setCellStyle(isInactive ? inactiveStyle : currencyStyle);
 
-            // Giá bán
             Cell giaBanCell = dataRow.createCell(7);
             giaBanCell.setCellValue(t.getGiaBan());
             giaBanCell.setCellStyle(isInactive ? inactiveStyle : currencyStyle);
 
-            // Tồn kho
             Cell tonKhoCell = dataRow.createCell(8);
             tonKhoCell.setCellValue(t.getTonKho());
             tonKhoCell.setCellStyle(rowStyle);
 
-            // Trạng thái
             Cell trangThaiCell = dataRow.createCell(9);
             trangThaiCell.setCellValue(t.isTrangThai() ? "Đang kinh doanh" : "Ngừng kinh doanh");
             trangThaiCell.setCellStyle(rowStyle);
         }
 
-        // Auto-size columns
         for (int i = 0; i < headers.length; i++) {
             sheet.autoSizeColumn(i);
         }
 
-        // Ghi file
         FileOutputStream fos = new FileOutputStream(file);
         workbook.write(fos);
         fos.close();
