@@ -133,7 +133,7 @@ public class DonViQuyDoiDAO {
                 + "JOIN Thuoc t ON dv.maThuoc = t.maThuoc "
                 + "WHERE t.trangThai = 1 "
                 + // Chỉ lấy thuốc đang kinh doanh
-                "ORDER BY t.tenThuoc ASC, dv.giaTriQuyDoi ASC";
+                "ORDER BY t.maThuoc ASC, dv.giaTriQuyDoi ASC";
 
         try {
             Connection con = ConnectDB.getConnection();

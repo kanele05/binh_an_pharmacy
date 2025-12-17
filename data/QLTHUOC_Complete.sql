@@ -306,12 +306,23 @@ SELECT
     nt.tenNhom,
     t.TonToiThieu,
     -- Giá nhập theo đơn vị cơ bản
-    ISNULL((SELECT TOP 1 ctpn.donGia
-            FROM ChiTietPhieuNhap ctpn
-            JOIN PhieuNhap pn ON ctpn.maPN = pn.maPN
-            WHERE ctpn.maThuoc = t.maThuoc
-              AND (ctpn.donViTinh = t.donViCoBan OR ctpn.donViTinh IS NULL)
-            ORDER BY pn.ngayTao DESC), 0) AS giaNhap,
+    ISNULL((
+        SELECT TOP 1 
+            ROUND(
+                CASE 
+                    WHEN ctpn.donViTinh = t.donViCoBan THEN ctpn.donGia
+                    ELSE ctpn.donGia / NULLIF((
+                        SELECT TOP 1 dv.giaTriQuyDoi 
+                        FROM DonViQuyDoi dv 
+                        WHERE dv.maThuoc = t.maThuoc AND dv.tenDonVi = ctpn.donViTinh
+                    ), 0)
+                END, 
+            2)
+        FROM ChiTietPhieuNhap ctpn 
+        JOIN PhieuNhap pn ON ctpn.maPN = pn.maPN 
+        WHERE ctpn.maThuoc = t.maThuoc 
+        ORDER BY pn.ngayTao DESC 
+    ), 0) AS giaNhap,
     -- Giá bán theo đơn vị cơ bản
     ISNULL((SELECT TOP 1 ctbg.giaBan
             FROM ChiTietBangGia ctbg
