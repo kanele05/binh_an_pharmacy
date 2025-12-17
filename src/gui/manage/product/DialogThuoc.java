@@ -3,10 +3,12 @@ package gui.manage.product;
 import com.formdev.flatlaf.FlatClientProperties;
 import dao.ThuocDAO;
 import dto.ThuocFullInfo;
+import entities.DonViQuyDoi;
 import java.awt.Component;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import net.miginfocom.swing.MigLayout;
 import raven.toast.Notifications;
 
@@ -25,6 +27,8 @@ public class DialogThuoc extends JDialog {
 
     private Object[] currentData;
     private ThuocDAO thuocDAO = new ThuocDAO();
+    private JTable tblDonViQuyDoi;
+    private DefaultTableModel modelDVQD;
 
     public DialogThuoc(Component parent, Object[] data) {
         super(SwingUtilities.windowForComponent(parent), "Thuốc", ModalityType.APPLICATION_MODAL);
@@ -38,13 +42,18 @@ public class DialogThuoc extends JDialog {
         } else {
             generateNewMaThuoc();
         }
+        this.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowOpened(java.awt.event.WindowEvent e) {
+                txtTenThuoc.requestFocusInWindow();
+            }
+        });
     }
 
     private void initComponents() {
-
         setTitle(isEdit ? "Cập Nhật Thông Tin Thuốc" : "Thêm Thuốc Mới");
 
-        setLayout(new MigLayout("wrap,fillx,insets 20, width 550", "[label, 100]10[grow,fill]", "[]15[]"));
+        setLayout(new MigLayout("wrap,fillx,insets 20, width 600", "[label, 100]10[grow,fill]", "[]15[]"));
 
         JLabel lbTitle = new JLabel(isEdit ? "SỬA THÔNG TIN" : "THÊM THUỐC MỚI");
         lbTitle.putClientProperty(FlatClientProperties.STYLE, "font:bold +4; foreground:$Accent.color");
@@ -53,9 +62,7 @@ public class DialogThuoc extends JDialog {
         add(new JLabel("Mã thuốc:"));
         txtMaThuoc = new JTextField();
         txtMaThuoc.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Tự động tạo nếu để trống");
-        if (isEdit) {
-            txtMaThuoc.setEditable(false);
-        }
+        txtMaThuoc.setEditable(false);
         add(txtMaThuoc);
 
         add(new JLabel("Tên thuốc:"));
@@ -95,6 +102,13 @@ public class DialogThuoc extends JDialog {
         spinGiaBan.setEditor(new JSpinner.NumberEditor(spinGiaBan, "#,##0 ₫"));
         add(spinGiaBan);
 
+        add(new JSeparator(), "span 2, growx, gapy 10 10");
+        JLabel lbDVQD = new JLabel("Thiết lập đơn vị quy đổi (Tùy chọn):");
+        lbDVQD.putClientProperty(FlatClientProperties.STYLE, "font:bold");
+        add(lbDVQD, "span 2, wrap");
+
+        initTableDonViQuyDoi();
+
         JPanel panelActions = new JPanel(new MigLayout("insets 20 0 0 0", "push[][]"));
         panelActions.setOpaque(false);
 
@@ -114,6 +128,45 @@ public class DialogThuoc extends JDialog {
 
         pack();
         setLocationRelativeTo(parent);
+    }
+
+    private void initTableDonViQuyDoi() {
+
+        modelDVQD = new DefaultTableModel(new Object[]{"Tên Đơn Vị (VD: Vỉ)", "Giá Trị Quy Đổi (SL)", "Giá Bán"}, 0) {
+            @Override
+            public Class<?> getColumnClass(int columnIndex) {
+                if (columnIndex == 1) {
+                    return Integer.class;
+                }
+                if (columnIndex == 2) {
+                    return Double.class;
+                }
+                return String.class;
+            }
+        };
+        tblDonViQuyDoi = new JTable(modelDVQD);
+        tblDonViQuyDoi.setRowHeight(25);
+
+        JPanel pnlTable = new JPanel(new MigLayout("insets 0", "[grow]5[]", "[grow]"));
+        pnlTable.add(new JScrollPane(tblDonViQuyDoi), "grow, height 120!");
+
+        JPanel pnlControl = new JPanel(new MigLayout("wrap, insets 0", "fill", "top"));
+        JButton btnAddRow = new JButton("+");
+        btnAddRow.addActionListener(e -> modelDVQD.addRow(new Object[]{"", 10, 0.0}));
+
+        JButton btnDelRow = new JButton("-");
+        btnDelRow.addActionListener(e -> {
+            int row = tblDonViQuyDoi.getSelectedRow();
+            if (row != -1) {
+                modelDVQD.removeRow(row);
+            }
+        });
+
+        pnlControl.add(btnAddRow);
+        pnlControl.add(btnDelRow);
+        pnlTable.add(pnlControl, "top");
+
+        add(pnlTable, "span 2, growx");
     }
 
     private void actionThemNhomNhanh() {
@@ -201,6 +254,27 @@ public class DialogThuoc extends JDialog {
             txtTenThuoc.requestFocus();
             return;
         }
+        if (tblDonViQuyDoi.isEditing()) {
+            tblDonViQuyDoi.getCellEditor().stopCellEditing();
+        }
+
+        for (int i = 0; i < modelDVQD.getRowCount(); i++) {
+            String tenDV = modelDVQD.getValueAt(i, 0).toString().trim();
+            int quyDoi = Integer.parseInt(modelDVQD.getValueAt(i, 1).toString());
+
+            if (tenDV.isEmpty()) {
+                Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Tên đơn vị quy đổi không được để trống!");
+                return;
+            }
+            if (tenDV.equalsIgnoreCase(cbDVT.getSelectedItem().toString())) {
+                Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Đơn vị quy đổi không được trùng đơn vị cơ bản!");
+                return;
+            }
+            if (quyDoi <= 1) {
+                Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Giá trị quy đổi phải lớn hơn 1!");
+                return;
+            }
+        }
         isSave = true;
         closeDialog();
     }
@@ -242,5 +316,26 @@ public class DialogThuoc extends JDialog {
                 txtMaThuoc.setText("T" + (list.size() + 1));
             }
         }
+    }
+
+    public ArrayList<DonViQuyDoi> getListDonViQuyDoi() {
+        ArrayList<DonViQuyDoi> list = new ArrayList<>();
+        String maThuoc = txtMaThuoc.getText();
+
+        for (int i = 0; i < modelDVQD.getRowCount(); i++) {
+            String tenDV = modelDVQD.getValueAt(i, 0).toString().trim();
+            int quyDoi = Integer.parseInt(modelDVQD.getValueAt(i, 1).toString());
+            double giaBan = Double.parseDouble(modelDVQD.getValueAt(i, 2).toString());
+
+            DonViQuyDoi dv = new DonViQuyDoi();
+            dv.setMaThuoc(maThuoc);
+            dv.setTenDonVi(tenDV);
+            dv.setGiaTriQuyDoi(quyDoi);
+            dv.setGiaBan(giaBan);
+            dv.setLaDonViCoBan(false);
+
+            list.add(dv);
+        }
+        return list;
     }
 }

@@ -539,12 +539,12 @@ public class FormDatThuoc extends javax.swing.JPanel {
             TableFormat<ThuocTimKiem> tf = new TableFormat<ThuocTimKiem>() {
                 @Override
                 public int getColumnCount() {
-                    return 5;
+                    return 7;
                 }
 
                 @Override
                 public String getColumnName(int i) {
-                    return new String[]{"Mã", "Tên Thuốc", "ĐVT", "Tồn Tổng", "Giá Bán"}[i];
+                    return new String[]{"Mã", "Tên Thuốc", "Lô", "HSD", "ĐVT", "Tồn Tổng", "Giá Bán"}[i];
                 }
 
                 @Override
@@ -555,11 +555,15 @@ public class FormDatThuoc extends javax.swing.JPanel {
                         case 1:
                             return t.getTenThuoc();
                         case 2:
-                            return t.getDonViTinh();
+                            return t.getMaLo();
                         case 3:
-                            return t.getSoLuongTon();
+                            return t.getHanSuDung();
                         case 4:
-                            return formatMoney(t.getGiaBan());
+                            return t.getDonViTinh();
+                        case 5:
+                            return t.getSoLuongTon();
+                        case 6:
+                            return t.getGiaBan();
                         default:
                             return null;
                     }
@@ -569,8 +573,21 @@ public class FormDatThuoc extends javax.swing.JPanel {
             EventTableModel<ThuocTimKiem> etm = new EventTableModel<>(filterList, tf);
             tableThuoc = new JTable(etm);
             tableThuoc.putClientProperty(FlatClientProperties.STYLE, "rowHeight:25; showHorizontalLines:true");
-            tableThuoc.getColumnModel().getColumn(4).setCellRenderer(new RightAlignRenderer());
-
+            tableThuoc.getColumnModel().getColumn(6).setCellRenderer(new RightAlignRenderer());
+            tableThuoc.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer() {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                @Override
+                public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                    super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                    
+                    if (value instanceof java.time.LocalDate) {
+                        setText(((java.time.LocalDate) value).format(formatter));
+                    }
+                    
+                    setHorizontalAlignment(JLabel.CENTER);
+                    return this;
+                }
+            });
             tableThuoc.addMouseListener(new java.awt.event.MouseAdapter() {
                 public void mouseClicked(java.awt.event.MouseEvent e) {
                     if (e.getClickCount() == 2) {
@@ -949,10 +966,6 @@ public class FormDatThuoc extends javax.swing.JPanel {
             } finally {
                 isUpdating = false;
             }
-        }
-
-        private String formatCurrency(double amount) {
-            return NumberFormat.getInstance(new Locale("vi", "VN")).format(amount) + " ₫";
         }
 
         private void tinhThanhTienRow(int row) {

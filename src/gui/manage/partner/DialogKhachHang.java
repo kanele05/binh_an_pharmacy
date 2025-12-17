@@ -35,6 +35,12 @@ public class DialogKhachHang extends JDialog {
         } else {
             txtMaKH.setText(khachHangDAO.getNextMaKH());
         }
+        this.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowOpened(java.awt.event.WindowEvent e) {
+                txtTenKH.requestFocusInWindow();
+            }
+        });
     }
 
     private void initComponents() {
