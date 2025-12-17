@@ -1504,15 +1504,3 @@ JOIN Thuoc t ON ct.maThuoc = t.maThuoc
 WHERE ct.donViTinh IS NULL;
 GO
 
-PRINT N'';
-PRINT N'=====================================================';
-PRINT N'✅ HOÀN TẤT - Database QLTHUOC đã được tạo thành công!';
-PRINT N'=====================================================';
-PRINT N'';
-PRINT N'Tổng kết:';
-PRINT N'  - 18 bảng dữ liệu';
-PRINT N'  - 2 views';
-PRINT N'  - 18 stored procedures';
-PRINT N'  - Dữ liệu mẫu đầy đủ';
-PRINT N'=====================================================';
-GO
