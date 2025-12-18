@@ -427,7 +427,7 @@ public class LoThuocDAO {
                 + "WHERE t.trangThai = 1 ";
 
         if (tenNhom != null && !tenNhom.isEmpty() && !tenNhom.equals("Tất cả nhóm")) {
-            sql += "AND nt.tenNhom = N'" + tenNhom + "' ";
+            sql += "AND nt.tenNhom = ? ";
         }
 
         sql += "GROUP BY t.maThuoc, t.tenThuoc, t.donViCoBan, t.tonToiThieu, nt.tenNhom "
@@ -436,6 +436,9 @@ public class LoThuocDAO {
         try {
             Connection con = ConnectDB.getConnection();
             PreparedStatement ps = con.prepareStatement(sql);
+            if (tenNhom != null && !tenNhom.isEmpty() && !tenNhom.equals("Tất cả nhóm")) {
+                ps.setString(1, tenNhom);
+            }
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 int tonKho = rs.getInt("tonKho");
@@ -527,8 +530,9 @@ public class LoThuocDAO {
         sql.append("WHERE l.isDeleted = 0 ");
 
         // Lọc theo nhóm thuốc
-        if (nhomThuoc != null && !nhomThuoc.isEmpty() && !nhomThuoc.equals("Tất cả nhóm")) {
-            sql.append("AND nt.tenNhom = N'").append(nhomThuoc).append("' ");
+        boolean hasNhomFilter = nhomThuoc != null && !nhomThuoc.isEmpty() && !nhomThuoc.equals("Tất cả nhóm");
+        if (hasNhomFilter) {
+            sql.append("AND nt.tenNhom = ? ");
         }
 
         // Lọc theo trạng thái
@@ -554,6 +558,9 @@ public class LoThuocDAO {
         try {
             Connection con = ConnectDB.getConnection();
             PreparedStatement ps = con.prepareStatement(sql.toString());
+            if (hasNhomFilter) {
+                ps.setString(1, nhomThuoc);
+            }
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 Map<String, Object> row = new HashMap<>();
@@ -605,6 +612,7 @@ public class LoThuocDAO {
         }
         return false;
     }
+    // FIX Lỗi 3: Giữ method cũ cho tương thích ngược (non-atomic, dùng cho UI display)
     public String getMaxMaLo() {
         String sql = "SELECT TOP 1 maLo FROM LoThuoc ORDER BY maLo DESC";
         try {
@@ -618,6 +626,33 @@ public class LoThuocDAO {
             e.printStackTrace();
         }
         return null;
+    }
+
+    /**
+     * Tạo mã lô mới một cách atomic trong transaction.
+     * Sử dụng UPDLOCK, HOLDLOCK để tránh race condition.
+     */
+    public String generateNewMaLoInTransaction(Connection con) throws SQLException {
+        String newMaLo = "L001";
+        String sql = "SELECT TOP 1 maLo FROM LoThuoc WITH (UPDLOCK, HOLDLOCK) ORDER BY maLo DESC";
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            if (rs.next()) {
+                String lastMaLo = rs.getString("maLo");
+                if (lastMaLo != null && lastMaLo.length() > 1) {
+                    try {
+                        // Hỗ trợ cả format L001 và LO001
+                        String numberPart = lastMaLo.replaceAll("[^0-9]", "");
+                        int number = Integer.parseInt(numberPart) + 1;
+                        String prefix = lastMaLo.replaceAll("[0-9]", "");
+                        newMaLo = prefix + String.format("%03d", number);
+                    } catch (NumberFormatException e) {
+                        // Keep default L001
+                    }
+                }
+            }
+        }
+        return newMaLo;
     }
 
     public int updateWithMerge(LoThuoc lo) throws SQLException {

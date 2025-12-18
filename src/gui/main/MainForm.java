@@ -127,7 +127,7 @@ public class MainForm extends JLayeredPane {
         });
 
         // 8: Nhà cung cấp
-        router.register(8, 0, FormNhaCungCap::new);
+        router.register(8, 1, FormNhaCungCap::new);
 
         // 9: Tài khoản
         router.register(9, 1, FormHoSo::new);

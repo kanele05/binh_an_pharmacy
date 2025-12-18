@@ -118,7 +118,9 @@ public class PanelDanhSachHoaDon extends JPanel {
             @Override
             public void getFilterStrings(List<String> list, HoaDon hd) {
                 list.add(hd.getMaHD());
-                list.add(hd.getNhanVien().getHoTen());
+                if (hd.getNhanVien() != null) {
+                    list.add(hd.getNhanVien().getHoTen());
+                }
                 if (hd.getKhachHang() != null) {
                     list.add(hd.getKhachHang().getTenKH());
                     list.add(hd.getKhachHang().getSdt());
@@ -153,7 +155,7 @@ public class PanelDanhSachHoaDon extends JPanel {
                     case 2: return (hd.getKhachHang() != null) ? hd.getKhachHang().getTenKH() : "Khách lẻ";
                     case 3: return hd.getTongTien() + hd.getThue() - hd.getGiamGia();
                     case 4: return hd.getHinhThucTT();
-                    case 5: return hd.getNhanVien().getHoTen();
+                    case 5: return (hd.getNhanVien() != null) ? hd.getNhanVien().getHoTen() : "";
                     default: return null;
                 }
             }

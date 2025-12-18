@@ -12,8 +12,19 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import javax.swing.*;
+import ca.odell.glazedlists.BasicEventList;
+import ca.odell.glazedlists.FilterList;
+import ca.odell.glazedlists.TextFilterator;
+import ca.odell.glazedlists.gui.TableFormat;
+import ca.odell.glazedlists.matchers.MatcherEditor;
+import ca.odell.glazedlists.swing.EventTableModel;
+import ca.odell.glazedlists.swing.TextComponentMatcherEditor;
+import javax.swing.event.CellEditorListener;
+import javax.swing.event.ChangeEvent;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import net.miginfocom.swing.MigLayout;
@@ -408,11 +419,12 @@ public class FormDoiHang extends JPanel {
             panel.add(txtSearchThuoc, "growx");
             panel.add(btnChon, "wrap");
 
-            String[] cols = {"Mã Thuốc", "Tên thuốc mới", "Mã Lô", "SL", "Đơn giá", "Thành tiền", "ĐVT"};
+            // Thêm cột ListDVT (ẩn) để lưu List<DonViQuyDoi>
+            String[] cols = {"Mã Thuốc", "Tên thuốc mới", "Mã Lô", "SL", "Đơn giá", "Thành tiền", "ĐVT", "ListDVT"};
             modelMua = new DefaultTableModel(cols, 0) {
                 @Override
                 public boolean isCellEditable(int row, int col) {
-                    return col == 3; // Chỉ cho phép sửa SL
+                    return col == 3 || col == 6; // Cho phép sửa SL và ĐVT
                 }
             };
             tableMua = new JTable(modelMua);
@@ -420,11 +432,52 @@ public class FormDoiHang extends JPanel {
             tableMua.getColumnModel().getColumn(4).setCellRenderer(new RightAlignRenderer());
             tableMua.getColumnModel().getColumn(5).setCellRenderer(new RightAlignRenderer());
 
-            // Hide mã thuốc và mã lô columns
+            // Ẩn cột mã thuốc
             tableMua.getColumnModel().getColumn(0).setMinWidth(0);
             tableMua.getColumnModel().getColumn(0).setMaxWidth(0);
-            tableMua.getColumnModel().getColumn(2).setMinWidth(0);
-            tableMua.getColumnModel().getColumn(2).setMaxWidth(0);
+
+            // Ẩn cột ListDVT
+            tableMua.getColumnModel().getColumn(7).setMinWidth(0);
+            tableMua.getColumnModel().getColumn(7).setMaxWidth(0);
+
+            // Setup UnitCellEditor cho cột ĐVT (custom để lấy List từ column 7)
+            DefaultCellEditor unitEditor = new DefaultCellEditor(new JComboBox<>()) {
+                @Override
+                @SuppressWarnings("unchecked")
+                public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+                    JComboBox<String> combo = (JComboBox<String>) getComponent();
+                    combo.removeAllItems();
+
+                    int modelRow = table.convertRowIndexToModel(row);
+                    Object valList = table.getModel().getValueAt(modelRow, 7); // Column 7 chứa List<DonViQuyDoi>
+
+                    if (valList instanceof List) {
+                        List<DonViQuyDoi> list = (List<DonViQuyDoi>) valList;
+                        for (DonViQuyDoi dv : list) {
+                            combo.addItem(dv.getTenDonVi());
+                        }
+                    }
+
+                    if (combo.getItemCount() == 0) {
+                        combo.addItem(value != null ? value.toString() : "");
+                    }
+
+                    combo.setSelectedItem(value);
+                    return super.getTableCellEditorComponent(table, value, isSelected, row, column);
+                }
+            };
+            unitEditor.addCellEditorListener(new CellEditorListener() {
+                @Override
+                public void editingStopped(ChangeEvent e) {
+                    int row = tableMua.getSelectedRow();
+                    if (row != -1) {
+                        updateGiaKhiDoiDonVi(row);
+                    }
+                }
+                @Override
+                public void editingCanceled(ChangeEvent e) {}
+            });
+            tableMua.getColumnModel().getColumn(6).setCellEditor(unitEditor);
 
             modelMua.addTableModelListener(e -> {
                 if (!isUpdating && e.getColumn() == 3) {
@@ -672,32 +725,46 @@ public class FormDoiHang extends JPanel {
         }
 
         private void showThuocSelectionDialog(ArrayList<ThuocTimKiem> dsThuoc) {
+            // Gom dữ liệu theo maLo để loại bỏ duplicate (cùng lô có nhiều đơn vị)
+            Map<String, ThuocTimKiem> mapLoThuoc = new LinkedHashMap<>();
+            for (ThuocTimKiem t : dsThuoc) {
+                if (!mapLoThuoc.containsKey(t.getMaLo())) {
+                    mapLoThuoc.put(t.getMaLo(), t);
+                }
+            }
+            ArrayList<ThuocTimKiem> dsThuocUnique = new ArrayList<>(mapLoThuoc.values());
+
             JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), "Chọn thuốc mới", JDialog.ModalityType.APPLICATION_MODAL);
-            dialog.setSize(800, 500);
+            dialog.setSize(800, 550);
             dialog.setLocationRelativeTo(this);
 
-            JPanel content = new JPanel(new MigLayout("fill, insets 15", "[fill]", "[][grow][]"));
+            JPanel content = new JPanel(new MigLayout("fill, insets 15", "[fill]", "[][][][grow][]"));
 
-            content.add(new JLabel("Chọn thuốc để đổi (tồn kho khả dụng):"), "wrap 10");
+            content.add(new JLabel("Chọn thuốc để đổi (tồn kho khả dụng):"), "wrap 5");
 
-            String[] cols = {"Mã Thuốc", "Tên Thuốc", "Mã Lô", "Tồn kho", "Đơn vị", "Giá bán", "HSD"};
-            DefaultTableModel modelSelect = new DefaultTableModel(cols, 0);
-            JTable tableSelect = new JTable(modelSelect);
+            // === GlazedList Live Search ===
+            // TextField tìm kiếm
+            JTextField txtTimKiem = new JTextField();
+            txtTimKiem.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Tìm mã hoặc tên thuốc...");
+            content.add(txtTimKiem, "wrap 10");
+
+            // EventList và FilterList
+            BasicEventList<ThuocTimKiem> eventList = new BasicEventList<>();
+            eventList.addAll(dsThuocUnique);
+
+            TextFilterator<ThuocTimKiem> filterator = (baseList, element) -> {
+                baseList.add(element.getMaThuoc());
+                baseList.add(element.getTenThuoc());
+            };
+
+            MatcherEditor<ThuocTimKiem> matcherEditor = new TextComponentMatcherEditor<>(txtTimKiem, filterator);
+            FilterList<ThuocTimKiem> filterList = new FilterList<>(eventList, matcherEditor);
+
+            // EventTableModel thay vì DefaultTableModel
+            EventTableModel<ThuocTimKiem> tableModel = new EventTableModel<>(filterList, new ThuocTableFormat());
+            JTable tableSelect = new JTable(tableModel);
             tableSelect.putClientProperty(FlatClientProperties.STYLE, "rowHeight:30");
             tableSelect.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-
-            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-            for (ThuocTimKiem t : dsThuoc) {
-                modelSelect.addRow(new Object[]{
-                    t.getMaThuoc(),
-                    t.getTenThuoc(),
-                    t.getMaLo(),
-                    t.getSoLuongTon(),
-                    t.getDonViTinh(),
-                    formatMoney(t.getGiaBan()),
-                    t.getHanSuDung().format(dtf)
-                });
-            }
 
             content.add(new JScrollPane(tableSelect), "grow, wrap 10");
 
@@ -705,6 +772,9 @@ public class FormDoiHang extends JPanel {
             JButton btnChon = new JButton("Thêm vào giỏ đổi");
             btnChon.putClientProperty(FlatClientProperties.STYLE, "background:#4CAF50; foreground:#fff");
             JButton btnHuy = new JButton("Đóng");
+
+            // DAO để lấy danh sách đơn vị quy đổi
+            DonViQuyDoiDAO dvqdDAO = new DonViQuyDoiDAO();
 
             btnChon.addActionListener(e -> {
                 int row = tableSelect.getSelectedRow();
@@ -714,7 +784,8 @@ public class FormDoiHang extends JPanel {
                     return;
                 }
 
-                ThuocTimKiem selected = dsThuoc.get(row);
+                // Lấy từ filterList thay vì dsThuocUnique
+                ThuocTimKiem selected = filterList.get(row);
 
                 // Check if already added
                 for (ChiTietMuaTemp temp : dsMuaHang) {
@@ -748,6 +819,9 @@ public class FormDoiHang extends JPanel {
                         return;
                     }
 
+                    // Lấy danh sách đơn vị quy đổi cho thuốc này
+                    List<DonViQuyDoi> listDVT = dvqdDAO.getAllDonViByMaThuoc(selected.getMaThuoc());
+
                     // Add to cart
                     ChiTietMuaTemp temp = new ChiTietMuaTemp();
                     temp.maThuoc = selected.getMaThuoc();
@@ -769,7 +843,8 @@ public class FormDoiHang extends JPanel {
                         temp.soLuong,
                         formatMoney(temp.donGia),
                         formatMoney(temp.thanhTien),
-                        temp.donViTinh
+                        temp.donViTinh,
+                        listDVT  // Cột ẩn chứa List<DonViQuyDoi>
                     });
                     isUpdating = false;
 
@@ -899,6 +974,43 @@ public class FormDoiHang extends JPanel {
             } finally {
                 isUpdating = false;
             }
+        }
+
+        /**
+         * Cập nhật giá bán khi thay đổi đơn vị tính trong giỏ hàng đổi
+         */
+        @SuppressWarnings("unchecked")
+        private void updateGiaKhiDoiDonVi(int row) {
+            if (row < 0 || row >= modelMua.getRowCount()) return;
+
+            isUpdating = true;
+            try {
+                String donViMoi = modelMua.getValueAt(row, 6).toString();
+                Object valList = modelMua.getValueAt(row, 7);
+
+                if (valList instanceof List) {
+                    List<DonViQuyDoi> list = (List<DonViQuyDoi>) valList;
+                    for (DonViQuyDoi dv : list) {
+                        if (dv.getTenDonVi().equals(donViMoi)) {
+                            // Cập nhật giá bán theo đơn vị mới
+                            modelMua.setValueAt(formatMoney(dv.getGiaBan()), row, 4);
+
+                            // Cập nhật dsMuaHang
+                            if (row < dsMuaHang.size()) {
+                                dsMuaHang.get(row).donGia = dv.getGiaBan();
+                                dsMuaHang.get(row).donViTinh = donViMoi;
+                                dsMuaHang.get(row).giaTriQuyDoi = dv.getGiaTriQuyDoi();
+                            }
+                            break;
+                        }
+                    }
+                }
+            } finally {
+                isUpdating = false;
+            }
+
+            // Tính lại thành tiền
+            tinhTienMua();
         }
 
         private void tinhChenhLech() {
@@ -1071,6 +1183,32 @@ public class FormDoiHang extends JPanel {
             double thanhTien;
             String donViTinh;
             int giaTriQuyDoi;
+        }
+
+        // TableFormat cho GlazedList live search
+        private class ThuocTableFormat implements TableFormat<ThuocTimKiem> {
+            private String[] cols = {"Mã Thuốc", "Tên Thuốc", "Mã Lô", "Tồn kho", "Đơn vị", "Giá bán", "HSD"};
+
+            @Override
+            public int getColumnCount() { return cols.length; }
+
+            @Override
+            public String getColumnName(int col) { return cols[col]; }
+
+            @Override
+            public Object getColumnValue(ThuocTimKiem t, int col) {
+                DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                switch (col) {
+                    case 0: return t.getMaThuoc();
+                    case 1: return t.getTenThuoc();
+                    case 2: return t.getMaLo();
+                    case 3: return t.getSoLuongTon();
+                    case 4: return t.getDonViTinh();
+                    case 5: return formatMoney(t.getGiaBan());
+                    case 6: return t.getHanSuDung().format(dtf);
+                    default: return "";
+                }
+            }
         }
     }
 

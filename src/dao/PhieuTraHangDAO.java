@@ -254,17 +254,34 @@ public class PhieuTraHangDAO {
             // NOTE: ctDAO.insert() uses its own connection (same pattern as existing code)
             // All operations share same ConnectDB singleton connection pool
             ChiTietPhieuTraDAO ctDAO = new ChiTietPhieuTraDAO();
+
+            // FIX: Thêm quy đổi đơn vị khi cộng tồn kho
+            String sqlGetTyLe = "SELECT giaTriQuyDoi FROM DonViQuyDoi WHERE maThuoc = ? AND tenDonVi = ?";
+            PreparedStatement stmtTyLe = con.prepareStatement(sqlGetTyLe);
+
             for (ChiTietPhieuTra ct : listCT) {
                 // Insert ChiTietPhieuTra
                 ctDAO.insert(ct);
 
-                // Return quantity to lot
+                // Lấy tỷ lệ quy đổi
+                int tyLeQuyDoi = 1;
+                stmtTyLe.setString(1, ct.getThuoc().getMaThuoc());
+                stmtTyLe.setString(2, ct.getDonViTinh());
+                ResultSet rsTyLe = stmtTyLe.executeQuery();
+                if (rsTyLe.next()) {
+                    tyLeQuyDoi = rsTyLe.getInt("giaTriQuyDoi");
+                }
+                rsTyLe.close();
+
+                // Return quantity to lot (với quy đổi đơn vị)
+                int soLuongHoanKho = ct.getSoLuongTra() * tyLeQuyDoi;
                 String sqlUpdateLo = "UPDATE LoThuoc SET soLuongTon = soLuongTon + ? WHERE maLo = ?";
                 PreparedStatement stmtUpdateLo = con.prepareStatement(sqlUpdateLo);
-                stmtUpdateLo.setInt(1, ct.getSoLuongTra());
+                stmtUpdateLo.setInt(1, soLuongHoanKho);
                 stmtUpdateLo.setString(2, ct.getLoThuoc().getMaLo());
                 stmtUpdateLo.executeUpdate();
             }
+            stmtTyLe.close();
 
             con.commit();
             return true;

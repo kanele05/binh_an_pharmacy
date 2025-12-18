@@ -343,7 +343,7 @@ public class DialogThemThuocNhap extends JDialog {
         LocalDate hanSuDung = LocalDate.now().plusMonths(thangHSD);
 
         // Gọi method của FormNhapHang để thêm thuốc với đơn vị tính
-        formNhapHang.themThuocVaoBang(thuoc, soLuong, donGia, hanSuDung);
+        formNhapHang.themThuocVaoBang(thuoc, soLuong, donGia, hanSuDung, donViTinh);
 
         // Reset form
         spnSoLuong.setValue(1);

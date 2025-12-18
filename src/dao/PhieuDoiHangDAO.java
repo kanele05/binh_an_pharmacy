@@ -135,6 +135,9 @@ public class PhieuDoiHangDAO {
                     + "VALUES (?, ?, ?, ?, ?, ?, ?)";
             String sqlUpdateLoTra = "UPDATE LoThuoc SET soLuongTon = soLuongTon + ? WHERE maLo = ?";
 
+            // FIX: Thêm quy đổi đơn vị cho hàng trả (giống như hàng mới)
+            String sqlGetTyLeTra = "SELECT giaTriQuyDoi FROM DonViQuyDoi WHERE maThuoc = ? AND tenDonVi = ?";
+
             for (ChiTietPhieuTra ct : listTraHang) {
                 ct.setPhieuTra(phieuTra);
 
@@ -148,9 +151,21 @@ public class PhieuDoiHangDAO {
                 stmtCTPT.setString(7, ct.getDonViTinh());
                 stmtCTPT.executeUpdate();
 
-                // Hoàn lại tồn kho
+                // Lấy tỷ lệ quy đổi cho hàng trả
+                int tyLeQuyDoiTra = 1;
+                PreparedStatement stmtTyLeTra = con.prepareStatement(sqlGetTyLeTra);
+                stmtTyLeTra.setString(1, ct.getThuoc().getMaThuoc());
+                stmtTyLeTra.setString(2, ct.getDonViTinh());
+                ResultSet rsTyLeTra = stmtTyLeTra.executeQuery();
+                if (rsTyLeTra.next()) {
+                    tyLeQuyDoiTra = rsTyLeTra.getInt("giaTriQuyDoi");
+                }
+                rsTyLeTra.close();
+
+                // Hoàn lại tồn kho (với quy đổi đơn vị)
+                int soLuongHoanKho = ct.getSoLuongTra() * tyLeQuyDoiTra;
                 PreparedStatement stmtUpdateLo = con.prepareStatement(sqlUpdateLoTra);
-                stmtUpdateLo.setInt(1, ct.getSoLuongTra());
+                stmtUpdateLo.setInt(1, soLuongHoanKho);
                 stmtUpdateLo.setString(2, ct.getLoThuoc().getMaLo());
                 stmtUpdateLo.executeUpdate();
             }

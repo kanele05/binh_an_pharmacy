@@ -12,7 +12,7 @@ import java.util.List;
 
 public class PhieuNhapDAO {
 
-    // Hàm tạo mã phiếu nhập mới tự động (VD: PN001 -> PN002)
+    // FIX Lỗi 3: Giữ method cũ cho tương thích ngược (non-atomic, dùng cho UI display)
     public String generateNewMaPN() {
         String newMa = "PN001";
         try {
@@ -27,6 +27,30 @@ public class PhieuNhapDAO {
             }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+        return newMa;
+    }
+
+    /**
+     * Tạo mã phiếu nhập mới một cách atomic trong transaction.
+     * Sử dụng UPDLOCK, HOLDLOCK để tránh race condition.
+     */
+    private String generateNewMaPNInTransaction(Connection con) throws SQLException {
+        String newMa = "PN001";
+        String sql = "SELECT TOP 1 maPN FROM PhieuNhap WITH (UPDLOCK, HOLDLOCK) ORDER BY maPN DESC";
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            if (rs.next()) {
+                String lastMa = rs.getString(1);
+                if (lastMa != null && lastMa.length() > 2) {
+                    try {
+                        int number = Integer.parseInt(lastMa.substring(2)) + 1;
+                        newMa = String.format("PN%03d", number);
+                    } catch (NumberFormatException e) {
+                        // Keep default PN001
+                    }
+                }
+            }
         }
         return newMa;
     }
@@ -359,7 +383,8 @@ public boolean insertHeader(PhieuNhap pn) {
 
             // Nếu đã nhập kho, cần rollback tồn kho
             if (pn.getTrangThai().equals("Đã nhập")) {
-                String sqlRollback = "UPDATE LoThuoc SET soLuongTon = soLuongTon - ct.soLuong " +
+                // FIX Lỗi 4: Sửa cú pháp SQL Server UPDATE...FROM
+                String sqlRollback = "UPDATE l SET l.soLuongTon = l.soLuongTon - ct.soLuong " +
                                      "FROM LoThuoc l " +
                                      "INNER JOIN ChiTietPhieuNhap ct ON l.maLo = ct.maLo " +
                                      "WHERE ct.maPN = ?";
