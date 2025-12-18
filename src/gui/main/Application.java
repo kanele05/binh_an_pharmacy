@@ -11,6 +11,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import gui.dashboard.FormDashboard;
 import gui.login.LoginForm;
 import gui.main.MainForm;
 import raven.toast.Notifications;
@@ -43,7 +44,8 @@ public class Application extends javax.swing.JFrame {
         app.mainForm.applyComponentOrientation(app.getComponentOrientation());
         // Refresh menu theo quyền của user đã đăng nhập
         app.mainForm.refreshMenuByPermission();
-        setSelectedMenu(0, 0);
+        setSelectedMenu(0, 1);
+        showForm(new FormDashboard());
         app.mainForm.hideMenu();
         SwingUtilities.updateComponentTreeUI(app.mainForm);
         FlatAnimatedLafChange.hideSnapshotWithAnimation();
