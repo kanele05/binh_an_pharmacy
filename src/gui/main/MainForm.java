@@ -1,7 +1,5 @@
 package gui.main;
 
-import com.formdev.flatlaf.FlatClientProperties;
-import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.util.UIScale;
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -10,37 +8,44 @@ import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Insets;
 import java.awt.LayoutManager;
-import java.awt.event.ActionEvent;
-import javax.swing.JButton;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Supplier;
+import javax.swing.JComponent;
 import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
-import gui.main.Application;
-import gui.transaction.sales.FormBanHang;
+
+import gui.components.menu.Menu;
+import gui.components.menu.MenuAction;
+import gui.dashboard.FormDashboard;
+import gui.help.FormHuongDan;
+import gui.manage.partner.FormKhachHang;
+import gui.manage.partner.FormNhaCungCap;
+import gui.manage.price.FormBangGia;
+import gui.manage.product.FormQuanLyLoThuoc;
+import gui.manage.product.FormQuanLyThuoc;
+import gui.manage.staff.FormNhanVien;
+import gui.profile.FormHoSo;
 import gui.report.FormBaoCaoDoanhThu;
 import gui.report.FormBaoCaoTonKho;
 import gui.report.FormCanhBaoHetHan;
 import gui.report.FormCanhBaoTonKho;
 import gui.transaction.inventory.FormDanhSachPhieuNhap;
+import gui.transaction.inventory.FormNhapHang;
+import gui.transaction.inventory.FormTraHang;
 import gui.transaction.order.FormDatThuoc;
 import gui.transaction.order.FormDoiHang;
-import gui.profile.FormHoSo;
-import gui.manage.partner.FormKhachHang;
-import gui.manage.partner.FormNhaCungCap;
-import gui.transaction.inventory.FormNhapHang;
-import gui.manage.product.FormQuanLyLoThuoc;
-import gui.manage.product.FormQuanLyThuoc;
-import gui.transaction.inventory.FormTraHang;
-import gui.dashboard.FormDashboard;
-import gui.components.menu.Menu;
-import gui.components.menu.MenuAction;
-import gui.manage.price.FormBangGia;
-import gui.manage.staff.FormNhanVien;
-import gui.help.FormHuongDan;
-import utils.MenuPermission;
-import raven.toast.Notifications;
+import gui.transaction.sales.FormBanHang;
 
+/**
+ * Main form chứa menu và panel nội dung.
+ * Refactored: Sử dụng MenuRouter thay vì nested if-else.
+ */
 public class MainForm extends JLayeredPane {
+
+    private Menu menu;
+    private JPanel panelBody;
 
     public MainForm() {
         init();
@@ -52,7 +57,7 @@ public class MainForm extends JLayeredPane {
         menu = new Menu();
         panelBody = new JPanel(new BorderLayout());
 
-        initMenuEvent();
+        initMenuRoutes();
 
         add(menu);
         add(panelBody);
@@ -61,86 +66,78 @@ public class MainForm extends JLayeredPane {
     @Override
     public void applyComponentOrientation(ComponentOrientation o) {
         super.applyComponentOrientation(o);
-
     }
 
-    private void initMenuEvent() {
-        menu.addMenuEvent((int index, int subIndex, MenuAction action) -> {
+    /**
+     * Định nghĩa routing cho menu sử dụng Map thay vì if-else.
+     */
+    private void initMenuRoutes() {
+        MenuRouter router = new MenuRouter();
 
-            if (index == 0) {
-                Application.showForm(new FormDashboard());
-            } else if (index == 1) {
-                if (subIndex == 1) {
-                    Application.showForm(new FormBanHang());
-                } else if (subIndex == 2) {
-                    Application.showForm(new FormDatThuoc());
-                } else if (subIndex == 3) {
-                    Application.showForm(new FormTraHang());
-                } else if (subIndex == 4) {
-                    Application.showForm(new FormDoiHang());
-                } else if (subIndex == 5) {
-                    Application.showForm(new FormBaoCaoDoanhThu());
-                } else {
-                    action.cancel();
-                }
-            } else if (index == 2) {
-                if (subIndex == 1) {
-                    Application.showForm(new FormQuanLyThuoc());
-                } else if (subIndex == 2) {
-                    FormQuanLyThuoc form = new FormQuanLyThuoc();
-                    Application.showForm(form);
-                    form.openThemMoi();
-                } else if (subIndex == 3) {
-                    Application.showForm(new FormCanhBaoHetHan());
-                } else if (subIndex == 4) {
-                    Application.showForm(new FormCanhBaoTonKho());
-                }
-            } else if (index == 3) {
-                if (subIndex == 1) {
-                    Application.showForm(new FormDanhSachPhieuNhap());
-                } else if (subIndex == 2) {
-                    Application.showForm(new FormNhapHang());
-                }
-            } else if (index == 4) {
-                if (subIndex == 1) {
-                Application.showForm(new FormQuanLyLoThuoc());
-                }else if (subIndex == 2) {
-                    Application.showForm(new FormBaoCaoTonKho());
-                }
-            } else if (index == 5) {
-                if (subIndex == 1) {
-                    Application.showForm(new FormBangGia());
-                } else if (subIndex == 2) {
-                    FormBangGia form = new FormBangGia();
-                    Application.showForm(form);
-                    form.openThemMoi();
-                }
-            } else if (index == 6) {
-                if (subIndex == 1) {
-                    Application.showForm(new FormNhanVien());
-                } else if (subIndex == 2) {
-                    FormNhanVien form = new FormNhanVien();
-                    Application.showForm(form);
-                    form.openThemMoi();
-                }
-            } else if (index == 7) {
-                if (subIndex == 1) {
-                    Application.showForm(new FormKhachHang());
-                } else if (subIndex == 2) {
-                    FormKhachHang form = new FormKhachHang();
-                    Application.showForm(form);
-                    form.openThemMoi();
-                }
-            } else if (index == 8) {
-                Application.showForm(new FormNhaCungCap());
-            } else if (index == 9) {
-                if (subIndex == 1) {
-                    Application.showForm(new FormHoSo());
-                } else if (subIndex == 2) {
-                    Application.logout();
-                } else if (subIndex == 3) {
-                    Application.showForm(new FormHuongDan());
-                }
+        // 0: Dashboard
+        router.register(0, 1, FormDashboard::new);
+
+        // 1: Giao dịch
+        router.register(1, 1, FormBanHang::new);
+        router.register(1, 2, FormDatThuoc::new);
+        router.register(1, 3, FormTraHang::new);
+        router.register(1, 4, FormDoiHang::new);
+        router.register(1, 5, FormBaoCaoDoanhThu::new);
+
+        // 2: Quản lý thuốc
+        router.register(2, 1, FormQuanLyThuoc::new);
+        router.register(2, 2, () -> {
+            FormQuanLyThuoc form = new FormQuanLyThuoc();
+            form.openThemMoi();
+            return form;
+        });
+        router.register(2, 3, FormCanhBaoHetHan::new);
+        router.register(2, 4, FormCanhBaoTonKho::new);
+
+        // 3: Nhập hàng
+        router.register(3, 1, FormDanhSachPhieuNhap::new);
+        router.register(3, 2, FormNhapHang::new);
+
+        // 4: Tồn kho
+        router.register(4, 1, FormQuanLyLoThuoc::new);
+        router.register(4, 2, FormBaoCaoTonKho::new);
+
+        // 5: Bảng giá
+        router.register(5, 1, FormBangGia::new);
+        router.register(5, 2, () -> {
+            FormBangGia form = new FormBangGia();
+            form.openThemMoi();
+            return form;
+        });
+
+        // 6: Nhân viên
+        router.register(6, 1, FormNhanVien::new);
+        router.register(6, 2, () -> {
+            FormNhanVien form = new FormNhanVien();
+            form.openThemMoi();
+            return form;
+        });
+
+        // 7: Khách hàng
+        router.register(7, 1, FormKhachHang::new);
+        router.register(7, 2, () -> {
+            FormKhachHang form = new FormKhachHang();
+            form.openThemMoi();
+            return form;
+        });
+
+        // 8: Nhà cung cấp
+        router.register(8, 0, FormNhaCungCap::new);
+
+        // 9: Tài khoản
+        router.register(9, 1, FormHoSo::new);
+        router.registerAction(9, 2, Application::logout);
+        router.register(9, 3, FormHuongDan::new);
+
+        // Đăng ký event handler
+        menu.addMenuEvent((int index, int subIndex, MenuAction action) -> {
+            if (!router.handle(index, subIndex)) {
+                action.cancel();
             }
         });
     }
@@ -160,18 +157,52 @@ public class MainForm extends JLayeredPane {
         menu.setSelectedMenu(index, subIndex);
     }
 
-    /**
-     * Làm mới menu theo quyền của người dùng hiện tại
-     * Gọi sau khi đăng nhập
-     */
     public void refreshMenuByPermission() {
         menu.refreshMenuByPermission();
     }
 
-    private Menu menu;
-    private JPanel panelBody;
-    private JButton menuButton;
+    /**
+     * Router quản lý điều hướng menu.
+     * Sử dụng Map để lưu mapping giữa (index, subIndex) và form factory.
+     */
+    private static class MenuRouter {
+        private final Map<String, Supplier<? extends JComponent>> formFactories = new HashMap<>();
+        private final Map<String, Runnable> actions = new HashMap<>();
 
+        private String key(int index, int subIndex) {
+            return index + ":" + subIndex;
+        }
+
+        public void register(int index, int subIndex, Supplier<? extends JComponent> factory) {
+            formFactories.put(key(index, subIndex), factory);
+        }
+
+        public void registerAction(int index, int subIndex, Runnable action) {
+            actions.put(key(index, subIndex), action);
+        }
+
+        public boolean handle(int index, int subIndex) {
+            String k = key(index, subIndex);
+
+            // Check for actions first
+            if (actions.containsKey(k)) {
+                actions.get(k).run();
+                return true;
+            }
+
+            // Check for form factories
+            if (formFactories.containsKey(k)) {
+                Application.showForm(formFactories.get(k).get());
+                return true;
+            }
+
+            return false;
+        }
+    }
+
+    /**
+     * Custom layout manager for main form.
+     */
     private class MainFormLayout implements LayoutManager {
 
         @Override
@@ -208,13 +239,6 @@ public class MainForm extends JLayeredPane {
                 int menuWidth = UIScale.scale(menu.isMenuFull() ? menu.getMenuMaxWidth() : menu.getMenuMinWidth());
                 int menuX = ltr ? x : x + width - menuWidth;
                 menu.setBounds(menuX, y, menuWidth, height);
-
-                int menubX;
-                if (ltr) {
-
-                } else {
-
-                }
 
                 int gap = UIScale.scale(5);
                 int bodyWidth = width - menuWidth - gap;

@@ -195,7 +195,7 @@ public class ImportReceiptPDFGenerator {
         // Phone
         cs.beginText();
         cs.setFont(fontRegular, FONT_SIZE_NORMAL);
-        String phone = "Điện thoại: 0909 123 456";
+        String phone = "Điện thoại: 0917 774 020";
         textWidth = fontRegular.getStringWidth(phone) / 1000 * FONT_SIZE_NORMAL;
         cs.newLineAtOffset((PAGE_WIDTH - textWidth) / 2, yPos);
         cs.showText(phone);
@@ -531,4 +531,5 @@ public class ImportReceiptPDFGenerator {
         return String.format("%,.0f đ", amount);
     }
 }
+
 
