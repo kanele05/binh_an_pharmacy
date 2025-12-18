@@ -30,7 +30,22 @@ public class NhaCungCapDAO {
         }
         return dsNCC;
     }
-
+    public ArrayList<String> getAllTenNhaCungCap(){
+           ArrayList<String> dsTenNCC = new ArrayList<>();
+           try {
+               ConnectDB.getInstance();
+               Connection con = ConnectDB.getConnection();
+               String sql = "Select tenNCC from NhaCungCap";
+               Statement statement = con.createStatement();
+               ResultSet rs = statement.executeQuery(sql);
+               while (rs.next()) {                   
+                   dsTenNCC.add(rs.getString("tenNCC"));
+               }
+           } catch (Exception e) {
+               e.printStackTrace();
+           }
+           return dsTenNCC;
+       }
     public NhaCungCap getNhaCungCapByID(String maNCC) {
         NhaCungCap ncc = null;
         String sql = "SELECT * FROM NhaCungCap WHERE maNCC = ?";
@@ -49,88 +64,61 @@ public class NhaCungCapDAO {
         return ncc;
     }
 
-    public boolean insert(NhaCungCap ncc) throws SQLException {
-        ConnectDB.getInstance();
-        Connection con = ConnectDB.getConnection();
-        PreparedStatement stmt = null;
-        int n = 0;
-        try {
-            String sql = "INSERT INTO NhaCungCap (maNCC, tenNCC, sdt, email, diaChi) "
-                    + "VALUES (?, ?, ?, ?, ?)";
-            stmt = con.prepareStatement(sql);
-            stmt.setString(1, ncc.getMaNCC());
-            stmt.setString(2, ncc.getTenNCC());
-            stmt.setString(3, ncc.getSdt());
-            stmt.setString(4, ncc.getEmail());
-            stmt.setString(5, ncc.getDiaChi());
+    public boolean insert(NhaCungCap ncc) {
+    	   String sql = "INSERT INTO NhaCungCap (maNCC, tenNCC, sdt, email, diaChi) VALUES (?, ?, ?, ?, ?)";    	   try (Connection con  = ConnectDB.getConnection();
+    		PreparedStatement ps = con.prepareStatement(sql);) {
+    		   ps.setString(1, ncc.getMaNCC());
+    		   ps.setString(2, ncc.getTenNCC());
+    		   ps.setString(3, ncc.getSdt());
+    		   ps.setString(4, ncc.getEmail());
+    		   ps.setString(5, ncc.getDiaChi());
 
-            n = stmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (stmt != null) {
-                    stmt.close();
-                }
-            } catch (SQLException e2) {
-                e2.printStackTrace();
-            }
-        }
-        return n > 0;
-    }
+    		   int rows = ps.executeUpdate();
+    		   
+    		   return rows > 0;
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+			return false;
+		}
+       }
+    public boolean update(Object[] data) {
+    	   String sql =
+		      "UPDATE NhaCungCap "
+		    + "SET tenNCC = ?, sdt = ?, email = ?, diaChi = ? "
+		    + "WHERE maNCC = ?";
 
-    public boolean update(NhaCungCap ncc) throws SQLException {
-        ConnectDB.getInstance();
-        Connection con = ConnectDB.getConnection();
-        PreparedStatement stmt = null;
-        int n = 0;
-        try {
-            String sql = "UPDATE NhaCungCap SET tenNCC = ?, sdt = ?, email = ?, diaChi = ? WHERE maNCC = ?";
-            stmt = con.prepareStatement(sql);
-            stmt.setString(1, ncc.getTenNCC());
-            stmt.setString(2, ncc.getSdt());
-            stmt.setString(3, ncc.getEmail());
-            stmt.setString(4, ncc.getDiaChi());
-            stmt.setString(5, ncc.getMaNCC());
+    	    try (Connection con = ConnectDB.getConnection();
+    	         PreparedStatement ps = con.prepareStatement(sql)) {
 
-            n = stmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (stmt != null) {
-                    stmt.close();
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
-        return n > 0;
-    }
+    	        ps.setString(1, data[1].toString());
+    	        ps.setString(2, data[2].toString());
+    	        ps.setString(3, data[3].toString());
+    	        ps.setString(4, data[4].toString());
+    	        ps.setString(5, data[0].toString());
 
-    public boolean delete(String maNCC) throws SQLException {
-        ConnectDB.getInstance();
-        Connection con = ConnectDB.getConnection();
-        PreparedStatement stmt = null;
-        int n = 0;
-        try {
-            String sql = "DELETE FROM NhaCungCap WHERE maNCC = ?";
-            stmt = con.prepareStatement(sql);
-            stmt.setString(1, maNCC);
-            n = stmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (stmt != null) {
-                    stmt.close();
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
-        return n > 0;
-    }
+    	        return ps.executeUpdate() > 0;
+
+    	    } catch (SQLException e) {
+    	        e.printStackTrace();
+    	    }
+    	    return false;
+    	}
+
+    public boolean delete(String maNCC) {
+    	    String sql = "DELETE FROM NhaCungCap WHERE maNCC = ?";
+
+    	    try (Connection con = ConnectDB.getConnection();
+    	         PreparedStatement ps = con.prepareStatement(sql)) {
+
+    	        ps.setString(1, maNCC);
+    	        return ps.executeUpdate() > 0;
+
+    	    } catch (SQLException e) {
+    	        e.printStackTrace();
+    	    }
+    	    return false;
+    	}
 
     public String getNewMaNCC() {
         String newID = "NCC001";

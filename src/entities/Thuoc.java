@@ -93,6 +93,13 @@ public class Thuoc {
     public String toString() {
         return "Thuoc{" + "maThuoc=" + maThuoc + ", tenThuoc=" + tenThuoc + ", hoatChat=" + hoatChat + ", donViCoBan=" + donViCoBan + ", trangThai=" + trangThai + ", nhomThuoc=" + nhomThuoc + '}';
     }
-    
-    
+
+    public String getDonViCoBan() {
+        return donViCoBan;
+    }
+
+    public void setDonViCoBan(String donViCoBan) {
+        this.donViCoBan = donViCoBan;
+    }
+
 }

@@ -105,8 +105,34 @@ public class PhieuNhapDAO {
         }
         return result;
     }
-
-    // Xác nhận nhập kho - cập nhật tồn kho khi nhấn button Xác nhận
+public boolean insertHeader(PhieuNhap pn) {
+        Connection con = null;
+        PreparedStatement stmtPN = null;
+        try {
+            con = ConnectDB.getConnection();
+            String sqlPN = "INSERT INTO PhieuNhap (maPN, ngayTao, tongTien, trangThai, maNV, maNCC, ghiChu) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            stmtPN = con.prepareStatement(sqlPN);
+            stmtPN.setString(1, pn.getMaPN());
+            stmtPN.setDate(2, java.sql.Date.valueOf(pn.getNgayTao()));
+            stmtPN.setDouble(3, pn.getTongTien());
+            stmtPN.setString(4, pn.getTrangThai());
+            stmtPN.setString(5, pn.getNhanVien().getMaNV());
+            stmtPN.setString(6, pn.getNcc().getMaNCC());
+            stmtPN.setString(7, pn.getGhiChu());
+            return stmtPN.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (stmtPN != null) {
+                    stmtPN.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        return false;
+    }
     public boolean xacNhanNhapKho(String maPN) {
         Connection con = null;
         CallableStatement cstmt = null;
@@ -117,13 +143,11 @@ public class PhieuNhapDAO {
             con = ConnectDB.getConnection();
             con.setAutoCommit(false);
 
-            // 1. Gọi SP xác nhận nhập kho (cập nhật tồn kho)
             String sqlSP = "{call sp_XacNhanNhapKho(?)}";
             cstmt = con.prepareCall(sqlSP);
             cstmt.setString(1, maPN);
             cstmt.execute();
 
-            // 2. Lấy chi tiết phiếu nhập để cập nhật giá nhập vào bảng giá
             String sqlGetCT = "SELECT maThuoc, donViTinh, donGia FROM ChiTietPhieuNhap WHERE maPN = ?";
             stmtGetCT = con.prepareStatement(sqlGetCT);
             stmtGetCT.setString(1, maPN);
@@ -135,7 +159,6 @@ public class PhieuNhapDAO {
                 String donViTinh = rs.getString("donViTinh");
                 double giaNhap = rs.getDouble("donGia");
 
-                // Cập nhật giá nhập vào chi tiết bảng giá (tạo mới nếu chưa có)
                 ctbgDAO.capNhatGiaNhap(maThuoc, donViTinh, giaNhap);
             }
 

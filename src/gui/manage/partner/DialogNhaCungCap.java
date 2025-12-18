@@ -4,6 +4,7 @@ import com.formdev.flatlaf.FlatClientProperties;
 import dao.NhaCungCapDAO;
 import entities.NhaCungCap;
 import java.awt.Component;
+import java.awt.Dialog;
 import javax.swing.*;
 import net.miginfocom.swing.MigLayout;
 import raven.toast.Notifications;
@@ -19,15 +20,14 @@ public class DialogNhaCungCap extends JDialog {
     private JTextField txtMaNCC, txtTenNCC, txtSDT, txtEmail;
     private JTextArea txtDiaChi;
 
-    public DialogNhaCungCap(Component parent, NhaCungCap ncc) {
-        super(SwingUtilities.windowForComponent(parent), "Thông Tin Nhà Cung Cấp", ModalityType.APPLICATION_MODAL);
+     public DialogNhaCungCap(Component parent, Object[] data) {
+        super(SwingUtilities.windowForComponent(parent), "Thông Tin Nhà Cung Cấp", Dialog.ModalityType.APPLICATION_MODAL);
         this.parent = parent;
-        this.isEdit = (ncc != null);
-        this.nhaCungCapDAO = new NhaCungCapDAO();
+        this.isEdit = (data != null);
         initComponents();
-        if (isEdit) {
-            fillData(ncc);
-        } else {
+
+       if(isEdit) fillData(data); 
+       else {
             txtMaNCC.setText(nhaCungCapDAO.getNewMaNCC());
         }
         this.addWindowListener(new java.awt.event.WindowAdapter() {
@@ -83,16 +83,15 @@ public class DialogNhaCungCap extends JDialog {
 
         pack();
         setLocationRelativeTo(parent);
+    }   
+    private void fillData(Object[] data) {
+        // 0:Mã, 1:Tên, 2:SĐT, 3:Email, 4:ĐC
+        txtMaNCC.setText(data[0].toString());
+        txtTenNCC.setText(data[1].toString());
+        txtSDT.setText(data[2].toString());
+        txtEmail.setText(data[3].toString());
+        txtDiaChi.setText(data[4].toString());
     }
-
-    private void fillData(NhaCungCap ncc) {
-        txtMaNCC.setText(ncc.getMaNCC());
-        txtTenNCC.setText(ncc.getTenNCC());
-        txtSDT.setText(ncc.getSdt());
-        txtEmail.setText(ncc.getEmail() != null ? ncc.getEmail() : "");
-        txtDiaChi.setText(ncc.getDiaChi() != null ? ncc.getDiaChi() : "");
-    }
-
     private void actionSave() {
         // Validate tên NCC
         String tenNCC = txtTenNCC.getText().trim();
@@ -143,12 +142,30 @@ public class DialogNhaCungCap extends JDialog {
         isSave = true;
         dispose();
     }
-
+public Object[] getData() {
+        return new Object[]{
+            txtMaNCC.getText().equals("AUTO") ? "NCC" + System.currentTimeMillis() % 1000 : txtMaNCC.getText(),
+            txtTenNCC.getText(),
+            txtSDT.getText(),
+            txtEmail.getText(),
+            txtDiaChi.getText()
+        };
+    }
+    public NhaCungCap getNhaCungCap() {
+        return new NhaCungCap(
+            txtMaNCC.getText().equals("AUTO")
+                ? "NCC" + String.format("%03d", System.currentTimeMillis() % 1000)
+                : txtMaNCC.getText().trim(),
+            txtTenNCC.getText().trim(),
+            txtSDT.getText().trim(),
+            txtEmail.getText().trim(),
+            txtDiaChi.getText().trim()
+        );
+}
     public boolean isSave() {
         return isSave;
     }
-
-    public NhaCungCap getNhaCungCap() {
-        return nhaCungCap;
+    public void setMaNCC(String maNCC) {
+        txtMaNCC.setText(maNCC);
     }
 }

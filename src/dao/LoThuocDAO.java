@@ -588,8 +588,38 @@ public class LoThuocDAO {
         }
         return result;
     }
+    public boolean isLoThuocDaTonTai(String maLo) {
+        String sql = " SELECT 1" +
+                " FROM LoThuoc " +
+                "WHERE maLo = ? AND isDeleted = 0";
+        try {
+            ConnectDB.getInstance();
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setString(1, maLo);
 
-    // Cập nhật lô với logic cộng dồn nếu HSD trùng lô khác
+            ResultSet rs = ps.executeQuery();
+            return rs.next();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    public String getMaxMaLo() {
+        String sql = "SELECT TOP 1 maLo FROM LoThuoc ORDER BY maLo DESC";
+        try {
+            Connection con = ConnectDB.getConnection();
+            Statement st = con.createStatement();
+            ResultSet rs = st.executeQuery(sql);
+            if (rs.next()) {
+                return rs.getString("maLo");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public int updateWithMerge(LoThuoc lo) throws SQLException {
         ConnectDB.getInstance();
         Connection con = ConnectDB.getConnection();
@@ -639,4 +669,30 @@ public class LoThuocDAO {
         }
         return result;
     }
+    public boolean insertLoThuoc(LoThuoc lo) {
+        String sql = "INSERT INTO LoThuoc" +
+                "(maLo, maThuoc, ngayNhap, hanSuDung, soLuongTon, trangThai, isDeleted)" +
+                "VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+        try {
+            ConnectDB.getInstance();
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql);
+
+            ps.setString(1, lo.getMaLo());
+            ps.setString(2, lo.getThuoc().getMaThuoc());
+            ps.setDate(3, Date.valueOf(lo.getNgayNhap()));
+            ps.setDate(4, Date.valueOf(lo.getHanSuDung()));
+            ps.setInt(5, lo.getSoLuongTon());
+            ps.setString(6, lo.getTrangThai() == null ? "Còn Hạn" : lo.getTrangThai());
+            ps.setBoolean(7, lo.isIsDeleted());
+
+            return ps.executeUpdate() > 0;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
 }

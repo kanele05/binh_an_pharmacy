@@ -21,7 +21,9 @@ public class NhomThuoc {
         this.maNhom = maNhom;
     }
 
-    
+    public NhomThuoc() {
+    }
+
     public String getMaNhom() {
         return maNhom;
     }
