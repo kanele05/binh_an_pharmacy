@@ -12,6 +12,7 @@ src/dao/KhachHangDAO.java
 src/dao/LoThuocDAO.java
 src/dao/NhaCungCapDAO.java
 src/dao/NhanVienDAO.java
+src/dao/NhomThuocDAO.java
 src/dao/PhieuDoiHangDAO.java
 src/dao/PhieuNhapDAO.java
 src/dao/PhieuTraHangDAO.java
@@ -49,10 +50,12 @@ src/gui/components/menu/mode/LightDarkMode.java
 src/gui/components/menu/mode/ToolBarAccentColor.java
 src/gui/components/menu/PopupSubmenu.java
 src/gui/dashboard/FormDashboard.java
+src/gui/help/FormHuongDan.java
 src/gui/login/LoginForm.java
 src/gui/login/PanelLogin.java
 src/gui/main/Application.java
 src/gui/main/MainForm.java
+src/gui/main/SplashScreen.java
 src/gui/manage/partner/DialogKhachHang.java
 src/gui/manage/partner/DialogLichSuMuaHang.java
 src/gui/manage/partner/DialogNhaCungCap.java
@@ -82,6 +85,12 @@ src/gui/transaction/order/FormDatThuoc.java
 src/gui/transaction/order/FormDoiHang.java
 src/gui/transaction/sales/DialogChiTietHoaDon.java
 src/gui/transaction/sales/FormBanHang.java
+src/gui/transaction/sales/PanelBanHangGiaoDien.java
+src/gui/transaction/sales/PanelDanhSachHoaDon.java
+src/gui/transaction/sales/UnitCellEditor.java
 src/utils/Auth.java
 src/utils/ExcelHelper.java
+src/utils/ImportReceiptPDFGenerator.java
 src/utils/InvoicePDFGenerator.java
+src/utils/MenuPermission.java
+src/utils/TableRenderers.java

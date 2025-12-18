@@ -92,13 +92,16 @@ public class ChiTietBangGiaDAO {
         try {
             Connection con = ConnectDB.getConnection();
 
-            // Lấy giá nhập theo đúng đơn vị tính của từng dòng chi tiết bảng giá
+            // Lấy giá nhập và quy đổi về đơn vị tính của chi tiết bảng giá
+            // Công thức: giaNhap = (donGia_nhập / giaTriQuyDoi_nhập) * giaTriQuyDoi_banggia
             String sql = "SELECT t.maThuoc, t.tenThuoc, nt.tenNhom, ct.donViTinh, "
-                    + "ISNULL((SELECT TOP 1 ctpn.donGia "
+                    + "ISNULL((SELECT TOP 1 "
+                    + "        (ctpn.donGia / ISNULL(NULLIF(dvqd_nhap.giaTriQuyDoi, 0), 1)) * ISNULL(dvqd_bg.giaTriQuyDoi, 1) "
                     + "        FROM ChiTietPhieuNhap ctpn "
                     + "        JOIN PhieuNhap pn ON ctpn.maPN = pn.maPN "
+                    + "        LEFT JOIN DonViQuyDoi dvqd_nhap ON ctpn.maThuoc = dvqd_nhap.maThuoc AND ctpn.donViTinh = dvqd_nhap.tenDonVi "
+                    + "        LEFT JOIN DonViQuyDoi dvqd_bg ON t.maThuoc = dvqd_bg.maThuoc AND ct.donViTinh = dvqd_bg.tenDonVi "
                     + "        WHERE ctpn.maThuoc = t.maThuoc "
-                    + "          AND ctpn.donViTinh = ct.donViTinh "
                     + "        ORDER BY pn.ngayTao DESC), 0) as giaNhap, "
                     + "ct.giaBan "
                     + "FROM ChiTietBangGia ct "
@@ -132,13 +135,16 @@ public class ChiTietBangGiaDAO {
     public List<Object[]> getChiTietFullByMaBG(String maBG) {
         List<Object[]> list = new ArrayList<>();
 
-        // Lấy giá nhập theo đúng đơn vị tính của từng dòng chi tiết bảng giá
+        // Lấy giá nhập và quy đổi về đơn vị tính của chi tiết bảng giá
+        // Công thức: giaNhap = (donGia_nhập / giaTriQuyDoi_nhập) * giaTriQuyDoi_banggia
         String sql = "SELECT t.maThuoc, t.tenThuoc, nt.tenNhom, ct.donViTinh, "
-                + "ISNULL((SELECT TOP 1 ctpn.donGia "
+                + "ISNULL((SELECT TOP 1 "
+                + "        (ctpn.donGia / ISNULL(NULLIF(dvqd_nhap.giaTriQuyDoi, 0), 1)) * ISNULL(dvqd_bg.giaTriQuyDoi, 1) "
                 + "        FROM ChiTietPhieuNhap ctpn "
                 + "        JOIN PhieuNhap pn ON ctpn.maPN = pn.maPN "
+                + "        LEFT JOIN DonViQuyDoi dvqd_nhap ON ctpn.maThuoc = dvqd_nhap.maThuoc AND ctpn.donViTinh = dvqd_nhap.tenDonVi "
+                + "        LEFT JOIN DonViQuyDoi dvqd_bg ON t.maThuoc = dvqd_bg.maThuoc AND ct.donViTinh = dvqd_bg.tenDonVi "
                 + "        WHERE ctpn.maThuoc = t.maThuoc "
-                + "          AND ctpn.donViTinh = ct.donViTinh "
                 + "        ORDER BY pn.ngayTao DESC), 0) as giaNhap, "
                 + "ct.giaBan "
                 + "FROM ChiTietBangGia ct "

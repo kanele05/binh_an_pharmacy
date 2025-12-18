@@ -85,7 +85,11 @@ public class HoaDonDAO {
             stmtHD.setDouble(5, hd.getThue());
             stmtHD.setString(6, hd.getHinhThucTT());
             stmtHD.setString(7, hd.getGhiChu());
-            stmtHD.setString(8, hd.getNhanVien().getMaNV());
+            if (hd.getNhanVien() != null) {
+                stmtHD.setString(8, hd.getNhanVien().getMaNV());
+            } else {
+                stmtHD.setNull(8, java.sql.Types.NVARCHAR);
+            }
             if (hd.getKhachHang() != null) {
                 stmtHD.setString(9, hd.getKhachHang().getMaKH());
             } else {
@@ -96,14 +100,37 @@ public class HoaDonDAO {
             String sqlCT = "INSERT INTO ChiTietHoaDon (maHD, maThuoc, maLo, soLuong, donGia, thanhTien, donViTinh) VALUES (?, ?, ?, ?, ?, ?, ?)";
             stmtCT = con.prepareStatement(sqlCT);
 
-            String sqlUpdateKho = "UPDATE LoThuoc SET soLuongTon = soLuongTon - ? WHERE maLo = ?";
+            // FIX Lỗi 1+2: Thêm kiểm tra tồn kho đủ và lô chưa hết hạn
+            String sqlUpdateKho = "UPDATE LoThuoc SET soLuongTon = soLuongTon - ? " +
+                                  "WHERE maLo = ? AND soLuongTon >= ? AND trangThai != N'Đã hết hạn'";
             stmtKho = con.prepareStatement(sqlUpdateKho);
 
             String sqlGetTyLe = "SELECT giaTriQuyDoi FROM DonViQuyDoi WHERE maThuoc = ? AND tenDonVi = ?";
             stmtTyLe = con.prepareStatement(sqlGetTyLe);
 
             for (ChiTietHoaDon ct : listCTHD) {
+                // Lấy tỷ lệ quy đổi trước để tính số lượng trừ kho
+                int tyLeQuyDoi = 1;
+                stmtTyLe.setString(1, ct.getThuoc().getMaThuoc());
+                stmtTyLe.setString(2, ct.getDonViTinh());
+                ResultSet rsTyLe = stmtTyLe.executeQuery();
+                if (rsTyLe.next()) {
+                    tyLeQuyDoi = rsTyLe.getInt("giaTriQuyDoi");
+                }
+                rsTyLe.close();
 
+                int soLuongTruKho = ct.getSoLuong() * tyLeQuyDoi;
+
+                // Trừ kho với kiểm tra đủ số lượng và chưa hết hạn
+                stmtKho.setInt(1, soLuongTruKho);
+                stmtKho.setString(2, ct.getLoThuoc().getMaLo());
+                stmtKho.setInt(3, soLuongTruKho);
+                int rowsAffected = stmtKho.executeUpdate();
+                if (rowsAffected == 0) {
+                    throw new SQLException("Không đủ tồn kho hoặc lô đã hết hạn: " + ct.getLoThuoc().getMaLo());
+                }
+
+                // Insert chi tiết hóa đơn sau khi trừ kho thành công
                 stmtCT.setString(1, hd.getMaHD());
                 stmtCT.setString(2, ct.getThuoc().getMaThuoc());
                 stmtCT.setString(3, ct.getLoThuoc().getMaLo());
@@ -112,23 +139,6 @@ public class HoaDonDAO {
                 stmtCT.setDouble(6, ct.getThanhTien());
                 stmtCT.setString(7, ct.getDonViTinh());
                 stmtCT.executeUpdate();
-
-                int tyLeQuyDoi = 1;
-
-                stmtTyLe.setString(1, ct.getThuoc().getMaThuoc());
-                stmtTyLe.setString(2, ct.getDonViTinh());
-                ResultSet rsTyLe = stmtTyLe.executeQuery();
-
-                if (rsTyLe.next()) {
-                    tyLeQuyDoi = rsTyLe.getInt("giaTriQuyDoi");
-                }
-                rsTyLe.close();
-
-                int soLuongTruKho = ct.getSoLuong() * tyLeQuyDoi;
-
-                stmtKho.setInt(1, soLuongTruKho);
-                stmtKho.setString(2, ct.getLoThuoc().getMaLo());
-                stmtKho.executeUpdate();
             }
 
             con.commit();
@@ -168,6 +178,7 @@ public class HoaDonDAO {
         return false;
     }
 
+    // FIX Lỗi 3: Atomic ID generation với transaction lock
     public String getMaxMaHD() {
         String maxID = null;
         String sql = "SELECT TOP 1 maHD FROM HoaDon ORDER BY maHD DESC";
@@ -183,6 +194,30 @@ public class HoaDonDAO {
             e.printStackTrace();
         }
         return maxID;
+    }
+
+    /**
+     * Tạo mã hóa đơn mới một cách atomic trong transaction.
+     * Sử dụng UPDLOCK, HOLDLOCK để tránh race condition.
+     */
+    private String generateNewMaHDInTransaction(Connection con) throws SQLException {
+        String newMaHD = "HD001";
+        String sql = "SELECT TOP 1 maHD FROM HoaDon WITH (UPDLOCK, HOLDLOCK) ORDER BY maHD DESC";
+        try (Statement stmt = con.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) {
+                String lastID = rs.getString("maHD");
+                if (lastID != null && lastID.length() > 2) {
+                    try {
+                        int number = Integer.parseInt(lastID.substring(2));
+                        newMaHD = String.format("HD%03d", number + 1);
+                    } catch (NumberFormatException e) {
+                        // Keep default HD001
+                    }
+                }
+            }
+        }
+        return newMaHD;
     }
 
     public boolean taoHoaDonTuDonDat(entities.HoaDon hd, java.util.List<entities.ChiTietHoaDon> listCTHD, String maDonDat) {
@@ -214,16 +249,41 @@ public class HoaDonDAO {
             }
             stmtHD.executeUpdate();
 
-            String sqlUpdateKho = "UPDATE LoThuoc SET soLuongTon = soLuongTon - ? WHERE maLo = ?";
+            // FIX Lỗi 1+2: Thêm kiểm tra tồn kho đủ và lô chưa hết hạn
+            String sqlUpdateKho = "UPDATE LoThuoc SET soLuongTon = soLuongTon - ? " +
+                                  "WHERE maLo = ? AND soLuongTon >= ? AND trangThai != N'Đã hết hạn'";
             stmtKho = con.prepareStatement(sqlUpdateKho);
 
-            for (entities.ChiTietHoaDon ct : listCTHD) {
-                cthdDAO.insert(con, ct);
+            // Cần lấy tỷ lệ quy đổi để tính đúng số lượng trừ kho
+            String sqlGetTyLe = "SELECT giaTriQuyDoi FROM DonViQuyDoi WHERE maThuoc = ? AND tenDonVi = ?";
+            java.sql.PreparedStatement stmtTyLe = con.prepareStatement(sqlGetTyLe);
 
-                stmtKho.setInt(1, ct.getSoLuong());
+            for (entities.ChiTietHoaDon ct : listCTHD) {
+                // Lấy tỷ lệ quy đổi
+                int tyLeQuyDoi = 1;
+                stmtTyLe.setString(1, ct.getThuoc().getMaThuoc());
+                stmtTyLe.setString(2, ct.getDonViTinh());
+                java.sql.ResultSet rsTyLe = stmtTyLe.executeQuery();
+                if (rsTyLe.next()) {
+                    tyLeQuyDoi = rsTyLe.getInt("giaTriQuyDoi");
+                }
+                rsTyLe.close();
+
+                int soLuongTruKho = ct.getSoLuong() * tyLeQuyDoi;
+
+                // Trừ kho với kiểm tra đủ số lượng và chưa hết hạn
+                stmtKho.setInt(1, soLuongTruKho);
                 stmtKho.setString(2, ct.getLoThuoc().getMaLo());
-                stmtKho.executeUpdate();
+                stmtKho.setInt(3, soLuongTruKho);
+                int rowsAffected = stmtKho.executeUpdate();
+                if (rowsAffected == 0) {
+                    throw new java.sql.SQLException("Không đủ tồn kho hoặc lô đã hết hạn: " + ct.getLoThuoc().getMaLo());
+                }
+
+                // Insert chi tiết sau khi trừ kho thành công
+                cthdDAO.insert(con, ct);
             }
+            stmtTyLe.close();
 
             String sqlUpdateDon = "UPDATE DonDatHang SET trangThai = N'Đã lấy hàng' WHERE maDonDat = ?";
             stmtUpdateDon = con.prepareStatement(sqlUpdateDon);

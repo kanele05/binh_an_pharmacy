@@ -605,14 +605,16 @@ public class PanelBanHangGiaoDien extends JPanel {
             tienGiamGia = 0;
             if (currentKhachHang != null && chkDungDiem.isSelected()) {
                 tienGiamGia = currentKhachHang.getDiemTichLuy() * 100;
-                if (tienGiamGia > tongTien) {
-                    tienGiamGia = tongTien;
+                // FIX Lỗi 5: Giảm giá không được vượt quá (tongTien + VAT)
+                double maxGiamGia = tongTien + (tongTien * DEFAULT_VAT_RATE / 100);
+                if (tienGiamGia > maxGiamGia) {
+                    tienGiamGia = maxGiamGia;
                 }
             }
 
-            double tienSauGiam = tongTien - tienGiamGia;
-            thueVAT = tienSauGiam * (DEFAULT_VAT_RATE / 100);
-            double thanhTienCuoi = tienSauGiam + thueVAT;
+            // FIX Lỗi 5: VAT tính trên tổng tiền TRƯỚC giảm giá (theo quy định kế toán VN)
+            thueVAT = tongTien * (DEFAULT_VAT_RATE / 100);
+            double thanhTienCuoi = tongTien + thueVAT - tienGiamGia;
 
             lbTongTien.setText(TableRenderers.formatCurrency(tongTien));
             lbGiamGia.setText(TableRenderers.formatCurrency(tienGiamGia));
@@ -702,10 +704,12 @@ public class PanelBanHangGiaoDien extends JPanel {
 
             if (hoaDonDAO.taoHoaDon(hd, listCT)) {
                 if (currentKhachHang != null) {
-                    if (chkDungDiem.isSelected()) {
-                        khachHangDAO.truDiem(currentKhachHang.getMaKH(), currentKhachHang.getDiemTichLuy());
+                    if (chkDungDiem.isSelected() && currentKhachHang.getDiemTichLuy() > 0) {
+                        int diemSuDung = (int) Math.min(currentKhachHang.getDiemTichLuy(), tongTien / 100);
+                        khachHangDAO.truDiem(currentKhachHang.getMaKH(), diemSuDung);
                     }
-                    int diemMoi = (int) ((hd.getTongTien() - hd.getGiamGia()) / 10000);
+                    double tienTinhDiem = hd.getTongTien() - hd.getGiamGia();
+                    int diemMoi = (int) Math.round(tienTinhDiem / 10000.0);
                     if (diemMoi > 0) {
                         khachHangDAO.congDiem(currentKhachHang.getMaKH(), diemMoi);
                     }

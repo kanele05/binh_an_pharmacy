@@ -2,6 +2,7 @@ package gui.transaction.inventory;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import dao.ChiTietPhieuNhapDAO;
+import dao.DonViQuyDoiDAO;
 import dao.LoThuocDAO;
 import dao.NhaCungCapDAO;
 import dao.NhomThuocDAO;
@@ -9,6 +10,7 @@ import dao.PhieuNhapDAO;
 import dao.ThuocDAO;
 import dto.ThuocFullInfo;
 import entities.ChiTietPhieuNhap;
+import entities.DonViQuyDoi;
 import entities.LoThuoc;
 import entities.NhaCungCap;
 import entities.NhanVien;
@@ -352,46 +354,69 @@ public class FormNhapHang extends javax.swing.JPanel {
         dialog.setVisible(true);
     }
 
-    public void themThuocVaoBang(ThuocFullInfo thuoc, int soLuong, double donGia, LocalDate hanSuDung) {
+    public void themThuocVaoBang(ThuocFullInfo thuoc, int soLuong, double donGia, LocalDate hanSuDung, String donViTinh) {
         try {
             isUpdating = true;
+
+            // === BƯỚC 1: Lấy tỷ lệ quy đổi ===
+            String donViCoBan = thuoc.getDonViCoBan();
+            int giaTriQuyDoi = 1;
+            if (!donViTinh.equals(donViCoBan)) {
+                DonViQuyDoiDAO dvqDao = new DonViQuyDoiDAO();
+                DonViQuyDoi dvq = dvqDao.getDonViByTen(thuoc.getMaThuoc(), donViTinh);
+                if (dvq != null) {
+                    giaTriQuyDoi = dvq.getGiaTriQuyDoi();
+                }
+            }
+
+            // === BƯỚC 2: Quy đổi về đơn vị cơ bản ===
+            int soLuongCoBan = soLuong * giaTriQuyDoi;
+            double donGiaCoBan = donGia / giaTriQuyDoi;
+
+            // === BƯỚC 3: Tìm dòng cùng maThuoc + cùng HSD ===
             int existingRow = -1;
+            String hsdStr = hanSuDung.format(dateFormat);
             for (int i = 0; i < model.getRowCount(); i++) {
                 String maThuocTrongBang = getCell(i, 0);
-                if (maThuocTrongBang.equals(thuoc.getMaThuoc())) {
+                String hsdTrongBang = getCell(i, 9);  // Cột HSD
+
+                if (maThuocTrongBang.equals(thuoc.getMaThuoc()) && hsdTrongBang.equals(hsdStr)) {
                     existingRow = i;
                     break;
                 }
             }
 
+            // === BƯỚC 4: Cộng dồn hoặc thêm mới ===
             if (existingRow >= 0) {
+                // Cộng dồn số lượng (đã là đơn vị cơ bản)
                 int slLoCu = parseIntFromCell(getCell(existingRow, 8));
-                int slLoMoi = slLoCu + soLuong;
+                int slLoMoi = slLoCu + soLuongCoBan;
 
+                double donGiaCu = parseMoney(getCell(existingRow, 5));
                 model.setValueAt(slLoMoi, existingRow, 8);
                 model.setValueAt(slLoMoi, existingRow, 6);
 
-                double thanhTienMoi = slLoMoi * donGia;
+                double thanhTienMoi = slLoMoi * donGiaCu;
                 model.setValueAt(formatMoney(thanhTienMoi), existingRow, 10);
 
                 Notifications.getInstance().show(Notifications.Type.INFO, Notifications.Location.TOP_CENTER,
-                        "Đã cập nhật số lượng thuốc " + thuoc.getTenThuoc() + " (+" + soLuong + ")");
+                        "Đã cộng dồn " + soLuongCoBan + " " + donViCoBan + " vào lô cùng HSD");
             } else {
+                // Thêm dòng mới với đơn vị cơ bản
                 String maLoMoi = getNextMaLo();
-                int soLuongLo = soLuong;
-                double thanhTien = soLuongLo * donGia;
+                double thanhTien = soLuongCoBan * donGiaCoBan;
 
                 model.addRow(new Object[] {
                         thuoc.getMaThuoc(),
                         thuoc.getTenThuoc(),
-                        thuoc.getDonViCoBan(),
+                        donViCoBan,             // Đơn vị cơ bản
                         thuoc.getHoatChat(),
                         thuoc.getTenNhom(),
-                        formatMoney(donGia),
-                        soLuongLo,
+                        formatMoney(donGiaCoBan), // Giá đơn vị cơ bản
+                        soLuongCoBan,
                         maLoMoi,
-                        soLuongLo,
-                        hanSuDung.format(dateFormat),
+                        soLuongCoBan,
+                        hsdStr,
                         formatMoney(thanhTien)
                 });
 
