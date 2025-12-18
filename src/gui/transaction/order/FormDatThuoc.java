@@ -151,12 +151,17 @@ public class FormDatThuoc extends javax.swing.JPanel {
             btnEdit.putClientProperty(FlatClientProperties.STYLE, "background:#FF9800; foreground:#fff; font:bold");
             btnEdit.addActionListener(e -> actionEditPhieu());
 
+            JButton btnHuy = new JButton("Hủy đơn");
+            btnHuy.putClientProperty(FlatClientProperties.STYLE, "background:#f44336; foreground:#fff; font:bold");
+            btnHuy.addActionListener(e -> actionHuyDon());
+
             panel.add(txtTimKiem, "w 250");
             panel.add(btnTim);
             panel.add(new JLabel("Lọc trạng thái:"));
             panel.add(cbTrangThai);
             panel.add(btnTaoPhieu);
             panel.add(btnEdit);
+            panel.add(btnHuy);
             panel.add(btnKhachDen);
 
             return panel;
@@ -332,6 +337,52 @@ public class FormDatThuoc extends javax.swing.JPanel {
 
             if (dialog.isSuccess()) {
                 loadData();
+            }
+        }
+
+        private void actionHuyDon() {
+            int row = table.getSelectedRow();
+            if (row == -1) {
+                Notifications.getInstance().show(Notifications.Type.WARNING,
+                    Notifications.Location.TOP_CENTER,
+                    "Vui lòng chọn đơn đặt cần hủy!");
+                return;
+            }
+
+            DonDatHang don = compositeFilteredList.get(row);
+
+            // Chỉ cho hủy đơn "Đang giữ hàng"
+            if (!"Đang giữ hàng".equals(don.getTrangThai())) {
+                Notifications.getInstance().show(Notifications.Type.WARNING,
+                    Notifications.Location.TOP_CENTER,
+                    "Chỉ có thể hủy đơn đang ở trạng thái 'Đang giữ hàng'!");
+                return;
+            }
+
+            // Xác nhận hủy
+            int confirm = JOptionPane.showConfirmDialog(this,
+                "Bạn có chắc chắn muốn hủy đơn đặt " + don.getMaDonDat() + "?\n" +
+                "Số lượng thuốc đã giữ sẽ được hoàn lại vào tồn kho khả dụng.",
+                "Xác nhận hủy đơn",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+
+            if (confirm != JOptionPane.YES_OPTION) {
+                return;
+            }
+
+            // Cập nhật trạng thái
+            boolean success = donDatHangDAO.updateTrangThai(don.getMaDonDat(), "Đã hủy");
+
+            if (success) {
+                Notifications.getInstance().show(Notifications.Type.SUCCESS,
+                    Notifications.Location.TOP_CENTER,
+                    "Đã hủy đơn đặt " + don.getMaDonDat() + " thành công!");
+                loadData();  // Refresh table
+            } else {
+                Notifications.getInstance().show(Notifications.Type.ERROR,
+                    Notifications.Location.TOP_CENTER,
+                    "Có lỗi xảy ra khi hủy đơn đặt!");
             }
         }
     }
