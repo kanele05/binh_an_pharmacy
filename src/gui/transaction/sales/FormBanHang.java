@@ -81,45 +81,43 @@ public class FormBanHang extends JPanel {
     }
 
     private void showHelpDialog() {
-       String helpContent =
-        "<html>"
-      + "<body style='width: 350px; padding: 10px; font-family: Arial, sans-serif;'>"
-      + "<h2 style='color: #4CAF50; text-align: center;'>📖 Hướng Dẫn Sử Dụng Phím Tắt</h2>"
-      + "<hr>"
-      + "<table style='width: 100%; border-collapse: collapse;'>"
-      + "<tr style='background-color: #E8F5E9;'>"
-      + "<td style='padding: 8px; font-weight: bold;'>F1</td>"
-      + "<td style='padding: 8px;'>Mở màn hình bán hàng</td>"
-      + "</tr>"
-      + "<tr>"
-      + "<td style='padding: 8px; font-weight: bold;'>F2</td>"
-      + "<td style='padding: 8px;'>Focus vào ô tìm kiếm thuốc</td>"
-      + "</tr>"
-      + "<tr style='background-color: #E8F5E9;'>"
-      + "<td style='padding: 8px; font-weight: bold;'>F3</td>"
-      + "<td style='padding: 8px;'>Thêm thuốc đang chọn vào giỏ hàng</td>"
-      + "</tr>"
-      + "<tr>"
-      + "<td style='padding: 8px; font-weight: bold;'>F4</td>"
-      + "<td style='padding: 8px;'>Thực hiện thanh toán</td>"
-      + "</tr>"
-      + "<tr style='background-color: #E8F5E9;'>"
-      + "<td style='padding: 8px; font-weight: bold;'>F5</td>"
-      + "<td style='padding: 8px;'>Mở hướng dẫn sử dụng (cửa sổ này)</td>"
-      + "</tr>"
-      + "<tr>"
-      + "<td style='padding: 8px; font-weight: bold;'>Enter</td>"
-      + "<td style='padding: 8px;'>Tìm kiếm khách hàng (trong ô SĐT)</td>"
-      + "</tr>"
-      + "</table>"
-      + "<hr>"
-      + "<p style='color: #666; font-size: 11px; text-align: center;'>"
-      + "💡 <i>Sử dụng phím tắt giúp bán hàng nhanh hơn!</i>"
-      + "</p>"
-      + "</body>"
-      + "</html>";
+        String helpContent = "<html>" +
+            "<body style='width: 350px; padding: 10px; font-family: Arial, sans-serif;'>" +
+            "<h2 style='color: #4CAF50; text-align: center;'>Hướng Dẫn Sử Dụng Phím Tắt</h2>" +
+            "<hr>" +
+            "<table style='width: 100%; border-collapse: collapse;'>" +
+            "<tr style='background-color: #E8F5E9;'>" +
+                "<td style='padding: 8px; font-weight: bold;'>F1</td>" +
+                "<td style='padding: 8px;'>Mở màn hình bán hàng</td>" +
+            "</tr>" +
+            "<tr>" +
+                "<td style='padding: 8px; font-weight: bold;'>F2</td>" +
+                "<td style='padding: 8px;'>Focus vào ô tìm kiếm thuốc</td>" +
+            "</tr>" +
+            "<tr style='background-color: #E8F5E9;'>" +
+                "<td style='padding: 8px; font-weight: bold;'>F3</td>" +
+                "<td style='padding: 8px;'>Thêm thuốc đang chọn vào giỏ hàng</td>" +
+            "</tr>" +
+            "<tr>" +
+                "<td style='padding: 8px; font-weight: bold;'>F4</td>" +
+                "<td style='padding: 8px;'>Thực hiện thanh toán</td>" +
+            "</tr>" +
+            "<tr style='background-color: #E8F5E9;'>" +
+                "<td style='padding: 8px; font-weight: bold;'>F5</td>" +
+                "<td style='padding: 8px;'>Mở hướng dẫn sử dụng (cửa sổ này)</td>" +
+            "</tr>" +
+            "<tr>" +
+                "<td style='padding: 8px; font-weight: bold;'>Enter</td>" +
+                "<td style='padding: 8px;'>Tìm kiếm khách hàng (trong ô SĐT)</td>" +
+            "</tr>" +
+            "</table>" +
+            "<hr>" +
+            "<p style='color: #666; font-size: 11px; text-align: center;'>" +
+            "<i>Sử dụng phím tắt giúp bán hàng nhanh hơn!</i>" +
+            "</p>" +
+            "</body>" +
+            "</html>";
 
-        
         JOptionPane.showMessageDialog(
             SwingUtilities.getWindowAncestor(this),
             helpContent,
