@@ -640,23 +640,35 @@ public class FormNhapHang extends javax.swing.JPanel {
                 throw new Exception("Thuốc có mã '" + maThuoc
                         + "' chưa tồn tại trong hệ thống. Vui lòng kiểm tra lại dữ liệu thuốc.");
             }
-            if (ltDao.isLoThuocDaTonTai(soLo)) {
-                throw new Exception("Lô '" + soLo + "' đã tồn tại trong hệ thống!");
+
+            // === KIỂM TRA LÔ ĐÃ TỒN TẠI (cùng maThuoc + cùng HSD) ===
+            LoThuoc loTonTai = ltDao.getLoByMaThuocVaHSD(maThuoc, hsd);
+            LoThuoc loSuDung;
+
+            if (loTonTai != null) {
+                // Dùng lô đã có - KHÔNG cộng tồn kho ở đây (SP sẽ cộng khi xác nhận)
+                loSuDung = loTonTai;
+            } else {
+                // Tạo lô mới với soLuongTon = 0 (SP sẽ cộng khi xác nhận)
+                if (ltDao.isLoThuocDaTonTai(soLo)) {
+                    throw new Exception("Lô '" + soLo + "' đã tồn tại trong hệ thống!");
+                }
+                LoThuoc lo = new LoThuoc();
+                lo.setMaLo(soLo);
+                lo.setThuoc(thuoc);
+                lo.setNgayNhap(LocalDate.now());
+                lo.setHanSuDung(hsd);
+                lo.setSoLuongTon(0);  // SP sẽ cộng khi xác nhận nhập kho
+                lo.setTrangThai("Còn Hạn");
+                lo.setIsDeleted(false);
+                ltDao.insertLoThuoc(lo);
+                loSuDung = lo;
             }
-            LoThuoc lo = new LoThuoc();
-            lo.setMaLo(soLo);
-            lo.setThuoc(thuoc);
-            lo.setNgayNhap(LocalDate.now());
-            lo.setHanSuDung(hsd);
-            lo.setSoLuongTon(soLuongLo);
-            lo.setTrangThai("Còn Hạn");
-            lo.setIsDeleted(false);
-            ltDao.insertLoThuoc(lo);
 
             ChiTietPhieuNhap ctNhap = new ChiTietPhieuNhap();
             ctNhap.setPn(pn);
             ctNhap.setThuoc(thuoc);
-            ctNhap.setLoThuoc(lo);
+            ctNhap.setLoThuoc(loSuDung);
             ctNhap.setHanSuDung(hsd);
             ctNhap.setSoLuong(soLuongLo);
             ctNhap.setDonGia(donGia);
