@@ -2,3 +2,14 @@
 /nbproject/private/
 /dist/
 /bin/
+
+# Compiled class files
+*.class
+
+# IDE
+.idea/
+*.iml
+
+# Other
+nul
+.claude/
