@@ -730,4 +730,53 @@ public class LoThuocDAO {
         return false;
     }
 
+    /**
+     * Tìm lô theo mã thuốc và hạn sử dụng
+     * @return LoThuoc nếu tồn tại, null nếu không
+     */
+    public LoThuoc getLoByMaThuocVaHSD(String maThuoc, LocalDate hanSuDung) {
+        String sql = "SELECT maLo, maThuoc, ngayNhap, hanSuDung, soLuongTon, trangThai, isDeleted " +
+                     "FROM LoThuoc " +
+                     "WHERE maThuoc = ? AND hanSuDung = ? AND isDeleted = 0";
+        try {
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setString(1, maThuoc);
+            ps.setDate(2, Date.valueOf(hanSuDung));
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                Thuoc t = new Thuoc(rs.getString("maThuoc"));
+                return new LoThuoc(
+                    rs.getString("maLo"),
+                    t,
+                    rs.getDate("ngayNhap").toLocalDate(),
+                    rs.getDate("hanSuDung").toLocalDate(),
+                    rs.getInt("soLuongTon"),
+                    rs.getString("trangThai"),
+                    rs.getBoolean("isDeleted")
+                );
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * Cộng thêm số lượng vào lô đã tồn tại
+     */
+    public boolean congSoLuongLo(String maLo, int soLuongThem) {
+        String sql = "UPDATE LoThuoc SET soLuongTon = soLuongTon + ? WHERE maLo = ?";
+        try {
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setInt(1, soLuongThem);
+            ps.setString(2, maLo);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
 }

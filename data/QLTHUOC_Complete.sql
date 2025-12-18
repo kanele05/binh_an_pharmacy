@@ -1503,4 +1503,3 @@ FROM ChiTietPhieuNhap ct
 JOIN Thuoc t ON ct.maThuoc = t.maThuoc
 WHERE ct.donViTinh IS NULL;
 GO
- DELETE FROM PhieuNhap where maPN = 'PN044'
