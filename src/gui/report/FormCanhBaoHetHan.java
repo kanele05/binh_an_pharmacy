@@ -122,7 +122,7 @@ public class FormCanhBaoHetHan extends JPanel {
         panel.putClientProperty(FlatClientProperties.STYLE, "arc:20; background:darken(@background,3%)");
         panel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
-        String[] columns = {"Mã Thuốc", "Tên Thuốc", "Lô SX", "Hạn Sử Dụng", "Còn Lại (Ngày)", "Tồn Kho", "Hành Động Gợi Ý"};
+        String[] columns = {"Mã Thuốc", "Tên Thuốc", "Lô SX", "Hạn Sử Dụng", "Còn Lại (Ngày)", "Tồn Kho", "Hành Động Gợi Ý", "TrangThai"};
         model = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -137,6 +137,11 @@ public class FormCanhBaoHetHan extends JPanel {
         sorter = new TableRowSorter<>(model);
         table.setRowSorter(sorter);
 
+        // Ẩn cột TrangThai (cột 7)
+        table.getColumnModel().getColumn(7).setMinWidth(0);
+        table.getColumnModel().getColumn(7).setMaxWidth(0);
+        table.getColumnModel().getColumn(7).setPreferredWidth(0);
+
         table.getColumnModel().getColumn(0).setPreferredWidth(80);
         table.getColumnModel().getColumn(1).setPreferredWidth(200);
         table.getColumnModel().getColumn(2).setPreferredWidth(80);
@@ -145,9 +150,15 @@ public class FormCanhBaoHetHan extends JPanel {
         table.getColumnModel().getColumn(5).setPreferredWidth(80);
         table.getColumnModel().getColumn(6).setPreferredWidth(150);
 
+        // Renderer cho cột Tên Thuốc để hiển thị "(Ngừng KD)"
+        NgungKDRenderer ngungKDRenderer = new NgungKDRenderer();
+        table.getColumnModel().getColumn(0).setCellRenderer(ngungKDRenderer); // Mã Thuốc
+        table.getColumnModel().getColumn(1).setCellRenderer(new TenThuocRenderer());
+        table.getColumnModel().getColumn(2).setCellRenderer(ngungKDRenderer); // Lô SX
         table.getColumnModel().getColumn(3).setCellRenderer(new ExpiryHighlightRenderer());
         table.getColumnModel().getColumn(4).setCellRenderer(new ExpiryHighlightRenderer());
         table.getColumnModel().getColumn(5).setCellRenderer(new RightAlignRenderer());
+        table.getColumnModel().getColumn(6).setCellRenderer(ngungKDRenderer); // Hành Động Gợi Ý
 
         panel.add(new JScrollPane(table));
         return panel;
@@ -166,10 +177,14 @@ public class FormCanhBaoHetHan extends JPanel {
         JLabel note3 = new JLabel("■ Vàng: Còn 3 - 6 tháng");
         note3.setForeground(new Color(245, 127, 23));
 
-        panel.add(new JLabel("Chú thích màu sắc:"));
+        JLabel noteNgungKD = new JLabel("■ Nền hồng + (Ngừng KD): Thuốc ngừng kinh doanh");
+        noteNgungKD.setForeground(new Color(211, 47, 47));
+
+        panel.add(new JLabel("Chú thích:"));
         panel.add(note1, "gapleft 10");
         panel.add(note2, "gapleft 10");
         panel.add(note3, "gapleft 10");
+        panel.add(noteNgungKD, "gapleft 10");
 
         return panel;
     }
@@ -207,7 +222,8 @@ public class FormCanhBaoHetHan extends JPanel {
                 thuoc.getHanSuDung().format(df),
                 thuoc.getSoNgayConLai(),
                 thuoc.getSoLuongTon(),
-                suggestion
+                suggestion,
+                thuoc.isTrangThaiThuoc() // cột ẩn - trạng thái thuốc
             });
         }
 
@@ -280,7 +296,47 @@ public class FormCanhBaoHetHan extends JPanel {
         }
     }
 
+    private class TenThuocRenderer extends DefaultTableCellRenderer {
+
+        private final Color NGUNG_KD_BG = new Color(255, 235, 238); // Nền hồng nhạt
+        private final Color NGUNG_KD_FG = new Color(211, 47, 47);   // Chữ đỏ
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            Component com = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+            try {
+                int modelRow = table.convertRowIndexToModel(row);
+                Object trangThaiObj = model.getValueAt(modelRow, 7); // Cột ẩn TrangThai
+                boolean trangThaiThuoc = trangThaiObj != null && (Boolean) trangThaiObj;
+
+                if (!trangThaiThuoc) {
+                    // Thuốc ngừng kinh doanh
+                    String tenThuoc = value != null ? value.toString() : "";
+                    setText(tenThuoc + " (Ngừng KD)");
+                    if (!isSelected) {
+                        setBackground(NGUNG_KD_BG);
+                        setForeground(NGUNG_KD_FG);
+                    }
+                    setFont(getFont().deriveFont(java.awt.Font.BOLD));
+                } else {
+                    if (!isSelected) {
+                        setBackground(table.getBackground());
+                        setForeground(table.getForeground());
+                    }
+                    setFont(table.getFont());
+                }
+            } catch (Exception e) {
+                // Ignore errors
+            }
+
+            return com;
+        }
+    }
+
     private class ExpiryHighlightRenderer extends DefaultTableCellRenderer {
+
+        private final Color NGUNG_KD_BG = new Color(255, 235, 238); // Nền hồng nhạt
 
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
@@ -289,6 +345,17 @@ public class FormCanhBaoHetHan extends JPanel {
             try {
                 int modelRow = table.convertRowIndexToModel(row);
                 long days = Long.parseLong(model.getValueAt(modelRow, 4).toString());
+
+                // Kiểm tra trạng thái thuốc
+                Object trangThaiObj = model.getValueAt(modelRow, 7);
+                boolean trangThaiThuoc = trangThaiObj != null && (Boolean) trangThaiObj;
+
+                if (!trangThaiThuoc && !isSelected) {
+                    // Thuốc ngừng kinh doanh - nền hồng
+                    setBackground(NGUNG_KD_BG);
+                } else if (!isSelected) {
+                    setBackground(table.getBackground());
+                }
 
                 if (days < 0) {
                     com.setForeground(new Color(211, 47, 47));
@@ -318,12 +385,57 @@ public class FormCanhBaoHetHan extends JPanel {
         }
     }
 
+    private class NgungKDRenderer extends DefaultTableCellRenderer {
+
+        private final Color NGUNG_KD_BG = new Color(255, 235, 238); // Nền hồng nhạt
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            Component com = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+            try {
+                int modelRow = table.convertRowIndexToModel(row);
+                Object trangThaiObj = model.getValueAt(modelRow, 7); // Cột ẩn TrangThai
+                boolean trangThaiThuoc = trangThaiObj != null && (Boolean) trangThaiObj;
+
+                if (!trangThaiThuoc && !isSelected) {
+                    // Thuốc ngừng kinh doanh - nền hồng
+                    setBackground(NGUNG_KD_BG);
+                } else if (!isSelected) {
+                    setBackground(table.getBackground());
+                }
+            } catch (Exception e) {
+                // Ignore errors
+            }
+
+            return com;
+        }
+    }
+
     private class RightAlignRenderer extends DefaultTableCellRenderer {
+
+        private final Color NGUNG_KD_BG = new Color(255, 235, 238); // Nền hồng nhạt
 
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             setHorizontalAlignment(JLabel.RIGHT);
+
+            try {
+                int modelRow = table.convertRowIndexToModel(row);
+                Object trangThaiObj = model.getValueAt(modelRow, 7); // Cột ẩn TrangThai
+                boolean trangThaiThuoc = trangThaiObj != null && (Boolean) trangThaiObj;
+
+                if (!trangThaiThuoc && !isSelected) {
+                    // Thuốc ngừng kinh doanh - nền hồng
+                    setBackground(NGUNG_KD_BG);
+                } else if (!isSelected) {
+                    setBackground(table.getBackground());
+                }
+            } catch (Exception e) {
+                // Ignore errors
+            }
+
             return this;
         }
     }

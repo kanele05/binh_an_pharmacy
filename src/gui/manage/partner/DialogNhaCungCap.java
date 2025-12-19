@@ -15,7 +15,7 @@ public class DialogNhaCungCap extends JDialog {
     private boolean isSave = false;
     private final boolean isEdit;
     private NhaCungCap nhaCungCap;
-    private NhaCungCapDAO nhaCungCapDAO;
+    private NhaCungCapDAO nhaCungCapDAO = new NhaCungCapDAO();
 
     private JTextField txtMaNCC, txtTenNCC, txtSDT, txtEmail;
     private JTextArea txtDiaChi;
