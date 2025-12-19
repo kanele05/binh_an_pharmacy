@@ -50,13 +50,15 @@ public class FormQuanLyLoThuoc extends javax.swing.JPanel {
     }
 
     private void init() {
-        setLayout(new MigLayout("wrap,fill,insets 20", "[fill]", "[][][grow]"));
+        setLayout(new MigLayout("wrap,fill,insets 20", "[fill]", "[][][grow][]"));
 
         add(createHeaderPanel(), "wrap 20");
 
         add(createToolBarPanel(), "wrap 10");
 
         add(createTablePanel(), "grow");
+
+        add(createFooterPanel(), "growx");
 
         loadData();
     }
@@ -164,7 +166,13 @@ public class FormQuanLyLoThuoc extends javax.swing.JPanel {
         table.getTableHeader().putClientProperty(FlatClientProperties.STYLE, "height:35; font:bold");
 
         ExpiryDateRenderer dateRenderer = new ExpiryDateRenderer();
+        TenThuocRenderer tenThuocRenderer = new TenThuocRenderer();
+        NgungKDRenderer ngungKDRenderer = new NgungKDRenderer();
+        table.getColumnModel().getColumn(0).setCellRenderer(ngungKDRenderer); // Mã Lô
+        table.getColumnModel().getColumn(1).setCellRenderer(tenThuocRenderer); // Tên Thuốc
+        table.getColumnModel().getColumn(2).setCellRenderer(ngungKDRenderer); // Ngày Nhập
         table.getColumnModel().getColumn(3).setCellRenderer(dateRenderer);
+        table.getColumnModel().getColumn(4).setCellRenderer(ngungKDRenderer); // Tồn Kho
         table.getColumnModel().getColumn(5).setCellRenderer(dateRenderer);
 
         JScrollPane scroll = new JScrollPane(table);
@@ -174,7 +182,97 @@ public class FormQuanLyLoThuoc extends javax.swing.JPanel {
         return panel;
     }
 
+    private JPanel createFooterPanel() {
+        JPanel panel = new JPanel(new MigLayout("insets 5"));
+        panel.setOpaque(false);
+
+        JLabel note1 = new JLabel("■ Đỏ đậm: Đã hết hạn");
+        note1.setForeground(new Color(211, 47, 47));
+
+        JLabel note2 = new JLabel("■ Cam: Sắp hết hạn (< 30 ngày)");
+        note2.setForeground(new Color(230, 81, 0));
+
+        JLabel note3 = new JLabel("■ Xanh lá: Còn hạn");
+        note3.setForeground(new Color(56, 142, 60));
+
+        JLabel noteNgungKD = new JLabel("■ Nền hồng + (Ngừng KD): Thuốc ngừng kinh doanh");
+        noteNgungKD.setForeground(new Color(211, 47, 47));
+
+        panel.add(new JLabel("Chú thích:"));
+        panel.add(note1, "gapleft 10");
+        panel.add(note2, "gapleft 10");
+        panel.add(note3, "gapleft 10");
+        panel.add(noteNgungKD, "gapleft 10");
+
+        return panel;
+    }
+
+    private class TenThuocRenderer extends DefaultTableCellRenderer {
+
+        private final Color NGUNG_KD_BG = new Color(255, 235, 238); // Nền hồng nhạt
+        private final Color NGUNG_KD_FG = new Color(211, 47, 47);   // Chữ đỏ
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            Component com = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+            try {
+                LoThuoc lo = comboFiltered.get(row);
+                boolean trangThaiThuoc = lo.getThuoc().isTrangThai();
+
+                if (!trangThaiThuoc) {
+                    // Thuốc ngừng kinh doanh
+                    String tenThuoc = value != null ? value.toString() : "";
+                    setText(tenThuoc + " (Ngừng KD)");
+                    if (!isSelected) {
+                        setBackground(NGUNG_KD_BG);
+                        setForeground(NGUNG_KD_FG);
+                    }
+                    setFont(getFont().deriveFont(java.awt.Font.BOLD));
+                } else {
+                    if (!isSelected) {
+                        setBackground(table.getBackground());
+                        setForeground(table.getForeground());
+                    }
+                    setFont(table.getFont());
+                }
+            } catch (Exception e) {
+                // Ignore errors
+            }
+
+            return com;
+        }
+    }
+
+    private class NgungKDRenderer extends DefaultTableCellRenderer {
+
+        private final Color NGUNG_KD_BG = new Color(255, 235, 238); // Nền hồng nhạt
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            Component com = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+            try {
+                LoThuoc lo = comboFiltered.get(row);
+                boolean trangThaiThuoc = lo.getThuoc().isTrangThai();
+
+                if (!trangThaiThuoc && !isSelected) {
+                    // Thuốc ngừng kinh doanh - nền hồng
+                    setBackground(NGUNG_KD_BG);
+                } else if (!isSelected) {
+                    setBackground(table.getBackground());
+                }
+            } catch (Exception e) {
+                // Ignore errors
+            }
+
+            return com;
+        }
+    }
+
     private class ExpiryDateRenderer extends DefaultTableCellRenderer {
+
+        private final Color NGUNG_KD_BG = new Color(255, 235, 238); // Nền hồng nhạt
 
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
@@ -183,6 +281,17 @@ public class FormQuanLyLoThuoc extends javax.swing.JPanel {
             String hsdStr = table.getValueAt(row, 3).toString();
 
             try {
+                // Kiểm tra trạng thái thuốc
+                LoThuoc lo = comboFiltered.get(row);
+                boolean trangThaiThuoc = lo.getThuoc().isTrangThai();
+
+                if (!trangThaiThuoc && !isSelected) {
+                    // Thuốc ngừng kinh doanh - nền hồng
+                    setBackground(NGUNG_KD_BG);
+                } else if (!isSelected) {
+                    setBackground(table.getBackground());
+                }
+
                 LocalDate hsd = LocalDate.parse(hsdStr, dateFormatter);
                 LocalDate homNay = LocalDate.now();
 

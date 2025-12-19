@@ -150,7 +150,7 @@ public class ChiTietBangGiaDAO {
                 + "FROM ChiTietBangGia ct "
                 + "JOIN Thuoc t ON ct.maThuoc = t.maThuoc "
                 + "LEFT JOIN NhomThuoc nt ON t.maNhom = nt.maNhom "
-                + "WHERE ct.maBG = ?";
+                + "WHERE ct.maBG = ? AND t.trangThai = 1";
         try {
             Connection con = ConnectDB.getConnection();
             PreparedStatement stmt = con.prepareStatement(sql);

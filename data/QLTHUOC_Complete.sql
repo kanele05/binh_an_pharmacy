@@ -373,6 +373,7 @@ WHERE l.isDeleted = 0
   AND l.soLuongTon > 0
   AND l.hanSuDung >= CAST(GETDATE() AS DATE)
   AND (bg.trangThai = 1 OR bg.trangThai IS NULL)
+  AND t.trangThai = 1  -- Chỉ lấy thuốc đang kinh doanh
 GO
 
 -- =====================================================

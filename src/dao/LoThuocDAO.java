@@ -31,7 +31,7 @@ public class LoThuocDAO {
             ConnectDB.getInstance();
             Connection con = ConnectDB.getConnection();
 
-            String sql = "SELECT l.maLo, l.maThuoc, t.tenThuoc, l.ngayNhap, l.hanSuDung, l.soLuongTon, l.trangThai, l.isDeleted "
+            String sql = "SELECT l.maLo, l.maThuoc, t.tenThuoc, t.trangThai as trangThaiThuoc, l.ngayNhap, l.hanSuDung, l.soLuongTon, l.trangThai, l.isDeleted "
                     + "FROM LoThuoc l "
                     + "JOIN Thuoc t ON l.maThuoc = t.maThuoc "
                     + "WHERE l.isDeleted = 0 "
@@ -43,9 +43,11 @@ public class LoThuocDAO {
                 String maLo = rs.getString("maLo");
                 String maThuoc = rs.getString("maThuoc");
                 String tenThuoc = rs.getString("tenThuoc");
+                boolean trangThaiThuoc = rs.getBoolean("trangThaiThuoc");
 
                 Thuoc thuoc = new Thuoc(maThuoc);
                 thuoc.setTenThuoc(tenThuoc);
+                thuoc.setTrangThai(trangThaiThuoc);
 
                 LocalDate ngayNhap = rs.getDate("ngayNhap").toLocalDate();
                 LocalDate hanSuDung = rs.getDate("hanSuDung").toLocalDate();
@@ -288,7 +290,8 @@ public class LoThuocDAO {
     public List<dto.ThuocSapHetHan> getThuocSapHetHan(int soNgay) {
         List<dto.ThuocSapHetHan> list = new ArrayList<>();
         String sql = "SELECT l.maLo, l.maThuoc, t.tenThuoc, l.hanSuDung, l.soLuongTon, "
-                + "DATEDIFF(DAY, GETDATE(), l.hanSuDung) as soNgayConLai "
+                + "DATEDIFF(DAY, GETDATE(), l.hanSuDung) as soNgayConLai, "
+                + "t.trangThai as trangThaiThuoc "
                 + "FROM LoThuoc l "
                 + "JOIN Thuoc t ON l.maThuoc = t.maThuoc "
                 + "WHERE l.hanSuDung > GETDATE() "
@@ -309,7 +312,8 @@ public class LoThuocDAO {
                         rs.getString("maLo"),
                         rs.getDate("hanSuDung").toLocalDate(),
                         rs.getInt("soLuongTon"),
-                        rs.getInt("soNgayConLai")
+                        rs.getInt("soNgayConLai"),
+                        rs.getBoolean("trangThaiThuoc")
                 );
                 list.add(thuoc);
             }
@@ -322,7 +326,8 @@ public class LoThuocDAO {
     public List<dto.ThuocSapHetHan> getThuocDaHetHan() {
         List<dto.ThuocSapHetHan> list = new ArrayList<>();
         String sql = "SELECT l.maLo, l.maThuoc, t.tenThuoc, l.hanSuDung, l.soLuongTon, "
-                + "DATEDIFF(DAY, GETDATE(), l.hanSuDung) as soNgayConLai "
+                + "DATEDIFF(DAY, GETDATE(), l.hanSuDung) as soNgayConLai, "
+                + "t.trangThai as trangThaiThuoc "
                 + "FROM LoThuoc l "
                 + "JOIN Thuoc t ON l.maThuoc = t.maThuoc "
                 + "WHERE l.hanSuDung <= GETDATE() "
@@ -340,7 +345,8 @@ public class LoThuocDAO {
                         rs.getString("maLo"),
                         rs.getDate("hanSuDung").toLocalDate(),
                         rs.getInt("soLuongTon"),
-                        rs.getInt("soNgayConLai")
+                        rs.getInt("soNgayConLai"),
+                        rs.getBoolean("trangThaiThuoc")
                 );
                 list.add(thuoc);
             }

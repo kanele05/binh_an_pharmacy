@@ -9,6 +9,7 @@ public class ThuocSapHetHan {
     private LocalDate hanSuDung;
     private int soLuongTon;
     private int soNgayConLai;
+    private boolean trangThaiThuoc; // true = đang kinh doanh, false = ngừng kinh doanh
 
     public ThuocSapHetHan() {
     }
@@ -20,6 +21,17 @@ public class ThuocSapHetHan {
         this.hanSuDung = hanSuDung;
         this.soLuongTon = soLuongTon;
         this.soNgayConLai = soNgayConLai;
+        this.trangThaiThuoc = true; // mặc định đang kinh doanh
+    }
+
+    public ThuocSapHetHan(String maThuoc, String tenThuoc, String maLo, LocalDate hanSuDung, int soLuongTon, int soNgayConLai, boolean trangThaiThuoc) {
+        this.maThuoc = maThuoc;
+        this.tenThuoc = tenThuoc;
+        this.maLo = maLo;
+        this.hanSuDung = hanSuDung;
+        this.soLuongTon = soLuongTon;
+        this.soNgayConLai = soNgayConLai;
+        this.trangThaiThuoc = trangThaiThuoc;
     }
 
     public String getMaThuoc() {
@@ -68,5 +80,13 @@ public class ThuocSapHetHan {
 
     public void setSoNgayConLai(int soNgayConLai) {
         this.soNgayConLai = soNgayConLai;
+    }
+
+    public boolean isTrangThaiThuoc() {
+        return trangThaiThuoc;
+    }
+
+    public void setTrangThaiThuoc(boolean trangThaiThuoc) {
+        this.trangThaiThuoc = trangThaiThuoc;
     }
 }
