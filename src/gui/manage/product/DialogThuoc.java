@@ -1,6 +1,7 @@
 package gui.manage.product;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import dao.DonViQuyDoiDAO;
 import dao.ThuocDAO;
 import dto.ThuocFullInfo;
 import entities.DonViQuyDoi;
@@ -27,6 +28,7 @@ public class DialogThuoc extends JDialog {
 
     private Object[] currentData;
     private ThuocDAO thuocDAO = new ThuocDAO();
+    private DonViQuyDoiDAO dvqdDAO = new DonViQuyDoiDAO();
     private JTable tblDonViQuyDoi;
     private DefaultTableModel modelDVQD;
 
@@ -240,6 +242,16 @@ public class DialogThuoc extends JDialog {
                 spinGiaBan.setValue(parseCurrency(currentData[5].toString()));
             } catch (Exception e) {
                 spinGiaBan.setValue(0.0);
+            }
+        }
+
+        // Load DonViQuyDoi
+        modelDVQD.setRowCount(0);
+        String maThuoc = currentData[0].toString();
+        ArrayList<DonViQuyDoi> listDV = dvqdDAO.getAllDonViByMaThuoc(maThuoc);
+        for (DonViQuyDoi dv : listDV) {
+            if (!dv.isLaDonViCoBan()) {
+                modelDVQD.addRow(new Object[]{dv.getTenDonVi(), dv.getGiaTriQuyDoi(), dv.getGiaBan()});
             }
         }
     }

@@ -161,7 +161,15 @@ public class Menu extends JPanel {
     }
 
     public void setSelectedMenu(int index, int subIndex) {
-        runEvent(index, subIndex);
+        setSelectedMenu(index, subIndex, true);
+    }
+
+    public void setSelectedMenu(int index, int subIndex, boolean triggerEvent) {
+        if (triggerEvent) {
+            runEvent(index, subIndex);
+        } else {
+            setSelected(index, subIndex);
+        }
     }
 
     protected void setSelected(int index, int subIndex) {

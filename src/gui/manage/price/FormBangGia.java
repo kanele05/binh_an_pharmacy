@@ -24,6 +24,7 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import net.miginfocom.swing.MigLayout;
 import raven.toast.Notifications;
+import utils.MenuPermission;
 
 public class FormBangGia extends JPanel {
 
@@ -90,9 +91,13 @@ public class FormBangGia extends JPanel {
 
         panel.add(txtTimKiem, "w 250");
         panel.add(btnTim);
-        panel.add(btnTaoMoi);
+        if (MenuPermission.isAdmin()) {
+            panel.add(btnTaoMoi);
+        }
         panel.add(btnApDung);
-        panel.add(btnSua);
+        if (MenuPermission.isAdmin()) {
+            panel.add(btnSua);
+        }
 
         return panel;
     }

@@ -157,6 +157,10 @@ public class MainForm extends JLayeredPane {
         menu.setSelectedMenu(index, subIndex);
     }
 
+    public void setSelectedMenu(int index, int subIndex, boolean triggerEvent) {
+        menu.setSelectedMenu(index, subIndex, triggerEvent);
+    }
+
     public void refreshMenuByPermission() {
         menu.refreshMenuByPermission();
     }

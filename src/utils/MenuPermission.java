@@ -54,6 +54,16 @@ public class MenuPermission {
 
         // Menu Nhà cung cấp: Ẩn hoàn toàn với nhân viên
         STAFF_HIDDEN_MENUS.put(MENU_NHA_CUNG_CAP, new HashSet<>()); // Rỗng = ẩn cả menu
+
+        // Menu Giao dịch (Đơn hàng): Ẩn Báo cáo doanh thu (subIndex = 5)
+        Set<Integer> donHangHidden = new HashSet<>();
+        donHangHidden.add(5);
+        STAFF_HIDDEN_MENUS.put(MENU_DON_HANG, donHangHidden);
+
+        // Menu Lô thuốc (Tồn kho): Ẩn Báo cáo tồn kho (subIndex = 2)
+        Set<Integer> loThuocHidden = new HashSet<>();
+        loThuocHidden.add(2);
+        STAFF_HIDDEN_MENUS.put(MENU_LO_THUOC, loThuocHidden);
     }
 
     /**

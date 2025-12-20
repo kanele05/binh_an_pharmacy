@@ -29,6 +29,7 @@ import javax.swing.table.DefaultTableModel;
 import net.miginfocom.swing.MigLayout;
 import raven.datetime.component.date.DatePicker;
 import raven.toast.Notifications;
+import utils.MenuPermission;
 
 public class FormQuanLyLoThuoc extends javax.swing.JPanel {
 
@@ -104,8 +105,10 @@ public class FormQuanLyLoThuoc extends javax.swing.JPanel {
         panel.add(new JLabel("Trạng thái:"));
         panel.add(cbTrangThai);
 
-        panel.add(btnSua);
-        panel.add(btnHuyLo);
+        if (MenuPermission.isAdmin()) {
+            panel.add(btnSua);
+            panel.add(btnHuyLo);
+        }
 
         return panel;
     }

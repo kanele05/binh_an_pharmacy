@@ -479,6 +479,12 @@ public class FormDatThuoc extends javax.swing.JPanel {
                 txtTenKH.setEditable(true);
             }
 
+            if (donEdit.getGioHenLay() != null) {
+                datePicker.setSelectedDate(donEdit.getGioHenLay().toLocalDate());
+                Date date = Date.from(donEdit.getGioHenLay().atZone(ZoneId.systemDefault()).toInstant());
+                timeSpinner.setValue(date);
+            }
+
             List<ChiTietDonDat> listCT = ctDAO.getChiTietByMaDon(donEdit.getMaDonDat());
             modelGioHang.setRowCount(0);
 
@@ -1110,9 +1116,21 @@ public class FormDatThuoc extends javax.swing.JPanel {
                 String tenKH = khachHangSelected != null ? khachHangSelected.getTenKH() : txtTenKH.getText().trim();
                 String sdt = txtSDT.getText().trim();
                 LocalDate date = datePicker.getSelectedDate();
+                if (date == null) {
+                    Notifications.getInstance().show(Notifications.Type.WARNING, "Vui lòng chọn ngày hẹn lấy!");
+                    return;
+                }
+
+                if (date.isBefore(LocalDate.now())) {
+                    Notifications.getInstance().show(Notifications.Type.WARNING,
+                        Notifications.Location.TOP_CENTER,
+                        "Ngày hẹn lấy không được trước ngày hiện tại!");
+                    return;
+                }
+
                 Date time = (Date) timeSpinner.getValue();
                 LocalTime localTime = time.toInstant().atZone(ZoneId.systemDefault()).toLocalTime();
-                LocalDateTime henLay = LocalDateTime.of(date != null ? date : LocalDate.now(), localTime);
+                LocalDateTime henLay = LocalDateTime.of(date, localTime);
 
                 // Validate giờ hẹn lấy phải sau thời điểm hiện tại ít nhất 30 phút
                 LocalDateTime thoiGianToiThieu = LocalDateTime.now().plusMinutes(30);

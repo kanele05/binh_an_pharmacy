@@ -100,9 +100,9 @@ public class FormCanhBaoHetHan extends JPanel {
         });
         cbKhoangThoiGian.addActionListener(e -> loadData());
 
-        JButton btnTaoPhieuHuy = new JButton("Tạo phiếu hủy hàng");
+        JButton btnTaoPhieuHuy = new JButton("Tiêu hủy thuốc");
         btnTaoPhieuHuy.putClientProperty(FlatClientProperties.STYLE, "background:#D32F2F; foreground:#fff; font:bold");
-        btnTaoPhieuHuy.addActionListener(e -> actionTaoPhieuHuy());
+        btnTaoPhieuHuy.addActionListener(e -> actionTieuHuyThuoc());
 
         JButton btnRefresh = new JButton("Làm mới");
         btnRefresh.addActionListener(e -> loadData());
@@ -264,34 +264,44 @@ public class FormCanhBaoHetHan extends JPanel {
         }
     }
 
-    private void actionTaoPhieuHuy() {
+    private void actionTieuHuyThuoc() {
         int[] rows = table.getSelectedRows();
         if (rows.length == 0) {
-            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Chọn các lô thuốc cần hủy!");
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Vui lòng chọn các lô thuốc cần tiêu hủy!");
             return;
         }
 
-        StringBuilder sb = new StringBuilder("Các lô sẽ bị hủy:\n");
+        StringBuilder sb = new StringBuilder("Danh sách lô thuốc sẽ bị tiêu hủy:\n");
         for (int row : rows) {
             int modelRow = table.convertRowIndexToModel(row);
-            sb.append("- ").append(model.getValueAt(modelRow, 2)).append(" (").append(model.getValueAt(modelRow, 1)).append(")\n");
+            sb.append("- Mã lô: ").append(model.getValueAt(modelRow, 2))
+              .append(" (").append(model.getValueAt(modelRow, 1)).append(")\n");
         }
 
         int confirm = JOptionPane.showConfirmDialog(this,
-                sb.toString() + "\nTạo phiếu xuất hủy cho " + rows.length + " lô thuốc đã chọn?\nHành động này sẽ trừ tồn kho về 0.",
-                "Xác nhận hủy hàng", JOptionPane.YES_NO_OPTION);
+                sb.toString() + "\nBạn có chắc chắn muốn tiêu hủy " + rows.length + " lô thuốc này?\nHành động này sẽ xóa lô khỏi kho và không thể hoàn tác.",
+                "Xác nhận tiêu hủy", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
         if (confirm == JOptionPane.YES_OPTION) {
+            boolean hasError = false;
             for (int i = rows.length - 1; i >= 0; i--) {
                 int modelRow = table.convertRowIndexToModel(rows[i]);
                 String maLo = model.getValueAt(modelRow, 2).toString();
                 try {
-                    loThuocDAO.delete(maLo);
+                    if (!loThuocDAO.delete(maLo)) {
+                        hasError = true;
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
+                    hasError = true;
                 }
             }
-            Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Đã tạo phiếu hủy thành công!");
+            
+            if (!hasError) {
+                Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Đã tiêu hủy các lô thuốc thành công!");
+            } else {
+                Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Đã tiêu hủy nhưng có một số lô gặp lỗi!");
+            }
             loadData();
         }
     }

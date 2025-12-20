@@ -282,6 +282,160 @@ public Thuoc getThuocById(String maThuoc) {
         }
         return false;
     }
+    public boolean updateThuoc(ThuocFullInfo t, ArrayList<DonViQuyDoi> listDVQD) {
+        Connection con = null;
+        PreparedStatement stmtThuoc = null;
+        PreparedStatement stmtGia = null;
+        PreparedStatement stmtDVQD = null;
+
+        try {
+            con = ConnectDB.getConnection();
+            con.setAutoCommit(false);
+
+            // 1. Update Thuoc
+            String sqlThuoc = "UPDATE Thuoc SET tenThuoc = ?, hoatChat = ?, donViCoBan = ?, maNhom = ? WHERE maThuoc = ?";
+            stmtThuoc = con.prepareStatement(sqlThuoc);
+            stmtThuoc.setString(1, t.getTenThuoc());
+            stmtThuoc.setString(2, t.getHoatChat());
+            stmtThuoc.setString(3, t.getDonViCoBan());
+            String maNhom = getMaNhomByTen(con, t.getTenNhom());
+            stmtThuoc.setString(4, maNhom);
+            stmtThuoc.setString(5, t.getMaThuoc());
+            stmtThuoc.executeUpdate();
+
+            // 2. Get Active Price List
+            String maBG = "BG001";
+            Statement st = con.createStatement();
+            ResultSet rs = st.executeQuery("SELECT TOP 1 maBG FROM BangGia WHERE trangThai = 1");
+            if (rs.next()) {
+                maBG = rs.getString("maBG");
+            }
+
+            // 3. Update Basic Unit Price (ChiTietBangGia & DonViQuyDoi)
+            // Note: We try to update. If not exist (unlikely for basic unit), we insert.
+            
+            // Update ChiTietBangGia for Basic Unit
+            String sqlCheckGia = "SELECT COUNT(*) FROM ChiTietBangGia WHERE maBG = ? AND maThuoc = ? AND donViTinh = ?";
+            PreparedStatement stmtCheckGia = con.prepareStatement(sqlCheckGia);
+            stmtCheckGia.setString(1, maBG);
+            stmtCheckGia.setString(2, t.getMaThuoc());
+            stmtCheckGia.setString(3, t.getDonViCoBan());
+            ResultSet rsCheck = stmtCheckGia.executeQuery();
+            boolean existGia = false;
+            if (rsCheck.next() && rsCheck.getInt(1) > 0) existGia = true;
+            
+            if (existGia) {
+                String sqlUpdateGia = "UPDATE ChiTietBangGia SET giaBan = ? WHERE maBG = ? AND maThuoc = ? AND donViTinh = ?";
+                stmtGia = con.prepareStatement(sqlUpdateGia);
+                stmtGia.setDouble(1, t.getGiaBan());
+                stmtGia.setString(2, maBG);
+                stmtGia.setString(3, t.getMaThuoc());
+                stmtGia.setString(4, t.getDonViCoBan());
+                stmtGia.executeUpdate();
+            } else {
+                 String sqlInsertGia = "INSERT INTO ChiTietBangGia (maBG, maThuoc, donViTinh, giaBan) VALUES (?, ?, ?, ?)";
+                stmtGia = con.prepareStatement(sqlInsertGia);
+                stmtGia.setString(1, maBG);
+                stmtGia.setString(2, t.getMaThuoc());
+                stmtGia.setString(3, t.getDonViCoBan());
+                stmtGia.setDouble(4, t.getGiaBan());
+                stmtGia.executeUpdate();
+            }
+            
+            // Update DonViQuyDoi for Basic Unit (laDonViCoBan = 1)
+            // We need to update tenDonVi as well because it might have changed in Thuoc table
+            // However, identifying the correct record to update is hard if tenDonVi changed.
+            // But we know maThuoc and laDonViCoBan=1.
+            String sqlUpdateDVQD_Basic = "UPDATE DonViQuyDoi SET tenDonVi = ?, giaBan = ? WHERE maThuoc = ? AND laDonViCoBan = 1";
+            stmtDVQD = con.prepareStatement(sqlUpdateDVQD_Basic);
+            stmtDVQD.setString(1, t.getDonViCoBan());
+            stmtDVQD.setDouble(2, t.getGiaBan());
+            stmtDVQD.setString(3, t.getMaThuoc());
+            stmtDVQD.executeUpdate();
+
+            // 4. Delete old extra conversion units (laDonViCoBan = 0)
+            String sqlDeleteDVQD = "DELETE FROM DonViQuyDoi WHERE maThuoc = ? AND laDonViCoBan = 0";
+            stmtDVQD = con.prepareStatement(sqlDeleteDVQD);
+            stmtDVQD.setString(1, t.getMaThuoc());
+            stmtDVQD.executeUpdate();
+
+            // Also delete their prices in ChiTietBangGia? 
+            // It's safer to delete old prices for this drug (except basic unit) or just upsert.
+            // Deleting prices based on unit name might be tricky if unit name changed.
+            // Let's assume we just insert/update based on new unit names. 
+            // Existing 'orphaned' prices in ChiTietBangGia shouldn't hurt much, but cleaning up is better.
+            // For simplicity, we won't delete from ChiTietBangGia to avoid FK issues if referenced elsewhere (though ChiTietBangGia is usually just a lookup).
+
+            // 5. Insert new extra conversion units
+            String sqlInsertDVQD = "INSERT INTO DonViQuyDoi (maThuoc, tenDonVi, giaTriQuyDoi, giaBan, laDonViCoBan) VALUES (?, ?, ?, ?, ?)";
+            stmtDVQD = con.prepareStatement(sqlInsertDVQD);
+            
+            // Prepare statement for price insertion/update
+            // Since we deleted old DVQDs, we treat these as new inserts for DVQD table.
+            // For Price table, we check if exists.
+            
+            if (listDVQD != null && !listDVQD.isEmpty()) {
+                for (DonViQuyDoi dv : listDVQD) {
+                    // Insert DVQD
+                    stmtDVQD.setString(1, t.getMaThuoc());
+                    stmtDVQD.setString(2, dv.getTenDonVi());
+                    stmtDVQD.setInt(3, dv.getGiaTriQuyDoi());
+                    stmtDVQD.setDouble(4, dv.getGiaBan());
+                    stmtDVQD.setBoolean(5, false);
+                    stmtDVQD.executeUpdate();
+
+                    // Upsert Price
+                    stmtCheckGia.setString(1, maBG);
+                    stmtCheckGia.setString(2, t.getMaThuoc());
+                    stmtCheckGia.setString(3, dv.getTenDonVi());
+                    ResultSet rsCheck2 = stmtCheckGia.executeQuery();
+                    
+                    if (rsCheck2.next() && rsCheck2.getInt(1) > 0) {
+                         // Update price
+                        String sqlUpdateGia2 = "UPDATE ChiTietBangGia SET giaBan = ? WHERE maBG = ? AND maThuoc = ? AND donViTinh = ?";
+                        stmtGia = con.prepareStatement(sqlUpdateGia2);
+                        stmtGia.setDouble(1, dv.getGiaBan());
+                        stmtGia.setString(2, maBG);
+                        stmtGia.setString(3, t.getMaThuoc());
+                        stmtGia.setString(4, dv.getTenDonVi());
+                        stmtGia.executeUpdate();
+                    } else {
+                        // Insert price
+                        String sqlInsertGia2 = "INSERT INTO ChiTietBangGia (maBG, maThuoc, donViTinh, giaBan) VALUES (?, ?, ?, ?)";
+                        stmtGia = con.prepareStatement(sqlInsertGia2);
+                        stmtGia.setString(1, maBG);
+                        stmtGia.setString(2, t.getMaThuoc());
+                        stmtGia.setString(3, dv.getTenDonVi());
+                        stmtGia.setDouble(4, dv.getGiaBan());
+                        stmtGia.executeUpdate();
+                    }
+                }
+            }
+
+            con.commit();
+            return true;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                if (con != null) {
+                    con.rollback();
+                }
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+        } finally {
+            try {
+                if (con != null) {
+                    con.setAutoCommit(true);
+                    con.close();
+                }
+            } catch (Exception ex) {
+            }
+        }
+        return false;
+    }
+
     public boolean insertThuoc(Thuoc t) {
         String sql =
             "INSERT INTO Thuoc" +

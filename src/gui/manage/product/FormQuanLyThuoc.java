@@ -36,6 +36,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import raven.toast.Notifications;
+import utils.MenuPermission;
 
 public class FormQuanLyThuoc extends javax.swing.JPanel {
 
@@ -130,10 +131,12 @@ public class FormQuanLyThuoc extends javax.swing.JPanel {
         panel.add(new JLabel("Lọc:"));
         panel.add(cbNhomThuoc);
 
-        panel.add(btnThem);
-        panel.add(btnSua);
-        panel.add(btnXoa);
-        panel.add(btnKhoiPhuc);
+        if (MenuPermission.isAdmin()) {
+            panel.add(btnThem);
+            panel.add(btnSua);
+            panel.add(btnXoa);
+            panel.add(btnKhoiPhuc);
+        }
         panel.add(btnXuatExcel);
 
         return panel;
@@ -357,8 +360,26 @@ public class FormQuanLyThuoc extends javax.swing.JPanel {
             DialogThuoc dialog = new DialogThuoc(this, data);
             dialog.setVisible(true);
             if (dialog.isSave()) {
-                loadData();
-                Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Cập nhật thành công!");
+                // Get updated data
+                Object[] newData = dialog.getData();
+                ArrayList<DonViQuyDoi> listDVQD = dialog.getListDonViQuyDoi();
+
+                ThuocFullInfo t = new ThuocFullInfo();
+                t.setMaThuoc(newData[0].toString());
+                t.setTenThuoc(newData[1].toString());
+                t.setTenNhom(newData[2].toString());
+                t.setHoatChat(newData[3].toString());
+                t.setDonViCoBan(newData[4].toString());
+                
+                String giaStr = newData[6].toString().replace(".", "").replace(",", "").replace("₫", "").trim();
+                t.setGiaBan(Double.parseDouble(giaStr));
+
+                if (thuocDAO.updateThuoc(t, listDVQD)) {
+                    loadData();
+                    Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Cập nhật thành công!");
+                } else {
+                    Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Cập nhật thất bại!");
+                }
             }
         }
     }
