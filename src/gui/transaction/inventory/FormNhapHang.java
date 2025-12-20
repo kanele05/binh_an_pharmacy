@@ -182,21 +182,25 @@ public class FormNhapHang extends javax.swing.JPanel {
                 new java.io.OutputStreamWriter(new java.io.FileOutputStream(file),
                         java.nio.charset.StandardCharsets.UTF_8))) {
 
-            writer.write("\ufeff");
+            writer.write("\ufeff"); // BOM for UTF-8
 
+            // Header matching table structure (except 'Thành tiền' which is calculated)
             writer.write(
-                    "Mã thuốc,Tên thuốc,Đơn vị tính,Hoạt chất,Nhóm thuốc,Đơn giá,Lô 1,Hạn sử dụng 1, Số lượng 1,Lô 2, Hạn sử dụng 2");
+                    "Mã thuốc,Tên thuốc,Đơn vị tính,Hoạt chất,Nhóm thuốc,Đơn giá,Số lượng,Số lô,Hạn sử dụng");
             writer.newLine();
 
+            // Sample row 1
             writer.write(
-                    "T001,Paracetamol 500mg,Viên,Paracetamol,Giảm đau hạ sốt,1500,L001,2026-12-31,100,LO002,2027-06-30");
+                    "T001,Paracetamol 500mg,Hộp,Paracetamol,Giảm đau hạ sốt,50000,100,L001,31/12/2026");
             writer.newLine();
 
+            // Sample row 2
             writer.write(
-                    "T002,Amoxicillin 500mg,Viên,Amoxicillin,Kháng sinh,2500,L010,2026-08-15,200,LO011,2027-02-20");
+                    "T002,Amoxicillin 500mg,Vỉ,Amoxicillin,Kháng sinh,25000,200,L010,15/08/2026");
             writer.newLine();
 
-            writer.write("T003,Vitamin C 500mg,Viên,Acid Ascorbic,Vitamin,1200,L021,2027-01-10,300,LO022,2027-09-05");
+            // Sample row 3
+            writer.write("T003,Vitamin C 500mg,Chai,Acid Ascorbic,Vitamin,120000,50,L021,10/01/2027");
             writer.newLine();
 
             Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER,
@@ -221,15 +225,15 @@ public class FormNhapHang extends javax.swing.JPanel {
 
         String[] columns = {
                 "Mã thuốc", "Tên thuốc", "Đơn vị tính", "Hoạt chất", "Nhóm thuốc",
-                "Đơn giá", "Số lượng tổng", "Số lô",
-                "Số lượng lô", "Hạn sử dụng", "Thành tiền"
+                "Đơn giá", "Số lượng", "Số lô",
+                "Hạn sử dụng", "Thành tiền"
         };
 
         model = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                // Cho phép sửa: Hạn SD (3), Số lượng (4), Giá nhập (5)
-                return column == 3 || column == 4 || column == 5;
+                // Cho phép sửa: Đơn giá (5), Số lượng (6), Hạn SD (8)
+                return column == 5 || column == 6 || column == 8;
             }
         };
 
@@ -242,14 +246,17 @@ public class FormNhapHang extends javax.swing.JPanel {
         table.getColumnModel().getColumn(0).setPreferredWidth(80); // Mã thuốc
         table.getColumnModel().getColumn(1).setPreferredWidth(200); // Tên thuốc
         table.getColumnModel().getColumn(2).setPreferredWidth(60); // ĐVT
-        table.getColumnModel().getColumn(3).setPreferredWidth(100); // Hạn SD
-        table.getColumnModel().getColumn(4).setPreferredWidth(80); // Số lượng
-        table.getColumnModel().getColumn(5).setPreferredWidth(100); // Giá nhập
-        table.getColumnModel().getColumn(6).setPreferredWidth(120); // Thành tiền
+        table.getColumnModel().getColumn(3).setPreferredWidth(100); // Hoạt chất
+        table.getColumnModel().getColumn(4).setPreferredWidth(100); // Nhóm thuốc
+        table.getColumnModel().getColumn(5).setPreferredWidth(100); // Đơn giá
+        table.getColumnModel().getColumn(6).setPreferredWidth(80); // Số lượng
+        table.getColumnModel().getColumn(7).setPreferredWidth(80); // Số lô
+        table.getColumnModel().getColumn(8).setPreferredWidth(100); // Hạn SD
+        table.getColumnModel().getColumn(9).setPreferredWidth(120); // Thành tiền
 
-        table.getColumnModel().getColumn(4).setCellRenderer(new RightAlignRenderer());
         table.getColumnModel().getColumn(5).setCellRenderer(new RightAlignRenderer());
         table.getColumnModel().getColumn(6).setCellRenderer(new RightAlignRenderer());
+        table.getColumnModel().getColumn(9).setCellRenderer(new RightAlignRenderer());
 
         model.addTableModelListener(e -> {
             if (!isUpdating) {
@@ -378,7 +385,7 @@ public class FormNhapHang extends javax.swing.JPanel {
             String hsdStr = hanSuDung.format(dateFormat);
             for (int i = 0; i < model.getRowCount(); i++) {
                 String maThuocTrongBang = getCell(i, 0);
-                String hsdTrongBang = getCell(i, 9);  // Cột HSD
+                String hsdTrongBang = getCell(i, 8);  // Cột HSD là 8
 
                 if (maThuocTrongBang.equals(thuoc.getMaThuoc()) && hsdTrongBang.equals(hsdStr)) {
                     existingRow = i;
@@ -389,15 +396,14 @@ public class FormNhapHang extends javax.swing.JPanel {
             // === BƯỚC 4: Cộng dồn hoặc thêm mới ===
             if (existingRow >= 0) {
                 // Cộng dồn số lượng (đã là đơn vị cơ bản)
-                int slLoCu = parseIntFromCell(getCell(existingRow, 8));
-                int slLoMoi = slLoCu + soLuongCoBan;
+                int slCu = parseIntFromCell(getCell(existingRow, 6));
+                int slMoi = slCu + soLuongCoBan;
 
                 double donGiaCu = parseMoney(getCell(existingRow, 5));
-                model.setValueAt(slLoMoi, existingRow, 8);
-                model.setValueAt(slLoMoi, existingRow, 6);
+                model.setValueAt(slMoi, existingRow, 6);
 
-                double thanhTienMoi = slLoMoi * donGiaCu;
-                model.setValueAt(formatMoney(thanhTienMoi), existingRow, 10);
+                double thanhTienMoi = slMoi * donGiaCu;
+                model.setValueAt(formatMoney(thanhTienMoi), existingRow, 9);
 
                 Notifications.getInstance().show(Notifications.Type.INFO, Notifications.Location.TOP_CENTER,
                         "Đã cộng dồn " + soLuongCoBan + " " + donViCoBan + " vào lô cùng HSD");
@@ -413,11 +419,10 @@ public class FormNhapHang extends javax.swing.JPanel {
                         thuoc.getHoatChat(),
                         thuoc.getTenNhom(),
                         formatMoney(donGiaCoBan), // Giá đơn vị cơ bản
-                        soLuongCoBan,
-                        maLoMoi,
-                        soLuongCoBan,
-                        hsdStr,
-                        formatMoney(thanhTien)
+                        soLuongCoBan,             // Số lượng
+                        maLoMoi,                  // Số lô
+                        hsdStr,                   // Hạn sử dụng
+                        formatMoney(thanhTien)    // Thành tiền
                 });
 
                 Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER,
@@ -470,71 +475,20 @@ public class FormNhapHang extends javax.swing.JPanel {
     }
     private void importExcel() {
         JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Chọn file Excel");
+        fileChooser.setDialogTitle("Chọn file Excel/CSV");
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Excel/CSV Files", "xlsx", "xls", "csv"));
 
         if (fileChooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION)
             return;
         File file = fileChooser.getSelectedFile();
 
-        try (FileInputStream fis = new FileInputStream(file);
-                Workbook workbook = file.getName().toLowerCase().endsWith(".xlsx")
-                        ? new XSSFWorkbook(fis)
-                        : new HSSFWorkbook(fis)) {
-
-            Sheet sheet = workbook.getSheetAt(0);
+        try {
             model.setRowCount(0);
-            final int LOT_START_COL = 7;
 
-            for (int r = 1; r <= sheet.getLastRowNum(); r++) {
-                Row row = sheet.getRow(r);
-                if (row == null)
-                    continue;
-
-                String ma = getCellString(row.getCell(0));
-                String ten = getCellString(row.getCell(1));
-                String dvt = getCellString(row.getCell(2));
-                String hoatChat = getCellString(row.getCell(3));
-                String nhomThuoc = getCellString(row.getCell(4));
-
-                Double donGia = getCellNumber(row.getCell(5));
-                Double tongSL = getCellNumber(row.getCell(6));
-
-                int lastCellNum = row.getLastCellNum();
-
-                for (int c = LOT_START_COL; c + 2 < lastCellNum; c += 3) {
-                    String soLo = getCellString(row.getCell(c));
-                    Date hsdDate = getCellDate(row.getCell(c + 1));
-                    Double slLo = getCellNumber(row.getCell(c + 2));
-
-                    boolean allEmpty = (soLo == null || soLo.trim().isEmpty()) &&
-                            hsdDate == null &&
-                            (slLo == null || slLo <= 0);
-                    if (allEmpty)
-                        continue;
-
-                    double thanhTien = (donGia != null ? donGia : 0)
-                            * (slLo != null ? slLo : 0);
-
-                    String hsdFormatted = hsdDate == null ? ""
-                            : DateTimeFormatter.ofPattern("dd/MM/yyyy")
-                                    .format(hsdDate.toInstant()
-                                            .atZone(ZoneId.systemDefault())
-                                            .toLocalDate());
-
-                    model.addRow(new Object[] {
-                            ma,
-                            ten == null || ten.isEmpty() ? "Không tên" : ten,
-                            dvt == null || dvt.isEmpty() ? "Hộp" : dvt,
-                            hoatChat == null ? "" : hoatChat,
-                            nhomThuoc == null ? "" : nhomThuoc,
-                            formatMoney(donGia),
-                            tongSL,
-                            soLo,
-                            slLo,
-                            hsdFormatted,
-                            formatMoney(thanhTien)
-                    });
-                }
+            if (file.getName().toLowerCase().endsWith(".csv")) {
+                importCSV(file);
+            } else {
+                importExcelFile(file);
             }
 
             JOptionPane.showMessageDialog(this,
@@ -547,6 +501,143 @@ public class FormNhapHang extends javax.swing.JPanel {
             e.printStackTrace();
             JOptionPane.showMessageDialog(this, "Lỗi đọc file: " + e.getMessage(),
                     "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void importCSV(File file) throws Exception {
+        try (java.io.BufferedReader br = new java.io.BufferedReader(
+                new java.io.InputStreamReader(new FileInputStream(file), java.nio.charset.StandardCharsets.UTF_8))) {
+            
+            String line;
+            // Skip BOM if present
+            br.mark(1);
+            if (br.read() != 0xFEFF) {
+                br.reset();
+            }
+
+            // Read header
+            String header = br.readLine();
+            if (header == null) return;
+
+            while ((line = br.readLine()) != null) {
+                if (line.trim().isEmpty()) continue;
+                
+                // Simple CSV split (assuming no commas in fields for simplicity as per template)
+                String[] parts = line.split(",");
+                if (parts.length < 9) continue;
+
+                String ma = parts[0].trim();
+                String ten = parts[1].trim();
+                String dvt = parts[2].trim();
+                String hoatChat = parts[3].trim();
+                String nhomThuoc = parts[4].trim();
+                
+                double donGia = parseMoney(parts[5].trim());
+                int soLuong = 0;
+                try {
+                     soLuong = Integer.parseInt(parts[6].trim());
+                } catch(NumberFormatException e) {}
+                
+                String soLo = parts[7].trim();
+                String hsdStr = parts[8].trim(); // dd/MM/yyyy
+
+                double thanhTien = donGia * soLuong;
+
+                model.addRow(new Object[] {
+                        ma,
+                        ten.isEmpty() ? "Không tên" : ten,
+                        dvt.isEmpty() ? "Hộp" : dvt,
+                        hoatChat,
+                        nhomThuoc,
+                        formatMoney(donGia),
+                        soLuong,
+                        soLo,
+                        hsdStr,
+                        formatMoney(thanhTien)
+                });
+            }
+        }
+    }
+
+    private void importExcelFile(File file) throws Exception {
+        try (FileInputStream fis = new FileInputStream(file);
+                Workbook workbook = file.getName().toLowerCase().endsWith(".xlsx")
+                        ? new XSSFWorkbook(fis)
+                        : new HSSFWorkbook(fis)) {
+
+            Sheet sheet = workbook.getSheetAt(0);
+            
+            // Logic đọc file Excel (giống cũ nhưng đã cập nhật cột)
+            // Excel template columns:
+            // 0: Mã, 1: Tên, 2: ĐVT, 3: Hoạt chất, 4: Nhóm, 5: Đơn giá, 6: Số lượng, 7: Số lô, 8: HSD
+
+            for (int r = 1; r <= sheet.getLastRowNum(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) continue;
+
+                String ma = getCellString(row.getCell(0));
+                String ten = getCellString(row.getCell(1));
+                String dvt = getCellString(row.getCell(2));
+                String hoatChat = getCellString(row.getCell(3));
+                String nhomThuoc = getCellString(row.getCell(4));
+
+                Double donGia = getCellNumber(row.getCell(5));
+                Double soLuongDouble = getCellNumber(row.getCell(6));
+                int soLuong = soLuongDouble != null ? soLuongDouble.intValue() : 0;
+                
+                String soLo = getCellString(row.getCell(7));
+                Date hsdDate = getCellDate(row.getCell(8));
+                
+                boolean allEmpty = (soLo == null || soLo.trim().isEmpty()) &&
+                        hsdDate == null && soLuong <= 0;
+                if (allEmpty) continue;
+
+                double thanhTien = (donGia != null ? donGia : 0) * soLuong;
+
+                String hsdFormatted = hsdDate == null ? ""
+                        : DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                                .format(hsdDate.toInstant()
+                                        .atZone(ZoneId.systemDefault())
+                                        .toLocalDate());
+
+                model.addRow(new Object[] {
+                        ma,
+                        ten == null || ten.isEmpty() ? "Không tên" : ten,
+                        dvt == null || dvt.isEmpty() ? "Hộp" : dvt,
+                        hoatChat == null ? "" : hoatChat,
+                        nhomThuoc == null ? "" : nhomThuoc,
+                        formatMoney(donGia),
+                        soLuong,
+                        soLo,
+                        hsdFormatted,
+                        formatMoney(thanhTien)
+                });
+            }
+        }
+    }
+
+    public void addThuocTuCanhBao(List<dto.ThuocTonThap> listThuoc) {
+        model.setRowCount(0); // Clear old data
+        gioHang.clear();
+        
+        int count = 0;
+        for (dto.ThuocTonThap t : listThuoc) {
+            ThuocFullInfo fullInfo = thuocDAO.getThuocFullInfoByID(t.getMaThuoc());
+            if (fullInfo != null) {
+                int soLuongNhap = t.getSoLuongCanNhap();
+                if (soLuongNhap <= 0) soLuongNhap = 50; 
+                
+                LocalDate hsd = LocalDate.now().plusYears(2);
+                
+                themThuocVaoBang(fullInfo, soLuongNhap, fullInfo.getGiaNhap(), hsd, fullInfo.getDonViCoBan());
+                count++;
+            }
+        }
+        
+        if (count > 0) {
+            Notifications.getInstance().show(Notifications.Type.SUCCESS, 
+                    Notifications.Location.TOP_CENTER, 
+                    "Đã tạo phiếu nhập dự thảo với " + count + " mặt hàng!");
         }
     }
 
@@ -631,9 +722,9 @@ public class FormNhapHang extends javax.swing.JPanel {
             String hoatChat = getCell(i, 3);
             String tenNhom = getCell(i, 4);
             double donGia = parseMoney(getCell(i, 5));
-            String soLo = getCell(i, 7);
-            int soLuongLo = parseIntFromCell(getCell(i, 8));
-            LocalDate hsd = LocalDate.parse(getCell(i, 9), dateFormat);
+            int soLuong = parseIntFromCell(getCell(i, 6)); // Số lượng
+            String soLo = getCell(i, 7); // Số lô
+            LocalDate hsd = LocalDate.parse(getCell(i, 8), dateFormat); // Hạn SD
 
             Thuoc thuoc = thuocDAO.getThuocById(maThuoc);
             if (thuoc == null) {
@@ -670,9 +761,9 @@ public class FormNhapHang extends javax.swing.JPanel {
             ctNhap.setThuoc(thuoc);
             ctNhap.setLoThuoc(loSuDung);
             ctNhap.setHanSuDung(hsd);
-            ctNhap.setSoLuong(soLuongLo);
+            ctNhap.setSoLuong(soLuong);
             ctNhap.setDonGia(donGia);
-            ctNhap.setThanhTien(donGia * soLuongLo);
+            ctNhap.setThanhTien(donGia * soLuong);
             ctNhap.setDonViTinh(donViTinh);
 
             ct.insert(ctNhap);
@@ -728,26 +819,26 @@ public class FormNhapHang extends javax.swing.JPanel {
 
     private double tinhTongTienBang() {
         final int COL_DON_GIA = 5;
-        final int COL_SO_LUONG_LO = 8;
-        final int COL_THANH_TIEN = 10;
+        final int COL_SO_LUONG = 6;
+        final int COL_THANH_TIEN = 9;
 
         double tongCong = 0;
         for (int i = 0; i < model.getRowCount(); i++) {
             try {
                 Object giaObj = model.getValueAt(i, COL_DON_GIA);
-                Object slLoObj = model.getValueAt(i, COL_SO_LUONG_LO);
+                Object slObj = model.getValueAt(i, COL_SO_LUONG);
 
-                if (giaObj == null || slLoObj == null) {
+                if (giaObj == null || slObj == null) {
                     continue;
                 }
 
                 double gia = parseMoney(giaObj.toString());
-                int soLuongLo = parseIntFromCell(slLoObj.toString());
-                if (gia <= 0 || soLuongLo <= 0) {
+                int soLuong = parseIntFromCell(slObj.toString());
+                if (gia <= 0 || soLuong <= 0) {
                     continue;
                 }
 
-                double thanhTien = gia * soLuongLo;
+                double thanhTien = gia * soLuong;
                 model.setValueAt(formatMoney(thanhTien), i, COL_THANH_TIEN);
                 tongCong += thanhTien;
             } catch (Exception e) {
@@ -777,9 +868,9 @@ public class FormNhapHang extends javax.swing.JPanel {
             String hoatChat = getCell(i, 3);
             String tenNhom = getCell(i, 4);
             String donGiaStr = getCell(i, 5);
-            String soLo = getCell(i, 7);
-            String soLuongLoStr = getCell(i, 8);
-            String hsdStr = getCell(i, 9);
+            String soLuongStr = getCell(i, 6); // Số lượng
+            String soLo = getCell(i, 7);       // Số lô
+            String hsdStr = getCell(i, 8);     // Hạn SD
 
             if (maThuoc.isEmpty() && tenThuoc.isEmpty() && soLo.isEmpty()) {
                 continue;
@@ -797,12 +888,12 @@ public class FormNhapHang extends javax.swing.JPanel {
             if (donGia <= 0) {
                 errors.add("Dòng " + rowIndex + ": Đơn giá phải lớn hơn 0.");
             }
+            int soLuong = parseIntFromCell(soLuongStr);
+            if (soLuong <= 0) {
+                errors.add("Dòng " + rowIndex + ": Số lượng phải > 0.");
+            }
             if (soLo.isEmpty()) {
                 errors.add("Dòng " + rowIndex + ": Số lô không được để trống.");
-            }
-            int soLuongLo = parseIntFromCell(soLuongLoStr);
-            if (soLuongLo <= 0) {
-                errors.add("Dòng " + rowIndex + ": Số lượng lô phải > 0.");
             }
             try {
                 LocalDate hsd = LocalDate.parse(hsdStr, dateFormat);

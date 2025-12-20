@@ -243,24 +243,30 @@ public class FormCanhBaoTonKho extends JPanel {
             return;
         }
 
-        StringBuilder sb = new StringBuilder("Dự trù nhập hàng:\n\n");
-        int totalItems = 0;
-        for (int i = 0; i < model.getRowCount(); i++) {
-            String tenThuoc = model.getValueAt(i, 1).toString();
-            int soLuongNhap = Integer.parseInt(model.getValueAt(i, 5).toString());
-            String ncc = model.getValueAt(i, 6).toString();
-            sb.append(String.format("- %s: %d (%s)\n", tenThuoc, soLuongNhap, ncc));
-            totalItems++;
+        // Collect all displayed items
+        java.util.List<ThuocTonThap> listThuoc = new java.util.ArrayList<>();
+        for (int i = 0; i < table.getRowCount(); i++) {
+            int modelRow = table.convertRowIndexToModel(i);
+            String ma = model.getValueAt(modelRow, 0).toString();
+            String ten = model.getValueAt(modelRow, 1).toString();
+            int ton = Integer.parseInt(model.getValueAt(modelRow, 4).toString());
+            int min = Integer.parseInt(model.getValueAt(modelRow, 3).toString());
+            int canNhap = Integer.parseInt(model.getValueAt(modelRow, 5).toString());
+            
+            ThuocTonThap t = new ThuocTonThap(ma, ten, model.getValueAt(modelRow, 2).toString(), ton, min, canNhap, "", "");
+            listThuoc.add(t);
         }
-        sb.append("\nTổng cộng: ").append(totalItems).append(" mặt hàng");
 
         int confirm = JOptionPane.showConfirmDialog(this,
-                sb.toString() + "\n\nBạn có muốn chuyển sang màn hình Nhập Hàng?",
+                "Bạn có muốn tạo phiếu nhập dự thảo cho " + listThuoc.size() + " thuốc này không?",
                 "Tạo dự trù", JOptionPane.YES_NO_OPTION);
 
         if (confirm == JOptionPane.YES_OPTION) {
-            Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER,
-                    "Đã tạo dự trù nhập hàng cho " + totalItems + " mặt hàng!");
+            gui.transaction.inventory.FormNhapHang formNhap = new gui.transaction.inventory.FormNhapHang();
+            formNhap.addThuocTuCanhBao(listThuoc);
+            
+            gui.main.Application.showForm(formNhap);
+            gui.main.Application.setSelectedMenu(3, 2, false); // Menu Nhập hàng -> Lập phiếu nhập (false = không trigger sự kiện)
         }
     }
 
