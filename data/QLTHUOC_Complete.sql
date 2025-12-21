@@ -792,6 +792,13 @@ BEGIN
             RETURN;
         END
 
+        -- Đảm bảo không bị gọi trùng: kiểm tra lại trạng thái trước khi update
+        IF EXISTS (SELECT 1 FROM PhieuNhap WHERE maPN = @MaPN AND trangThai = N'Đã nhập')
+        BEGIN
+            RAISERROR(N'Phiếu nhập đã được xác nhận rồi', 16, 1);
+            RETURN;
+        END
+
         UPDATE l
         SET l.soLuongTon = l.soLuongTon + (ct.soLuong * ISNULL(dv.giaTriQuyDoi, 1)),
             l.ngayNhap = GETDATE()

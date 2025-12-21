@@ -154,4 +154,21 @@ public class DonViQuyDoiDAO {
         }
         return list;
     }
+       public ArrayList<String> getAllTenDonVi() {
+        ArrayList<String> list = new ArrayList<>();
+        String sql = "SELECT DISTINCT tenDonVi FROM DonViQuyDoi WHERE trangThai = 1 ORDER BY tenDonVi ASC";
+
+        try {
+            Connection con = ConnectDB.getConnection();
+            java.sql.Statement stmt = con.createStatement();
+            ResultSet rs = stmt.executeQuery(sql);
+
+            while (rs.next()) {
+                list.add(rs.getString("tenDonVi"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
 }

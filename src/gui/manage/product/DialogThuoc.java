@@ -1,6 +1,7 @@
 package gui.manage.product;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import dao.DonViQuyDoiDAO;
 import dao.ThuocDAO;
 import dto.ThuocFullInfo;
 import entities.DonViQuyDoi;
@@ -9,6 +10,7 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumn;
 import net.miginfocom.swing.MigLayout;
 import raven.toast.Notifications;
 
@@ -29,6 +31,7 @@ public class DialogThuoc extends JDialog {
     private ThuocDAO thuocDAO = new ThuocDAO();
     private JTable tblDonViQuyDoi;
     private DefaultTableModel modelDVQD;
+    private DonViQuyDoiDAO donViDAO = new DonViQuyDoiDAO();
 
     public DialogThuoc(Component parent, Object[] data) {
         super(SwingUtilities.windowForComponent(parent), "Thuốc", ModalityType.APPLICATION_MODAL);
@@ -132,7 +135,7 @@ public class DialogThuoc extends JDialog {
 
     private void initTableDonViQuyDoi() {
 
-        modelDVQD = new DefaultTableModel(new Object[]{"Tên Đơn Vị (VD: Vỉ)", "Giá Trị Quy Đổi (SL)", "Giá Bán"}, 0) {
+        modelDVQD = new DefaultTableModel(new Object[] { "Tên Đơn Vị", "Giá Trị Quy Đổi (SL)", "Giá Bán" }, 0) {
             @Override
             public Class<?> getColumnClass(int columnIndex) {
                 if (columnIndex == 1) {
@@ -147,12 +150,20 @@ public class DialogThuoc extends JDialog {
         tblDonViQuyDoi = new JTable(modelDVQD);
         tblDonViQuyDoi.setRowHeight(25);
 
+        // Thêm combobox cho cột tên đơn vị
+        TableColumn tenDonViColumn = tblDonViQuyDoi.getColumnModel().getColumn(0);
+        tenDonViColumn.setCellEditor(new DefaultCellEditor(createTenDonViComboBox()));
+
         JPanel pnlTable = new JPanel(new MigLayout("insets 0", "[grow]5[]", "[grow]"));
         pnlTable.add(new JScrollPane(tblDonViQuyDoi), "grow, height 120!");
 
         JPanel pnlControl = new JPanel(new MigLayout("wrap, insets 0", "fill", "top"));
         JButton btnAddRow = new JButton("+");
-        btnAddRow.addActionListener(e -> modelDVQD.addRow(new Object[]{"", 10, 0.0}));
+        btnAddRow.addActionListener(e -> {
+            java.util.List<String> listTenDonVi = donViDAO.getAllTenDonVi();
+            String defaultTenDonVi = listTenDonVi.isEmpty() ? "" : listTenDonVi.get(0);
+            modelDVQD.addRow(new Object[] { defaultTenDonVi, 10, 0.0 });
+        });
 
         JButton btnDelRow = new JButton("-");
         btnDelRow.addActionListener(e -> {
@@ -170,14 +181,16 @@ public class DialogThuoc extends JDialog {
     }
 
     private void actionThemNhomNhanh() {
-        String tenNhomMoi = JOptionPane.showInputDialog(this, "Nhập tên nhóm thuốc mới:", "Thêm Nhóm", JOptionPane.PLAIN_MESSAGE);
+        String tenNhomMoi = JOptionPane.showInputDialog(this, "Nhập tên nhóm thuốc mới:", "Thêm Nhóm",
+                JOptionPane.PLAIN_MESSAGE);
 
         if (tenNhomMoi != null && !tenNhomMoi.trim().isEmpty()) {
             tenNhomMoi = tenNhomMoi.trim();
 
             for (int i = 0; i < cbNhomThuoc.getItemCount(); i++) {
                 if (cbNhomThuoc.getItemAt(i).equalsIgnoreCase(tenNhomMoi)) {
-                    Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Nhóm thuốc này đã tồn tại!");
+                    Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
+                            "Nhóm thuốc này đã tồn tại!");
                     return;
                 }
             }
@@ -185,15 +198,18 @@ public class DialogThuoc extends JDialog {
             if (thuocDAO.themNhomThuocNhanh(tenNhomMoi)) {
                 cbNhomThuoc.addItem(tenNhomMoi);
                 cbNhomThuoc.setSelectedItem(tenNhomMoi);
-                Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Đã thêm nhóm mới!");
+                Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER,
+                        "Đã thêm nhóm mới!");
             } else {
-                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER, "Lỗi khi lưu nhóm thuốc!");
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER,
+                        "Lỗi khi lưu nhóm thuốc!");
             }
         }
     }
 
     private void actionThemDVTNhanh() {
-        String dvtMoi = JOptionPane.showInputDialog(this, "Nhập tên đơn vị tính mới:", "Thêm ĐVT", JOptionPane.PLAIN_MESSAGE);
+        String dvtMoi = JOptionPane.showInputDialog(this, "Nhập tên đơn vị tính mới:", "Thêm ĐVT",
+                JOptionPane.PLAIN_MESSAGE);
 
         if (dvtMoi != null && !dvtMoi.trim().isEmpty()) {
             dvtMoi = dvtMoi.trim();
@@ -208,6 +224,25 @@ public class DialogThuoc extends JDialog {
             cbDVT.addItem(dvtMoi);
             cbDVT.setSelectedItem(dvtMoi);
         }
+    }
+
+    private JComboBox<String> createTenDonViComboBox() {
+        JComboBox<String> comboBox = new JComboBox<>();
+        comboBox.setEditable(true);
+
+        java.util.List<String> listTenDonVi = donViDAO.getAllTenDonVi();
+        for (String tenDV : listTenDonVi) {
+            comboBox.addItem(tenDV);
+        }
+
+        String[] donViPhoBien = { "Viên", "Vỉ", "Hộp", "Chai", "Ống", "Tuýp", "Lọ", "Gói" };
+        for (String dv : donViPhoBien) {
+            if (!listTenDonVi.contains(dv)) {
+                comboBox.addItem(dv);
+            }
+        }
+
+        return comboBox;
     }
 
     private void loadNhomThuoc() {
@@ -226,6 +261,7 @@ public class DialogThuoc extends JDialog {
         }
     }
 
+    // dsdasdasdđâs
     private void fillData() {
         txtMaThuoc.setText(currentData[0].toString());
         txtTenThuoc.setText(currentData[1].toString());
@@ -249,11 +285,16 @@ public class DialogThuoc extends JDialog {
     }
 
     private void actionSave() {
-        if (txtTenThuoc.getText().trim().isEmpty()) {
-            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Tên thuốc không được để trống!");
-            txtTenThuoc.requestFocus();
+        if (!validateTenThuoc()) {
             return;
         }
+        if (!validateHoatChat()) {
+            return;
+        }
+        if (!validateGiaBan()) {
+            return;
+        }
+
         if (tblDonViQuyDoi.isEditing()) {
             tblDonViQuyDoi.getCellEditor().stopCellEditing();
         }
@@ -263,20 +304,81 @@ public class DialogThuoc extends JDialog {
             int quyDoi = Integer.parseInt(modelDVQD.getValueAt(i, 1).toString());
 
             if (tenDV.isEmpty()) {
-                Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Tên đơn vị quy đổi không được để trống!");
+                Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
+                        "Tên đơn vị quy đổi không được để trống!");
                 return;
             }
             if (tenDV.equalsIgnoreCase(cbDVT.getSelectedItem().toString())) {
-                Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Đơn vị quy đổi không được trùng đơn vị cơ bản!");
+                Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
+                        "Đơn vị quy đổi không được trùng đơn vị cơ bản!");
                 return;
             }
             if (quyDoi <= 1) {
-                Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Giá trị quy đổi phải lớn hơn 1!");
+                Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
+                        "Giá trị quy đổi phải lớn hơn 1!");
                 return;
             }
         }
         isSave = true;
         closeDialog();
+    }
+
+    private boolean validateTenThuoc() {
+        String tenThuoc = txtTenThuoc.getText().trim();
+
+        if (tenThuoc.isEmpty()) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
+                    "Tên thuốc không được để trống!");
+            txtTenThuoc.requestFocus();
+            return false;
+        }
+        if (!tenThuoc.matches("^[a-zA-Z0-9\\s]+$")) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
+                    "Tên thuốc chỉ được chứa chữ cái, số và dấu cách!");
+            txtTenThuoc.requestFocus();
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean validateHoatChat() {
+        String hoatChat = txtHoatChat.getText().trim();
+
+        if (hoatChat.isEmpty()) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
+                    "Hoạt chất không được để trống!");
+            txtHoatChat.requestFocus();
+            return false;
+        }
+        if (!hoatChat.matches("^[a-zA-Z0-9\\s]+$")) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
+                    "Hoạt chất chỉ được chứa chữ cái, số và dấu cách!");
+            txtHoatChat.requestFocus();
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean validateGiaBan() {
+        try {
+            double giaBan = ((Number) spinGiaBan.getValue()).doubleValue();
+
+            if (giaBan <= 0) {
+                Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
+                        "Giá bán phải lớn hơn 0!");
+                spinGiaBan.requestFocus();
+                return false;
+            }
+
+            return true;
+        } catch (Exception e) {
+            Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER,
+                    "Giá bán không hợp lệ!");
+            spinGiaBan.requestFocus();
+            return false;
+        }
     }
 
     private void closeDialog() {
@@ -289,15 +391,15 @@ public class DialogThuoc extends JDialog {
 
     public Object[] getData() {
         DecimalFormat df = new DecimalFormat("#,##0");
-        return new Object[]{
-            txtMaThuoc.getText().isEmpty() ? "AUTO" : txtMaThuoc.getText(),
-            txtTenThuoc.getText(),
-            cbNhomThuoc.getSelectedItem(),
-            txtHoatChat.getText(),
-            cbDVT.getSelectedItem(),
-            0,
-            df.format(spinGiaBan.getValue()),
-            0
+        return new Object[] {
+                txtMaThuoc.getText().isEmpty() ? "AUTO" : txtMaThuoc.getText(),
+                txtTenThuoc.getText(),
+                cbNhomThuoc.getSelectedItem(),
+                txtHoatChat.getText(),
+                cbDVT.getSelectedItem(),
+                0,
+                df.format(spinGiaBan.getValue()),
+                0
         };
     }
 
@@ -333,7 +435,7 @@ public class DialogThuoc extends JDialog {
             dv.setGiaTriQuyDoi(quyDoi);
             dv.setGiaBan(giaBan);
             dv.setLaDonViCoBan(false);
-
+            // adasdasdsad adsa
             list.add(dv);
         }
         return list;

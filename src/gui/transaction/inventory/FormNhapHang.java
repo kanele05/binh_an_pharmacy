@@ -169,50 +169,91 @@ public class FormNhapHang extends javax.swing.JPanel {
     private void actionDownloadTemplate() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setDialogTitle("Lưu file mẫu nhập hàng");
-        fileChooser.setSelectedFile(new File("Mau_Nhap_Hang.csv"));
+        fileChooser.setSelectedFile(new File("Mau_Nhap_Hang.xlsx"));
 
         if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
             File fileToSave = fileChooser.getSelectedFile();
-            saveCSVFile(fileToSave);
+            saveExcelFile(fileToSave);
         }
     }
 
-    private void saveCSVFile(File file) {
-        try (java.io.BufferedWriter writer = new java.io.BufferedWriter(
-                new java.io.OutputStreamWriter(new java.io.FileOutputStream(file),
-                        java.nio.charset.StandardCharsets.UTF_8))) {
+ private void saveExcelFile(File file) {
+    try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
 
-            writer.write("\ufeff");
+        org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("DanhSachThuoc");
 
-            writer.write(
-                    "Mã thuốc,Tên thuốc,Đơn vị tính,Hoạt chất,Nhóm thuốc,Đơn giá,Lô 1,Hạn sử dụng 1, Số lượng 1,Lô 2, Hạn sử dụng 2");
-            writer.newLine();
+        // Header
+        String[] header = {
+                "Mã thuốc", "Tên thuốc", "Đơn vị tính", "Hoạt chất",
+                "Nhóm thuốc", "Đơn giá",
+                "Số lượng Lô 1", "Số lô 1", "Hạn sử dụng 1",
+                "Số lượng Lô 2", "Số lô 2", "Hạn sử dụng 2"
+        };
 
-            writer.write(
-                    "T001,Paracetamol 500mg,Viên,Paracetamol,Giảm đau hạ sốt,1500,L001,2026-12-31,100,LO002,2027-06-30");
-            writer.newLine();
+        org.apache.poi.ss.usermodel.Row headerRow = sheet.createRow(0);
+        for (int i = 0; i < header.length; i++) {
+            headerRow.createCell(i).setCellValue(header[i]);
+        }
 
-            writer.write(
-                    "T002,Amoxicillin 500mg,Viên,Amoxicillin,Kháng sinh,2500,L010,2026-08-15,200,LO011,2027-02-20");
-            writer.newLine();
+        // Dữ liệu
+        Object[][] data = {
+                { "T123", "Dưỡng ẩm cao cấp", "hộp", "Amoxicillin",
+                        "Kháng sinh - Kháng khuẩn", 100000.0,
+                        7.0, "L765", "15/10/2026",
+                        1.0, "L55", "15/10/2027" },
 
-            writer.write("T003,Vitamin C 500mg,Viên,Acid Ascorbic,Vitamin,1200,L021,2027-01-10,300,LO022,2027-09-05");
-            writer.newLine();
+                { "T124", "Bù nước cao cấp", "hộp", "Amoxicillin",
+                        "Kháng sinh - Kháng khuẩn", 500000.0,
+                        2.0, "L343", "15/10/2026",
+                        1.0, "L767", "15/10/2028" },
 
-            Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER,
-                    "Đã lưu file mẫu thành công!");
+                { "T111", "Cồn y tế 42 độ", "thùng", "Amoxicillin",
+                        "Kháng sinh - Kháng khuẩn", 2000000.0,
+                        10.0, "L133", "15/10/2026",
+                        5.0, "L187", "15/10/2028" }
+        };
 
-            try {
-                java.awt.Desktop.getDesktop().open(file);
-            } catch (Exception e) {
+        // Ghi dữ liệu vào sheet
+        int rowIndex = 1;
+        for (Object[] rowData : data) {
+            org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowIndex++);
+            for (int col = 0; col < rowData.length; col++) {
+                if (rowData[col] instanceof Double) {
+                    row.createCell(col).setCellValue((Double) rowData[col]);
+                } else {
+                    row.createCell(col).setCellValue(rowData[col].toString());
+                }
             }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.TOP_CENTER,
-                    "Lỗi khi lưu file!");
         }
+
+        // Auto resize
+        for (int i = 0; i < header.length; i++) {
+            sheet.autoSizeColumn(i);
+        }
+
+        // Ghi file
+        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(file)) {
+            workbook.write(fos);
+        }
+
+        Notifications.getInstance().show(Notifications.Type.SUCCESS,
+                Notifications.Location.TOP_CENTER,
+                "Đã lưu file Excel mẫu thành công!");
+
+        // Mở file
+        try {
+            java.awt.Desktop.getDesktop().open(file);
+        } catch (Exception ignored) {}
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        Notifications.getInstance().show(Notifications.Type.ERROR,
+                Notifications.Location.TOP_CENTER,
+                "Lỗi khi lưu file Excel!");
     }
+}
+
+
 
     private JPanel createTablePanel() {
         JPanel panel = new JPanel(new java.awt.BorderLayout());
