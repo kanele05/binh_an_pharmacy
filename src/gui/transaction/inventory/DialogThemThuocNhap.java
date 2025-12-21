@@ -177,8 +177,8 @@ public class DialogThemThuocNhap extends JDialog {
         // Hạn sử dụng
         JLabel lbHSD = new JLabel("Hạn SD (tháng):");
         lbHSD.putClientProperty(FlatClientProperties.STYLE, "font:bold");
-        // Mặc định hạn sử dụng là 24 tháng kể từ ngày nhập
-        spnHanSuDung = new JSpinner(new SpinnerNumberModel(24, 1, 120, 1));
+        // Mặc định hạn sử dụng là 12 tháng kể từ ngày nhập
+        spnHanSuDung = new JSpinner(new SpinnerNumberModel(12, 1, 120, 1));
 
         panel.add(lbSoLuong);
         panel.add(spnSoLuong, "w 100");
@@ -196,23 +196,16 @@ public class DialogThemThuocNhap extends JDialog {
         cbDonViTinh.removeAllItems();
         listDonViHienTai.clear();
 
-        // Lấy danh sách đơn vị quy đổi của thuốc
         listDonViHienTai = donViDAO.getAllDonViByMaThuoc(maThuoc);
 
-        // Lấy thông tin thuốc để biết đơn vị cơ bản
         ThuocFullInfo thuoc = dsThuoc.stream()
                 .filter(t -> t.getMaThuoc().equals(maThuoc))
                 .findFirst()
                 .orElse(null);
         String donViCoBan = thuoc != null ? thuoc.getDonViCoBan() : "";
-
-        // Nếu không có đơn vị quy đổi hoặc chỉ có đơn vị cơ bản, hiển thị thông báo
         if (listDonViHienTai.isEmpty()) {
-            // Không có đơn vị nào - hiển thị thông báo
             cbDonViTinh.addItem("(Chưa có đơn vị lớn)");
         } else {
-            // Chỉ thêm các đơn vị KHÔNG phải đơn vị cơ bản vào combobox
-            // Vì nhập hàng thường nhập số lượng lớn ở các đơn vị tính lớn
             boolean hasNonBaseUnit = false;
             for (DonViQuyDoi dv : listDonViHienTai) {
                 if (!dv.isLaDonViCoBan() && !dv.getTenDonVi().equalsIgnoreCase(donViCoBan)) {

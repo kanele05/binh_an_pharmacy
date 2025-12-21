@@ -12,7 +12,8 @@ import java.util.List;
 
 public class PhieuNhapDAO {
 
-    // FIX Lỗi 3: Giữ method cũ cho tương thích ngược (non-atomic, dùng cho UI display)
+    // FIX Lỗi 3: Giữ method cũ cho tương thích ngược (non-atomic, dùng cho UI
+    // display)
     public String generateNewMaPN() {
         String newMa = "PN001";
         try {
@@ -39,7 +40,7 @@ public class PhieuNhapDAO {
         String newMa = "PN001";
         String sql = "SELECT TOP 1 maPN FROM PhieuNhap WITH (UPDLOCK, HOLDLOCK) ORDER BY maPN DESC";
         try (Statement st = con.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
+                ResultSet rs = st.executeQuery(sql)) {
             if (rs.next()) {
                 String lastMa = rs.getString(1);
                 if (lastMa != null && lastMa.length() > 2) {
@@ -55,7 +56,11 @@ public class PhieuNhapDAO {
         return newMa;
     }
 
-    // Hàm TRANSACTION - Tạo phiếu nhập với trạng thái "Chờ nhập" (chưa cộng tồn kho)
+    // DEPRECATED: Không sử dụng method này. Dùng flow riêng trong FormNhapHang để
+    // tránh nhập trùng tồn kho
+    // Hàm TRANSACTION - Tạo phiếu nhập với trạng thái "Chờ nhập" (chưa cộng tồn
+    // kho)
+    @Deprecated
     public boolean createPhieuNhap(PhieuNhap pn, ArrayList<ChiTietPhieuNhap> listCT) {
         Connection con = null;
         PreparedStatement stmtPN = null;
@@ -113,23 +118,29 @@ public class PhieuNhapDAO {
         } catch (SQLException e) {
             e.printStackTrace();
             try {
-                if (con != null) con.rollback();
+                if (con != null)
+                    con.rollback();
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
         } finally {
             try {
-                if (con != null) con.setAutoCommit(true);
-                if (stmtPN != null) stmtPN.close();
-                if (stmtCT != null) stmtCT.close();
-                if (cstmtLo != null) cstmtLo.close();
+                if (con != null)
+                    con.setAutoCommit(true);
+                if (stmtPN != null)
+                    stmtPN.close();
+                if (stmtCT != null)
+                    stmtCT.close();
+                if (cstmtLo != null)
+                    cstmtLo.close();
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
         return result;
     }
-public boolean insertHeader(PhieuNhap pn) {
+
+    public boolean insertHeader(PhieuNhap pn) {
         Connection con = null;
         PreparedStatement stmtPN = null;
         try {
@@ -157,6 +168,7 @@ public boolean insertHeader(PhieuNhap pn) {
         }
         return false;
     }
+
     public boolean xacNhanNhapKho(String maPN) {
         Connection con = null;
         CallableStatement cstmt = null;
@@ -192,15 +204,19 @@ public boolean insertHeader(PhieuNhap pn) {
         } catch (SQLException e) {
             e.printStackTrace();
             try {
-                if (con != null) con.rollback();
+                if (con != null)
+                    con.rollback();
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
         } finally {
             try {
-                if (con != null) con.setAutoCommit(true);
-                if (cstmt != null) cstmt.close();
-                if (stmtGetCT != null) stmtGetCT.close();
+                if (con != null)
+                    con.setAutoCommit(true);
+                if (cstmt != null)
+                    cstmt.close();
+                if (stmtGetCT != null)
+                    stmtGetCT.close();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -212,10 +228,10 @@ public boolean insertHeader(PhieuNhap pn) {
     public List<PhieuNhap> getAllPhieuNhap() {
         List<PhieuNhap> list = new ArrayList<>();
         String sql = "SELECT pn.*, nv.hoTen AS tenNV, ncc.tenNCC " +
-                     "FROM PhieuNhap pn " +
-                     "LEFT JOIN NhanVien nv ON pn.maNV = nv.maNV " +
-                     "LEFT JOIN NhaCungCap ncc ON pn.maNCC = ncc.maNCC " +
-                     "ORDER BY pn.ngayTao DESC";
+                "FROM PhieuNhap pn " +
+                "LEFT JOIN NhanVien nv ON pn.maNV = nv.maNV " +
+                "LEFT JOIN NhaCungCap ncc ON pn.maNCC = ncc.maNCC " +
+                "ORDER BY pn.ngayTao DESC";
         try {
             Connection con = ConnectDB.getConnection();
             Statement st = con.createStatement();
@@ -228,14 +244,13 @@ public boolean insertHeader(PhieuNhap pn) {
                 ncc.setTenNCC(rs.getString("tenNCC"));
 
                 PhieuNhap pn = new PhieuNhap(
-                    rs.getString("maPN"),
-                    rs.getDate("ngayTao") != null ? rs.getDate("ngayTao").toLocalDate() : null,
-                    rs.getDouble("tongTien"),
-                    rs.getString("trangThai"),
-                    nv,
-                    ncc,
-                    rs.getString("ghiChu")
-                );
+                        rs.getString("maPN"),
+                        rs.getDate("ngayTao") != null ? rs.getDate("ngayTao").toLocalDate() : null,
+                        rs.getDouble("tongTien"),
+                        rs.getString("trangThai"),
+                        nv,
+                        ncc,
+                        rs.getString("ghiChu"));
                 list.add(pn);
             }
         } catch (Exception e) {
@@ -247,10 +262,10 @@ public boolean insertHeader(PhieuNhap pn) {
     // Lấy phiếu nhập theo mã
     public PhieuNhap getPhieuNhapById(String maPN) {
         String sql = "SELECT pn.*, nv.hoTen AS tenNV, ncc.tenNCC " +
-                     "FROM PhieuNhap pn " +
-                     "LEFT JOIN NhanVien nv ON pn.maNV = nv.maNV " +
-                     "LEFT JOIN NhaCungCap ncc ON pn.maNCC = ncc.maNCC " +
-                     "WHERE pn.maPN = ?";
+                "FROM PhieuNhap pn " +
+                "LEFT JOIN NhanVien nv ON pn.maNV = nv.maNV " +
+                "LEFT JOIN NhaCungCap ncc ON pn.maNCC = ncc.maNCC " +
+                "WHERE pn.maPN = ?";
         try {
             Connection con = ConnectDB.getConnection();
             PreparedStatement ps = con.prepareStatement(sql);
@@ -264,14 +279,13 @@ public boolean insertHeader(PhieuNhap pn) {
                 ncc.setTenNCC(rs.getString("tenNCC"));
 
                 return new PhieuNhap(
-                    rs.getString("maPN"),
-                    rs.getDate("ngayTao") != null ? rs.getDate("ngayTao").toLocalDate() : null,
-                    rs.getDouble("tongTien"),
-                    rs.getString("trangThai"),
-                    nv,
-                    ncc,
-                    rs.getString("ghiChu")
-                );
+                        rs.getString("maPN"),
+                        rs.getDate("ngayTao") != null ? rs.getDate("ngayTao").toLocalDate() : null,
+                        rs.getDouble("tongTien"),
+                        rs.getString("trangThai"),
+                        nv,
+                        ncc,
+                        rs.getString("ghiChu"));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -306,7 +320,8 @@ public boolean insertHeader(PhieuNhap pn) {
                     sql.append("AND MONTH(pn.ngayTao) = MONTH(GETDATE()) AND YEAR(pn.ngayTao) = YEAR(GETDATE()) ");
                     break;
                 case "Tháng trước":
-                    sql.append("AND MONTH(pn.ngayTao) = MONTH(DATEADD(MONTH, -1, GETDATE())) AND YEAR(pn.ngayTao) = YEAR(DATEADD(MONTH, -1, GETDATE())) ");
+                    sql.append(
+                            "AND MONTH(pn.ngayTao) = MONTH(DATEADD(MONTH, -1, GETDATE())) AND YEAR(pn.ngayTao) = YEAR(DATEADD(MONTH, -1, GETDATE())) ");
                     break;
             }
         }
@@ -337,14 +352,13 @@ public boolean insertHeader(PhieuNhap pn) {
                 ncc.setTenNCC(rs.getString("tenNCC"));
 
                 PhieuNhap pn = new PhieuNhap(
-                    rs.getString("maPN"),
-                    rs.getDate("ngayTao") != null ? rs.getDate("ngayTao").toLocalDate() : null,
-                    rs.getDouble("tongTien"),
-                    rs.getString("trangThai"),
-                    nv,
-                    ncc,
-                    rs.getString("ghiChu")
-                );
+                        rs.getString("maPN"),
+                        rs.getDate("ngayTao") != null ? rs.getDate("ngayTao").toLocalDate() : null,
+                        rs.getDouble("tongTien"),
+                        rs.getString("trangThai"),
+                        nv,
+                        ncc,
+                        rs.getString("ghiChu"));
                 list.add(pn);
             }
         } catch (Exception e) {
@@ -385,9 +399,9 @@ public boolean insertHeader(PhieuNhap pn) {
             if (pn.getTrangThai().equals("Đã nhập")) {
                 // FIX Lỗi 4: Sửa cú pháp SQL Server UPDATE...FROM
                 String sqlRollback = "UPDATE l SET l.soLuongTon = l.soLuongTon - ct.soLuong " +
-                                     "FROM LoThuoc l " +
-                                     "INNER JOIN ChiTietPhieuNhap ct ON l.maLo = ct.maLo " +
-                                     "WHERE ct.maPN = ?";
+                        "FROM LoThuoc l " +
+                        "INNER JOIN ChiTietPhieuNhap ct ON l.maLo = ct.maLo " +
+                        "WHERE ct.maPN = ?";
                 PreparedStatement psRollback = con.prepareStatement(sqlRollback);
                 psRollback.setString(1, maPN);
                 psRollback.executeUpdate();
@@ -404,13 +418,15 @@ public boolean insertHeader(PhieuNhap pn) {
         } catch (Exception e) {
             e.printStackTrace();
             try {
-                if (con != null) con.rollback();
+                if (con != null)
+                    con.rollback();
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
         } finally {
             try {
-                if (con != null) con.setAutoCommit(true);
+                if (con != null)
+                    con.setAutoCommit(true);
             } catch (SQLException e) {
                 e.printStackTrace();
             }
